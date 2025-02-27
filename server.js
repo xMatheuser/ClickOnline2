@@ -1,10 +1,14 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Servir arquivos estáticos do frontend
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Estado global do jogo
 let gameState = {
@@ -22,11 +26,8 @@ function broadcastGameState() {
 
 io.on('connection', (socket) => {
   console.log('Novo jogador conectado:', socket.id);
-
-  // Quando um jogador se conecta, enviar o estado atual do jogo
   socket.emit('gameStateUpdate', gameState);
 
-  // Adicionar novo jogador
   socket.on('addPlayer', (playerData) => {
     if (!gameState.players.some(p => p.name === playerData.name)) {
       playerData.id = socket.id;
@@ -44,7 +45,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Processar clique
   socket.on('click', () => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
@@ -53,24 +53,21 @@ io.on('connection', (socket) => {
       player.contribution += clickValue;
       gameState.clicks += clickValue;
 
-      if (gameState.clicks >= player.targetClicks) {
+      if (player.clicks >= (player.targetClicks || 10)) {
         levelUp(player);
       }
-
       broadcastGameState();
     }
   });
 
-  // Comprar upgrade
   socket.on('buyUpgrade', (upgradeId) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
-      // Aqui você pode implementar a lógica de upgrades no servidor
+      // Implementar lógica de upgrades aqui no futuro
       broadcastGameState();
     }
   });
 
-  // Desconexão
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
@@ -86,30 +83,27 @@ io.on('connection', (socket) => {
   });
 });
 
-// Função para calcular o valor do clique (adaptada para o servidor)
 function calculateClickValue(player) {
-  let clickPower = 1; // Valor base
-  if (player.role === 'clicker') clickPower *= 1.2; // Bônus de 20%
+  let clickPower = 1;
+  if (player.role === 'clicker') clickPower *= 1.2;
   return clickPower;
 }
 
-// Subir de nível
 function levelUp(player) {
   player.level++;
   player.clicks = 0;
-  player.targetClicks = Math.ceil(player.targetClicks * 1.25); // Aumentar dificuldade
+  player.targetClicks = Math.ceil((player.targetClicks || 10) * 1.25);
   const coinsAwarded = player.level * 5;
   player.coins += coinsAwarded;
   gameState.coins += coinsAwarded;
-
   io.emit('chatMessage', {
     text: `${player.name} alcançou o nível ${player.level}! +${coinsAwarded} moedas`,
     type: 'system'
   });
 }
 
-app.use(express.static('public')); // Servir arquivos estáticos (HTML, CSS, JS)
-
-server.listen(3000, () => {
-  console.log('Servidor rodando em http://localhost:3000');
+// Configurar porta para o Render
+const port = process.env.PORT || 3000;
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${port}`);
 });
