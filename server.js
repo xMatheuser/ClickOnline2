@@ -23,71 +23,133 @@ let gameState = {
   clicks: 0,
   coins: 0,
   upgrades: [
-    {
-      id: 'click-power',
-      name: 'Poder de Clique',
-      description: 'Aumenta o valor de cada clique',
-      basePrice: 10,
-      level: 0,
-      maxLevel: 10,
-      effect: level => level + 1,
-      priceIncrease: 1.5
-    },
-    {
-      id: 'auto-clicker',
-      name: 'Auto Clicker',
-      description: 'Clica automaticamente a cada segundo',
-      basePrice: 50,
-      level: 0,
-      maxLevel: 5,
-      effect: level => level,
-      priceIncrease: 2
-    }
-  ],
+ {
+        id: 'click-power',
+        name: 'Poder de Clique',
+        description: 'Aumenta o valor de cada clique',
+        basePrice: 10,
+        level: 0,
+        maxLevel: 10,
+        effect: level => level + 1,
+        priceIncrease: 1.5
+      },
+      {
+        id: 'auto-clicker',
+        name: 'Auto Clicker',
+        description: 'Clica automaticamente a cada segundo',
+        basePrice: 50,
+        level: 0,
+        maxLevel: 5,
+        effect: level => level,
+        priceIncrease: 2
+      },
+      {
+        id: 'coin-boost',
+        name: 'Boost de Moedas',
+        description: 'Aumenta as moedas ganhas por nível',
+        basePrice: 30,
+        level: 0,
+        maxLevel: 5,
+        effect: level => 1 + level * 0.2, // 20% de aumento por nível
+        priceIncrease: 1.8
+      },
+      {
+        id: 'progress-boost',
+        name: 'Boost de Progresso',
+        description: 'Reduz o aumento da dificuldade entre níveis',
+        basePrice: 100,
+        level: 0,
+        maxLevel: 3,
+        effect: level => 1.25 - (level * 0.05), // Reduz de 1.25 para 1.10
+        priceIncrease: 2.5
+      },
+      {
+        id: 'team-synergy',
+        name: 'Sinergia de Equipe',
+        description: 'Aumenta o poder de clique baseado no número de jogadores',
+        basePrice: 40,
+        level: 0,
+        maxLevel: 5,
+        effect: level => level * (players.length * 0.1), // 10% por jogador por nível
+        priceIncrease: 1.7
+      },
+      {
+        id: 'shared-rewards',
+        name: 'Recompensas Compartilhadas',
+        description: 'Jogadores inativos recebem uma porcentagem das moedas ganhas',
+        basePrice: 75,
+        level: 0,
+        maxLevel: 3,
+        effect: level => level * 0.15, // 15% por nível
+        priceIncrease: 2.2
+      }
+    ];
   achievements: [
     {
-      id: 'first-level',
-      name: 'Primeiro Nível',
-      description: 'Complete o nível 1',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level > 1),
-      reward: 5
-    },
-    {
-      id: 'level-5',
-      name: 'Persistente',
-      description: 'Alcance o nível 5',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level >= 5),
-      reward: 20
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  ]
+        id: 'first-level',
+        name: 'Primeiro Nível',
+        description: 'Complete o nível 1',
+        unlocked: false,
+        requirement: () => level > 1,
+        reward: 5
+      },
+      {
+        id: 'level-5',
+        name: 'Persistente',
+        description: 'Alcance o nível 5',
+        unlocked: false,
+        requirement: () => level >= 5,
+        reward: 20
+      },
+      {
+        id: 'level-10',
+        name: 'Dedicado',
+        description: 'Alcance o nível 10',
+        unlocked: false,
+        requirement: () => level >= 10,
+        reward: 50
+      },
+      {
+        id: 'level-25',
+        name: 'Mestre Clicker',
+        description: 'Alcance o nível 25',
+        unlocked: false,
+        requirement: () => level >= 25,
+        reward: 150
+      },
+      {
+        id: 'coins-100',
+        name: 'Colecionador',
+        description: 'Acumule 100 moedas',
+        unlocked: false,
+        requirement: () => coins >= 100,
+        reward: 10
+      },
+      {
+        id: 'upgrade-max',
+        name: 'Aprimorado',
+        description: 'Maximize um upgrade',
+        unlocked: false,
+        requirement: () => upgrades.some(upgrade => upgrade.level >= upgrade.maxLevel),
+        reward: 75
+      },
+      {
+        id: 'team-goal',
+        name: 'Esforço de Equipe',
+        description: 'Atinja o primeiro objetivo da equipe',
+        unlocked: false,
+        requirement: () => teamLevel > 1,
+        reward: 30
+      },
+      {
+        id: 'team-players-3',
+        name: 'Trabalho em Equipe',
+        description: 'Tenha 3 ou mais jogadores na equipe',
+        unlocked: false,
+        requirement: () => players.length >= 3,
+        reward: 25
+      }
+    ]
 };
 
 // Função para atualizar todos os clientes
