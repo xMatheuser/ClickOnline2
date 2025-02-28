@@ -211,6 +211,9 @@ socket.on('gameStateUpdate', (newState) => {
       targetDisplay.textContent = '-';
       prestigeDisplay.textContent = activePlayer.prestige || 0;
       prestigeButton.style.display = activePlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
+      // Remover verificação de moedas para o power-up
+      const isPowerUpActive = gameState.powerUps['click-frenzy'].active;
+      activateClickFrenzyButton.disabled = isPowerUpActive || !isOwnPlayer();
     }
     const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
     const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);

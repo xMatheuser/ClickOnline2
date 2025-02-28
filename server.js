@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const upgrades = require('./upgrades');
 const achievements = require('./achievements');
+const powerUps = require('./powerUps');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,12 +25,10 @@ let gameState = {
   teamGoal: 5,
   teamClicksRemaining: 100,
   clicks: 0,
-  teamCoins: 1000000, // Moedas unificadas do time
+  teamCoins: 0, // Moedas unificadas do time
   upgrades: upgrades,
   achievements: achievements,
-  powerUps: {
-    'click-frenzy': { active: false, duration: 30000, multiplier: 2 }
-  }
+  powerUps: powerUps
 };
 
 // Função para atualizar todos os clientes
@@ -208,14 +207,10 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const powerUpCost = 50;
-    console.log(`[Power-Up] Jogador: ${player.name} tentando ativar ${powerUpId}. Moedas do time: ${gameState.teamCoins}, Ativo? ${powerUp.active}`);
-
-    if (gameState.teamCoins >= powerUpCost && !powerUp.active) {
-      gameState.teamCoins -= powerUpCost;
+    if (!powerUp.active) {
       powerUp.active = true;
-      console.log(`[Power-Up] ${player.name} ativou ${powerUpId}. Moedas do time restantes: ${gameState.teamCoins}`);
-      io.to(player.id).emit('notification', `${powerUpId} ativado por 30 segundos!`);
+      console.log(`[Power-Up] ${player.name} ativou ${powerUpId}`);
+      io.to(player.id).emit('notification', `${powerUpId} ativado por ${powerUp.duration/1000} segundos!`);
       broadcastGameState();
 
       setTimeout(() => {
@@ -224,13 +219,8 @@ io.on('connection', (socket) => {
         broadcastGameState();
       }, powerUp.duration);
     } else {
-      if (gameState.teamCoins < powerUpCost) {
-        console.log(`[Erro] Moedas insuficientes para o time: ${gameState.teamCoins}/${powerUpCost}`);
-        socket.emit('notification', `Moedas insuficientes! Necessário: ${powerUpCost}, Disponível: ${gameState.teamCoins}`);
-      } else if (powerUp.active) {
-        console.log(`[Erro] ${powerUpId} já está ativo`);
-        socket.emit('notification', `${powerUpId} já está ativo!`);
-      }
+      console.log(`[Erro] ${powerUpId} já está ativo`);
+      socket.emit('notification', `${powerUpId} já está ativo!`);
     }
   });
 
