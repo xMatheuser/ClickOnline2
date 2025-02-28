@@ -83,7 +83,7 @@ let gameState = {
         effect: level => level * 0.15, // 15% por nível
         priceIncrease: 2.2
       }
-    ];
+    ],
   achievements: [
     {
         id: 'first-level',
