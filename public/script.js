@@ -335,7 +335,26 @@ function renderUpgrades() {
   const activePlayer = gameState.players[activePlayerIndex];
   if (!activePlayer) return;
 
-  gameState.upgrades.forEach(upgrade => {
+  // Verificar se todos os upgrades tier 1 estão maximizados
+  const allTier1MaxedOut = gameState.upgrades
+    .filter(upgrade => upgrade.tier === 1)
+    .every(upgrade => upgrade.level >= upgrade.maxLevel);
+
+  // Filtrar e ordenar upgrades
+  const visibleUpgrades = gameState.upgrades
+    .filter(upgrade => {
+      if (upgrade.tier === 1) return true;
+      if (upgrade.tier === 2) return allTier1MaxedOut;
+      return false;
+    })
+    .sort((a, b) => {
+      // Ordenar por tier decrescente (2 antes de 1)
+      if (b.tier !== a.tier) return b.tier - a.tier;
+      // Manter a ordem original dentro do mesmo tier
+      return gameState.upgrades.indexOf(a) - gameState.upgrades.indexOf(b);
+    });
+
+  visibleUpgrades.forEach(upgrade => {
     let price = calculateUpgradePrice(upgrade);
     const canAfford = gameState.teamCoins >= price;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
