@@ -24,7 +24,7 @@
       max-width: 800px;
       margin: 10px auto;
       text-align: center;
-      position: relative; /* Para posicionar o botão de tema */
+      position: relative;
     }
 
     .progress-container {
@@ -844,7 +844,7 @@
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
           coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
-          // Inverter a lógica da barra de progresso: começa em 100% e diminui
+          // Barra de progresso individual (já ajustada para diminuir)
           progressBar.style.width = `${Math.max(0, 100 - (activePlayer.clicks / (activePlayer.targetClicks || 10)) * 100)}%`;
         }
       } else {
@@ -864,7 +864,8 @@
       teamProgressDisplay.textContent = gameState.teamLevel || 1;
       teamGoalDisplay.textContent = gameState.teamGoal || 5;
       teamGoalDisplayExtra.textContent = gameState.teamGoal || 5;
-      teamProgressBar.style.width = `${Math.min(100, ((gameState.teamLevel || 1) / (gameState.teamGoal || 5)) * 100)}%`;
+      // Inverter a lógica da barra de progresso da equipe: começa em 100% e diminui
+      teamProgressBar.style.width = `${Math.max(0, 100 - ((gameState.teamLevel || 1) / (gameState.teamGoal || 5)) * 100)}%`;
     });
 
     socket.on('chatMessage', ({ text, type }) => {
@@ -908,7 +909,6 @@
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
           coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
-          // Inverter a lógica da barra de progresso: começa em 100% e diminui
           progressBar.style.width = `${Math.max(0, 100 - (activePlayer.clicks / (activePlayer.targetClicks || 10)) * 100)}%`;
         }
       } else {
@@ -917,7 +917,7 @@
         targetDisplay.textContent = 10;
         coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
-        progressBar.style.width = '100%'; // Barra cheia quando não há jogador ativo
+        progressBar.style.width = '100%';
       }
     }
 
