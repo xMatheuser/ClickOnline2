@@ -648,10 +648,7 @@
     
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <div>Progresso: <span id="team-progress">1</span>/<span id="team-goal-display">5</span></div>
-      <div class="progress-container">
-        <div class="progress-bar" id="team-progress-bar"></div>
-      </div>
+      <!-- Removido o progresso e a barra de progresso -->
       <div class="bonus-message" id="team-bonus-message">
         Trabalhem juntos para ganhar bônus para toda a equipe!
       </div>
@@ -745,10 +742,7 @@
     const switchPlayerButton = document.getElementById('switch-player');
     const activePlayerDisplay = document.getElementById('active-player');
     const contributionContainer = document.getElementById('contribution-container');
-    const teamProgressBar = document.getElementById('team-progress-bar');
-    const teamProgressDisplay = document.getElementById('team-progress');
     const teamGoalDisplay = document.getElementById('team-goal');
-    const teamGoalDisplayExtra = document.getElementById('team-goal-display');
     const teamBonusMessage = document.getElementById('team-bonus-message');
     const chatContainer = document.getElementById('chat-container');
     const themeToggleButton = document.getElementById('theme-toggle');
@@ -861,11 +855,7 @@
       renderContributions();
       renderUpgrades();
       renderAchievements();
-      teamProgressDisplay.textContent = gameState.teamLevel || 1;
       teamGoalDisplay.textContent = gameState.teamGoal || 5;
-      teamGoalDisplayExtra.textContent = gameState.teamGoal || 5;
-      // Inverter a lógica da barra de progresso da equipe: começa em 100% e diminui
-      teamProgressBar.style.width = `${Math.max(0, 100 - ((gameState.teamLevel || 1) / (gameState.teamGoal || 5)) * 100)}%`;
     });
 
     socket.on('chatMessage', ({ text, type }) => {
