@@ -42,6 +42,46 @@ let gameState = {
       maxLevel: 5,
       effect: level => level,
       priceIncrease: 2
+    },
+    {
+      id: 'coin-boost',
+      name: 'Boost de Moedas',
+      description: 'Aumenta as moedas ganhas por nível',
+      basePrice: 30,
+      level: 0,
+      maxLevel: 5,
+      effect: level => 1 + level * 0.2, // 20% de aumento por nível
+      priceIncrease: 1.8
+    },
+    {
+      id: 'progress-boost',
+      name: 'Boost de Progresso',
+      description: 'Reduz o aumento da dificuldade entre níveis',
+      basePrice: 100,
+      level: 0,
+      maxLevel: 3,
+      effect: level => 1.25 - (level * 0.05), // Reduz de 1.25 para 1.10
+      priceIncrease: 2.5
+    },
+    {
+      id: 'team-synergy',
+      name: 'Sinergia de Equipe',
+      description: 'Aumenta o poder de clique baseado no número de jogadores',
+      basePrice: 40,
+      level: 0,
+      maxLevel: 5,
+      effect: level => level * (gameState.players.length * 0.1), // 10% por jogador por nível
+      priceIncrease: 1.7
+    },
+    {
+      id: 'shared-rewards',
+      name: 'Recompensas Compartilhadas',
+      description: 'Jogadores inativos recebem uma porcentagem das moedas ganhas',
+      basePrice: 75,
+      level: 0,
+      maxLevel: 3,
+      effect: level => level * 0.15, // 15% por nível
+      priceIncrease: 2.2
     }
   ],
   achievements: [
@@ -205,8 +245,24 @@ io.on('connection', (socket) => {
           text: `${player.name} comprou ${upgrade.name} nível ${upgrade.level}!`,
           type: 'player'
         });
+
+        // Distribuir recompensas compartilhadas após a compra
+        const sharedRewardBonus = getUpgradeEffect('shared-rewards');
+        if (sharedRewardBonus > 0) {
+          gameState.players.forEach(p => {
+            if (p.id !== socket.id) {
+              const sharedCoins = Math.round(price * sharedRewardBonus);
+              p.coins += sharedCoins;
+              io.emit('chatMessage', {
+                text: `${p.name} recebeu ${sharedCoins} moedas compartilhadas!`,
+                type: 'system'
+              });
+            }
+          });
+        }
+
         broadcastGameState();
-        checkAchievements(); // Verificar conquistas após comprar um upgrade
+        checkAchievements();
       }
     }
   });
@@ -235,20 +291,46 @@ function calculateClickValue(player) {
   if (clickPowerUpgrade) {
     clickPower += clickPowerUpgrade.effect(clickPowerUpgrade.level) - 1;
   }
+  const teamSynergyBonus = getUpgradeEffect('team-synergy');
+  if (teamSynergyBonus > 0) {
+    clickPower *= (1 + teamSynergyBonus);
+  }
   return clickPower;
 }
 
 function levelUp(player) {
   player.level++;
   player.clicks = 0;
-  player.targetClicks = Math.ceil((player.targetClicks || 10) * 1.25);
-  const coinsAwarded = player.level * 5;
+  
+  // Ajustar a dificuldade com o boost de progresso
+  const difficultyCurve = getUpgradeEffect('progress-boost') || 1.25;
+  player.targetClicks = Math.ceil((player.targetClicks || 10) * difficultyCurve);
+
+  // Calcular moedas ganhas com o boost de moedas
+  const coinBoost = getUpgradeEffect('coin-boost') || 1;
+  const coinsAwarded = Math.round(player.level * 5 * coinBoost);
   player.coins += coinsAwarded;
   gameState.coins += coinsAwarded;
+
   io.emit('chatMessage', {
     text: `${player.name} alcançou o nível ${player.level}! +${coinsAwarded} moedas`,
     type: 'system'
   });
+
+  // Distribuir recompensas compartilhadas para jogadores inativos
+  const sharedRewardBonus = getUpgradeEffect('shared-rewards');
+  if (sharedRewardBonus > 0) {
+    gameState.players.forEach(p => {
+      if (p.id !== player.id) {
+        const sharedCoins = Math.round(coinsAwarded * sharedRewardBonus);
+        p.coins += sharedCoins;
+        io.emit('chatMessage', {
+          text: `${p.name} recebeu ${sharedCoins} moedas compartilhadas!`,
+          type: 'system'
+        });
+      }
+    });
+  }
 
   const highestLevel = gameState.players.reduce((max, p) => Math.max(max, p.level), 0);
   if (highestLevel >= gameState.teamGoal) {
@@ -266,6 +348,12 @@ function levelUp(player) {
 
 function getUpgradePrice(upgrade) {
   return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
+}
+
+function getUpgradeEffect(upgradeId) {
+  const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return 0;
+  return upgrade.effect(upgrade.level);
 }
 
 // Iniciar timer do auto-clicker
@@ -292,4 +380,6 @@ setInterval(checkAchievements, 2000);
 
 // Configurar porta para o Render
 const port = process.env.PORT || 3000;
-server.listen(port, '0.0.0.0
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${port}`);
+});
