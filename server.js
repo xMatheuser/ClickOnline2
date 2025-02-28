@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const upgrades = require('./upgrades');
+const achievements = require('./achievements');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,134 +25,8 @@ let gameState = {
   teamClicksRemaining: 100,
   clicks: 0,
   teamCoins: 0, // Moedas unificadas do time
-  upgrades: [
-    {
-      id: 'click-power',
-      name: 'Poder de Clique',
-      description: 'Aumenta o valor de cada clique',
-      basePrice: 10,
-      level: 0,
-      maxLevel: 10,
-      effect: level => level + 1,
-      priceIncrease: 1.5
-    },
-    {
-      id: 'auto-clicker',
-      name: 'Auto Clicker',
-      description: 'Clica automaticamente a cada segundo',
-      basePrice: 50,
-      level: 0,
-      maxLevel: 5,
-      effect: level => level,
-      priceIncrease: 2
-    },
-    {
-      id: 'coin-boost',
-      name: 'Boost de Moedas',
-      description: 'Aumenta as moedas ganhas por nível',
-      basePrice: 30,
-      level: 0,
-      maxLevel: 5,
-      effect: level => 1 + level * 0.2,
-      priceIncrease: 1.8
-    },
-    {
-      id: 'progress-boost',
-      name: 'Boost de Progresso',
-      description: 'Reduz o aumento da dificuldade entre níveis',
-      basePrice: 100,
-      level: 0,
-      maxLevel: 3,
-      effect: level => 1.25 - (level * 0.05),
-      priceIncrease: 2.5
-    },
-    {
-      id: 'team-synergy',
-      name: 'Sinergia de Equipe',
-      description: 'Aumenta o poder de clique baseado no número de jogadores',
-      basePrice: 40,
-      level: 0,
-      maxLevel: 5,
-      effect: level => level * (gameState.players.length * 0.1),
-      priceIncrease: 1.7
-    },
-    {
-      id: 'shared-rewards',
-      name: 'Recompensas Compartilhadas',
-      description: 'Aumenta as moedas do time quando um upgrade é comprado',
-      basePrice: 75,
-      level: 0,
-      maxLevel: 3,
-      effect: level => level * 0.15,
-      priceIncrease: 2.2
-    }
-  ],
-  achievements: [
-    {
-      id: 'first-level',
-      name: 'Primeiro Nível',
-      description: 'Complete o nível 1',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level > 1),
-      reward: 5
-    },
-    {
-      id: 'level-5',
-      name: 'Persistente',
-      description: 'Alcance o nível 5',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level >= 5),
-      reward: 20
-    },
-    {
-      id: 'level-10',
-      name: 'Dedicado',
-      description: 'Alcance o nível 10',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level >= 10),
-      reward: 50
-    },
-    {
-      id: 'level-25',
-      name: 'Mestre Clicker',
-      description: 'Alcance o nível 25',
-      unlocked: false,
-      requirement: () => gameState.players.some(player => player.level >= 25),
-      reward: 150
-    },
-    {
-      id: 'coins-100',
-      name: 'Colecionador',
-      description: 'Acumule 100 moedas',
-      unlocked: false,
-      requirement: () => gameState.teamCoins >= 100, // Atualizado para teamCoins
-      reward: 10
-    },
-    {
-      id: 'upgrade-max',
-      name: 'Aprimorado',
-      description: 'Maximize um upgrade',
-      unlocked: false,
-      requirement: () => gameState.upgrades.some(upgrade => upgrade.level >= upgrade.maxLevel),
-      reward: 75
-    },
-    {
-      id: 'team-goal',
-      name: 'Esforço de Equipe',
-      description: 'Atinja o primeiro objetivo da equipe',
-      unlocked: false,
-      requirement: () => gameState.teamLevel > 1,
-      reward: 30
-    },
-    {
-      id: 'team-players-3',
-      name: 'Trabalho em Equipe',
-      description: 'Tenha 3 jogadores na equipe',
-      unlocked: false,
-      requirement: () => gameState.players.length >= 3,
-      reward: 25
-    }
-  ],
+  upgrades: upgrades,
+  achievements: achievements,
   powerUps: {
     'click-frenzy': { active: false, duration: 30000, multiplier: 2 }
   }
@@ -166,7 +42,7 @@ function broadcastGameState() {
 function checkAchievements() {
   let newUnlocks = false;
   gameState.achievements.forEach(achievement => {
-    if (!achievement.unlocked && achievement.requirement()) {
+    if (!achievement.unlocked && achievement.requirement(gameState)) {
       achievement.unlocked = true;
       gameState.teamCoins += achievement.reward; // Adicionar ao teamCoins
       console.log(`[Conquista] ${achievement.name} desbloqueada. Recompensa: ${achievement.reward} moedas`);
