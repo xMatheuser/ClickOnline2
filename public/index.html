@@ -648,7 +648,6 @@
     
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <!-- Reintroduzida a barra de progresso da equipe -->
       <div class="progress-container">
         <div class="team-shared-progress-bar" id="team-shared-progress-bar"></div>
       </div>
@@ -675,8 +674,8 @@
         <div id="target">10</div>
       </div>
       <div class="stat-box">
-        <h3>Moedas</h3>
-        <div id="coins">0</div>
+        <h3>Moedas da Equipe</h3>
+        <div id="team-coins">0</div>
       </div>
       <div class="stat-box">
         <h3>Poder de Clique</h3>
@@ -689,7 +688,7 @@
     </div>
     
     <div class="section">
-      <h2>Contribuição dos Jogadores</h2>
+      <h3>Contribuição dos Jogadores</h3>
       <div id="contribution-container"></div>
     </div>
     
@@ -726,7 +725,7 @@
     const clicksDisplay = document.getElementById('clicks');
     const levelDisplay = document.getElementById('level');
     const targetDisplay = document.getElementById('target');
-    const coinsDisplay = document.getElementById('coins');
+    const teamCoinsDisplay = document.getElementById('team-coins'); // Novo elemento para moedas da equipe
     const clickPowerDisplay = document.getElementById('click-power');
     const clickArea = document.getElementById('click-area');
     const gameContainer = document.querySelector('.game-container');
@@ -835,9 +834,11 @@
           clicksDisplay.textContent = Math.floor(activePlayer.clicks);
           levelDisplay.textContent = activePlayer.level;
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
-          coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
+
+        // Exibir moedas compartilhadas
+        teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
 
         // Calcular o progresso combinado de todos os jogadores
         const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
@@ -848,7 +849,7 @@
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
         targetDisplay.textContent = 10;
-        coinsDisplay.textContent = 0;
+        teamCoinsDisplay.textContent = 0; // Exibir moedas da equipe como 0 quando não há jogadores
         clickPowerDisplay.textContent = 1;
         teamSharedProgressBar.style.width = '100%'; // Barra da equipe cheia quando não há jogadores
         activePlayerDisplay.textContent = '-';
@@ -900,14 +901,14 @@
           clicksDisplay.textContent = Math.floor(activePlayer.clicks);
           levelDisplay.textContent = activePlayer.level;
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
-          coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
+        teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
         targetDisplay.textContent = 10;
-        coinsDisplay.textContent = 0;
+        teamCoinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
       }
     }
@@ -978,7 +979,7 @@
           : 0;
         price = Math.round(price * (1 + upgraderDiscount));
 
-        const canAfford = activePlayer.coins >= price;
+        const canAfford = gameState.teamCoins >= price; // Verifica moedas compartilhadas
         const maxedOut = upgrade.level >= upgrade.maxLevel;
 
         const upgradeElement = document.createElement('div');
