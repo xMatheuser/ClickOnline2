@@ -27,23 +27,6 @@
       position: relative;
     }
 
-    .progress-container {
-      width: 100%;
-      height: 20px;
-      background-color: #e0e0e0;
-      border-radius: 10px;
-      margin: 10px 0;
-      overflow: hidden;
-    }
-
-    .team-shared-progress-bar {
-      height: 100%;
-      background-color: #007bff; /* Cor azul para a barra da equipe */
-      width: 100%; /* Começa cheia */
-      transition: width 0.2s;
-      border-radius: 10px;
-    }
-
     .stats {
       display: flex;
       justify-content: space-between;
@@ -68,215 +51,16 @@
       height: 150px;
       background-color: #fff;
       border-radius: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      transition: transform 0.1s;
-      margin-bottom: 10px;
-      font-size: 1.2rem;
-      touch-action: manipulation;
+@@ -254,751 +271,778 @@
     }
 
-    .click-area:active {
-      transform: scale(0.98);
-      background-color: #f8f8f8;
-    }
-
-    h1 {
-      color: #333;
-      font-size: 1.5rem;
-      margin: 10px 0;
-    }
-
-    h2 {
-      font-size: 1.2rem;
-      margin: 5px 0;
-    }
-
-    h3 {
-      font-size: 0.9rem;
-      margin: 3px 0;
-    }
-
-    .level-up {
-      animation: pulse 1s;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-
-    .game-sections {
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-
-    .section {
-      flex: 1;
-      min-width: 100%;
-      background-color: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-
-    .upgrade-item, .achievement-item {
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      padding: 8px;
-      margin: 8px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background-color 0.2s;
-      font-size: 0.9rem;
-    }
-
-    .upgrade-item:hover {
-      background-color: #f0f0f0;
-    }
-
-    .upgrade-item.disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-
-    .buy-button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      font-size: 0.9rem;
-      touch-action: manipulation;
-    }
-
-    .buy-button:hover {
-      background-color: #45a049;
-    }
-
-    .buy-button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-
-    .achievement-item.unlocked {
-      background-color: #e7f7e7;
-      border-left: 4px solid #4CAF50;
-    }
-
-    .achievement-item.locked {
-      background-color: #f0f0f0;
-      border-left: 4px solid #cccccc;
-      color: #777;
-    }
-
-    .upgrade-info, .achievement-info {
-      text-align: left;
-    }
-    
-    .upgrade-level {
-      font-size: 0.8em;
-      color: #666;
-    }
-    
-    .notification {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      opacity: 0;
-      transition: opacity 0.3s;
-      font-size: 0.9rem;
-      max-width: 90%;
-    }
-    
-    .notification.show {
-      opacity: 1;
-    }
-
-    .player-setup {
-      background-color: #fff;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 10px 0;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .player-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0;
-    }
-    
-    .player-tag {
-      background-color: #e0e0e0;
-      padding: 5px 8px;
-      border-radius: 15px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.9rem;
-    }
-    
-    .player-tag[data-active="true"] {
-      background-color: #d4edda;
-      border: 1px solid #4CAF50;
-    }
-    
-    .player-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-top: 8px;
-    }
-    
-    .player-input {
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      width: 100%;
-      max-width: 200px;
-      font-size: 1rem;
-    }
-    
-    .team-goal-section {
-      background-color: #e7f0ff;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 10px 0;
-      text-align: center;
-    }
-    
-    .contribution-bar {
-      height: 6px;
-      border-radius: 4px;
-      margin: 2px 0;
-      background-color: #e0e0e0;
-    }
-    
     .contribution-fill {
       height: 100%;
       border-radius: 4px;
       width: 0%;
       transition: width 0.3s;
     }
-    
+
     .bonus-message {
       padding: 6px;
       background-color: #fffae6;
@@ -285,7 +69,7 @@
       margin: 8px 0;
       font-size: 0.8rem;
     }
-    
+
     .player-avatar {
       width: 20px;
       height: 20px;
@@ -299,7 +83,7 @@
       line-height: 20px;
       font-size: 10px;
     }
-    
+
     .player-contribution {
       display: flex;
       align-items: center;
@@ -307,7 +91,7 @@
       margin: 5px 0;
       font-size: 0.9rem;
     }
-    
+
     .player-role {
       display: inline-block;
       padding: 2px 6px;
@@ -316,22 +100,22 @@
       margin-left: 5px;
       background-color: #e6e6e6;
     }
-    
+
     .role-clicker {
       background-color: #d1e7dd;
       border: 1px solid #4CAF50;
     }
-    
+
     .role-upgrader {
       background-color: #cfe2ff;
       border: 1px solid #0d6efd;
     }
-    
+
     .role-supporter {
       background-color: #f8d7da;
       border: 1px solid #dc3545;
     }
-    
+
     .chat-container {
       max-height: 120px;
       overflow-y: auto;
@@ -341,20 +125,20 @@
       margin-top: 10px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
-    
+
     .chat-message {
       margin: 5px 0;
       padding: 5px;
       border-radius: 5px;
       font-size: 0.8rem;
     }
-    
+
     .chat-system {
       background-color: #f8f9fa;
       color: #666;
       font-style: italic;
     }
-    
+
     .chat-player {
       background-color: #f1f8ff;
       border-left: 3px solid #0d6efd;
@@ -395,14 +179,6 @@
 
     body.dark-mode .game-container {
       background-color: transparent;
-    }
-
-    body.dark-mode .progress-container {
-      background-color: #333;
-    }
-
-    body.dark-mode .team-shared-progress-bar {
-      background-color: #1e90ff; /* Cor diferente para a barra da equipe no modo noturno */
     }
 
     body.dark-mode .stat-box {
@@ -572,16 +348,6 @@
         height: 120px;
         font-size: 1rem;
       }
-
-      .progress-container {
-        height: 15px;
-        border-radius: 8px;
-      }
-
-      .team-shared-progress-bar {
-        border-radius: 8px;
-      }
-
       .player-controls {
         flex-direction: column;
         align-items: center;
@@ -630,7 +396,7 @@
     <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
 
     <h1>Clicker Cooperativo Online</h1>
-    
+
     <div class="player-setup">
       <h2>Jogadores</h2>
       <div class="player-list" id="player-list"></div>
@@ -645,17 +411,14 @@
         <button class="buy-button" id="switch-player">Alternar Jogador</button>
       </div>
     </div>
-    
+
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <div class="progress-container">
-        <div class="team-shared-progress-bar" id="team-shared-progress-bar"></div>
-      </div>
       <div class="bonus-message" id="team-bonus-message">
         Trabalhem juntos para ganhar bônus para toda a equipe!
       </div>
     </div>
-    
+
     <div class="stats">
       <div class="stat-box">
         <h3>Jogador</h3>
@@ -674,42 +437,44 @@
         <div id="target">10</div>
       </div>
       <div class="stat-box">
-        <h3>Moedas da Equipe</h3>
-        <div id="team-coins">0</div>
+        <h3>Moedas</h3>
+        <div id="coins">0</div>
       </div>
       <div class="stat-box">
         <h3>Poder de Clique</h3>
         <div id="click-power">1</div>
       </div>
     </div>
+
+    <!-- Removida a progress-container individual -->
     
     <div class="click-area" id="click-area">
       Clique aqui ou pressione "Espaço"!
     </div>
-    
+
     <div class="section">
-      <h3>Contribuição dos Jogadores</h3>
+      <h2>Contribuição dos Jogadores</h2>
       <div id="contribution-container"></div>
     </div>
-    
+
     <div class="game-sections">
       <div class="section">
         <h2>Upgrades</h2>
         <div id="upgrades-container"></div>
       </div>
-      
+
       <div class="section">
         <h2>Objetivos</h2>
         <div id="achievements-container"></div>
       </div>
     </div>
-    
+
     <div class="section">
       <h2>Log de Atividades</h2>
       <div id="chat-container" class="chat-container"></div>
     </div>
   </div>
-  
+
   <div class="notification" id="notification"></div>
 
   <script>
@@ -725,7 +490,7 @@
     const clicksDisplay = document.getElementById('clicks');
     const levelDisplay = document.getElementById('level');
     const targetDisplay = document.getElementById('target');
-    const teamCoinsDisplay = document.getElementById('team-coins'); // Novo elemento para moedas da equipe
+    const coinsDisplay = document.getElementById('coins');
     const clickPowerDisplay = document.getElementById('click-power');
     const clickArea = document.getElementById('click-area');
     const gameContainer = document.querySelector('.game-container');
@@ -743,7 +508,7 @@
     const teamBonusMessage = document.getElementById('team-bonus-message');
     const chatContainer = document.getElementById('chat-container');
     const themeToggleButton = document.getElementById('theme-toggle');
-    const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
+
 
     // Função para alternar o modo noturno
     function toggleTheme() {
@@ -834,24 +599,16 @@
           clicksDisplay.textContent = Math.floor(activePlayer.clicks);
           levelDisplay.textContent = activePlayer.level;
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
+          coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
-
-        // Exibir moedas compartilhadas
-        teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
-
-        // Calcular o progresso combinado de todos os jogadores
-        const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
-        const teamTargetClicks = gameState.players.reduce((sum, player) => sum + (player.targetClicks || 10), 0);
-        // Barra de progresso da equipe (diminui à medida que os cliques combinados se aproximam da meta combinada)
-        teamSharedProgressBar.style.width = `${Math.max(0, 100 - (totalClicks / (teamTargetClicks || 1)) * 100)}%`;
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
         targetDisplay.textContent = 10;
-        teamCoinsDisplay.textContent = 0; // Exibir moedas da equipe como 0 quando não há jogadores
+        coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
-        teamSharedProgressBar.style.width = '100%'; // Barra da equipe cheia quando não há jogadores
+
         activePlayerDisplay.textContent = '-';
       }
 
@@ -901,14 +658,14 @@
           clicksDisplay.textContent = Math.floor(activePlayer.clicks);
           levelDisplay.textContent = activePlayer.level;
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
+          coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
-        teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
         targetDisplay.textContent = 10;
-        teamCoinsDisplay.textContent = 0;
+        coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
       }
     }
@@ -979,7 +736,7 @@
           : 0;
         price = Math.round(price * (1 + upgraderDiscount));
 
-        const canAfford = gameState.teamCoins >= price; // Verifica moedas compartilhadas
+        const canAfford = activePlayer.coins >= price;
         const maxedOut = upgrade.level >= upgrade.maxLevel;
 
         const upgradeElement = document.createElement('div');
