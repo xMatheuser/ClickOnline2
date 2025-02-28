@@ -36,9 +36,17 @@
       overflow: hidden;
     }
 
+    .progress-bar {
+      height: 100%;
+      background-color: #4CAF50;
+      width: 100%; /* Começa cheia */
+      transition: width 0.2s;
+      border-radius: 10px;
+    }
+
     .team-shared-progress-bar {
       height: 100%;
-      background-color: #007bff; /* Cor azul para a barra da equipe */
+      background-color: #007bff; /* Cor diferente para a barra da equipe */
       width: 100%; /* Começa cheia */
       transition: width 0.2s;
       border-radius: 10px;
@@ -401,6 +409,10 @@
       background-color: #333;
     }
 
+    body.dark-mode .progress-bar {
+      background-color: #76c776;
+    }
+
     body.dark-mode .team-shared-progress-bar {
       background-color: #1e90ff; /* Cor diferente para a barra da equipe no modo noturno */
     }
@@ -578,7 +590,7 @@
         border-radius: 8px;
       }
 
-      .team-shared-progress-bar {
+      .progress-bar {
         border-radius: 8px;
       }
 
@@ -648,7 +660,7 @@
     
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <!-- Reintroduzida a barra de progresso da equipe -->
+      <!-- Nova barra de progresso combinada para todos os jogadores -->
       <div class="progress-container">
         <div class="team-shared-progress-bar" id="team-shared-progress-bar"></div>
       </div>
@@ -682,6 +694,10 @@
         <h3>Poder de Clique</h3>
         <div id="click-power">1</div>
       </div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar"></div>
     </div>
     
     <div class="click-area" id="click-area">
@@ -723,6 +739,7 @@
     let isSpacePressed = false;
 
     // Elementos DOM
+    const progressBar = document.getElementById('progress-bar');
     const clicksDisplay = document.getElementById('clicks');
     const levelDisplay = document.getElementById('level');
     const targetDisplay = document.getElementById('target');
@@ -837,6 +854,8 @@
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
           coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
+          // Barra de progresso individual (já ajustada para diminuir)
+          progressBar.style.width = `${Math.max(0, 100 - (activePlayer.clicks / (activePlayer.targetClicks || 10)) * 100)}%`;
         }
 
         // Calcular o progresso combinado de todos os jogadores
@@ -850,6 +869,7 @@
         targetDisplay.textContent = 10;
         coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
+        progressBar.style.width = '100%'; // Barra cheia quando não há jogador ativo
         teamSharedProgressBar.style.width = '100%'; // Barra da equipe cheia quando não há jogadores
         activePlayerDisplay.textContent = '-';
       }
@@ -902,6 +922,7 @@
           targetDisplay.textContent = Math.ceil(activePlayer.targetClicks || 10);
           coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
+          progressBar.style.width = `${Math.max(0, 100 - (activePlayer.clicks / (activePlayer.targetClicks || 10)) * 100)}%`;
         }
       } else {
         clicksDisplay.textContent = 0;
@@ -909,6 +930,7 @@
         targetDisplay.textContent = 10;
         coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
+        progressBar.style.width = '100%';
       }
     }
 
