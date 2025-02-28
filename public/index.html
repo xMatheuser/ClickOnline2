@@ -27,22 +27,22 @@
       position: relative;
     }
 
-    .progress-container {
-      width: 100%;
-      height: 20px;
-      background-color: #e0e0e0;
-      border-radius: 10px;
-      margin: 10px 0;
-      overflow: hidden;
-    }
 
-    .team-shared-progress-bar {
-      height: 100%;
-      background-color: #007bff; /* Cor azul para a barra da equipe */
-      width: 100%; /* Começa cheia */
-      transition: width 0.2s;
-      border-radius: 10px;
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     .stats {
       display: flex;
@@ -397,13 +397,13 @@
       background-color: transparent;
     }
 
-    body.dark-mode .progress-container {
-      background-color: #333;
-    }
 
-    body.dark-mode .team-shared-progress-bar {
-      background-color: #1e90ff; /* Cor diferente para a barra da equipe no modo noturno */
-    }
+
+
+
+
+
+
 
     body.dark-mode .stat-box {
       background-color: #2a2a2a;
@@ -573,14 +573,14 @@
         font-size: 1rem;
       }
 
-      .progress-container {
-        height: 15px;
-        border-radius: 8px;
-      }
 
-      .team-shared-progress-bar {
-        border-radius: 8px;
-      }
+
+
+
+
+
+
+
 
       .player-controls {
         flex-direction: column;
@@ -648,10 +648,10 @@
 
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <!-- Reintroduzida a barra de progresso da equipe -->
-      <div class="progress-container">
-        <div class="team-shared-progress-bar" id="team-shared-progress-bar"></div>
-      </div>
+
+
+
+
       <div class="bonus-message" id="team-bonus-message">
         Trabalhem juntos para ganhar bônus para toda a equipe!
       </div>
@@ -684,6 +684,8 @@
       </div>
     </div>
 
+    <!-- Removida a progress-container individual -->
+    
     <div class="click-area" id="click-area">
       Clique aqui ou pressione "Espaço"!
     </div>
@@ -744,7 +746,7 @@
     const teamBonusMessage = document.getElementById('team-bonus-message');
     const chatContainer = document.getElementById('chat-container');
     const themeToggleButton = document.getElementById('theme-toggle');
-    const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
+
 
     // Função para alternar o modo noturno
     function toggleTheme() {
@@ -839,18 +841,18 @@
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
 
-        // Calcular o progresso combinado de todos os jogadores
-        const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
-        const teamTargetClicks = gameState.players.reduce((sum, player) => sum + (player.targetClicks || 10), 0);
-        // Barra de progresso da equipe (diminui à medida que os cliques combinados se aproximam da meta combinada)
-        teamSharedProgressBar.style.width = `${Math.max(0, 100 - (totalClicks / (teamTargetClicks || 1)) * 100)}%`;
+
+
+
+
+
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
         targetDisplay.textContent = 10;
         coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
-        teamSharedProgressBar.style.width = '100%'; // Barra da equipe cheia quando não há jogadores
+
         activePlayerDisplay.textContent = '-';
       }
 
@@ -903,7 +905,6 @@
           coinsDisplay.textContent = Math.floor(activePlayer.coins);
           clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
         }
-
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
