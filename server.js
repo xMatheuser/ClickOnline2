@@ -20,8 +20,9 @@ let gameState = {
   players: [],
   teamLevel: 1,
   teamGoal: 5,
+  teamClicksRemaining: 100,
   clicks: 0,
-  coins: 0,
+  teamCoins: 0, // Moedas unificadas do time
   upgrades: [
     {
       id: 'click-power',
@@ -50,7 +51,7 @@ let gameState = {
       basePrice: 30,
       level: 0,
       maxLevel: 5,
-      effect: level => 1 + level * 0.2, // 20% de aumento por nível
+      effect: level => 1 + level * 0.2,
       priceIncrease: 1.8
     },
     {
@@ -60,7 +61,7 @@ let gameState = {
       basePrice: 100,
       level: 0,
       maxLevel: 3,
-      effect: level => 1.25 - (level * 0.05), // Reduz de 1.25 para 1.10
+      effect: level => 1.25 - (level * 0.05),
       priceIncrease: 2.5
     },
     {
@@ -70,17 +71,17 @@ let gameState = {
       basePrice: 40,
       level: 0,
       maxLevel: 5,
-      effect: level => level * (gameState.players.length * 0.1), // 10% por jogador por nível
+      effect: level => level * (gameState.players.length * 0.1),
       priceIncrease: 1.7
     },
     {
       id: 'shared-rewards',
       name: 'Recompensas Compartilhadas',
-      description: 'Jogadores inativos recebem uma porcentagem das moedas ganhas',
+      description: 'Aumenta as moedas do time quando um upgrade é comprado',
       basePrice: 75,
       level: 0,
       maxLevel: 3,
-      effect: level => level * 0.15, // 15% por nível
+      effect: level => level * 0.15,
       priceIncrease: 2.2
     }
   ],
@@ -122,7 +123,7 @@ let gameState = {
       name: 'Colecionador',
       description: 'Acumule 100 moedas',
       unlocked: false,
-      requirement: () => gameState.coins >= 100,
+      requirement: () => gameState.teamCoins >= 100, // Atualizado para teamCoins
       reward: 10
     },
     {
@@ -144,16 +145,20 @@ let gameState = {
     {
       id: 'team-players-3',
       name: 'Trabalho em Equipe',
-      description: 'Tenha 3 ou mais jogadores na equipe',
+      description: 'Tenha 3 jogadores na equipe',
       unlocked: false,
       requirement: () => gameState.players.length >= 3,
       reward: 25
     }
-  ]
+  ],
+  powerUps: {
+    'click-frenzy': { active: false, duration: 30000, multiplier: 2 }
+  }
 };
 
 // Função para atualizar todos os clientes
 function broadcastGameState() {
+  gameState.players.sort((a, b) => b.contribution - a.contribution);
   io.emit('gameStateUpdate', gameState);
 }
 
@@ -163,14 +168,8 @@ function checkAchievements() {
   gameState.achievements.forEach(achievement => {
     if (!achievement.unlocked && achievement.requirement()) {
       achievement.unlocked = true;
-      gameState.coins += achievement.reward;
-      gameState.players.forEach(player => {
-        player.coins += achievement.reward;
-      });
-      io.emit('chatMessage', {
-        text: `Equipe desbloqueou "${achievement.name}"! +${achievement.reward} moedas`,
-        type: 'system'
-      });
+      gameState.teamCoins += achievement.reward; // Adicionar ao teamCoins
+      console.log(`[Conquista] ${achievement.name} desbloqueada. Recompensa: ${achievement.reward} moedas`);
       newUnlocks = true;
     }
   });
@@ -179,25 +178,37 @@ function checkAchievements() {
   }
 }
 
+// Verificar se o jogador é o ativo no cliente que enviou o pedido
+function isActivePlayer(socketId, playerId) {
+  return socketId === playerId;
+}
+
 io.on('connection', (socket) => {
-  console.log('Novo jogador conectado:', socket.id);
+  console.log('[Conexão] Novo jogador conectado:', socket.id);
   socket.emit('gameStateUpdate', gameState);
 
   socket.on('addPlayer', (playerData) => {
+    if (gameState.players.length >= 3) {
+      socket.emit('gameStateUpdate', gameState);
+      socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
+      console.log(`[Erro] Tentativa de adicionar jogador falhou: Limite de 3 jogadores atingido`);
+      return;
+    }
+
     if (!gameState.players.some(p => p.name === playerData.name)) {
       playerData.id = socket.id;
       playerData.clicks = 0;
-      playerData.coins = 0;
       playerData.level = 1;
       playerData.contribution = 0;
+      playerData.prestige = 0;
+      playerData.prestigeMultiplier = 1;
       gameState.players.push(playerData);
-      console.log(`Jogador ${playerData.name} adicionado`);
-      io.emit('chatMessage', {
-        text: `${playerData.name} entrou no jogo como ${playerData.role}!`,
-        type: 'system'
-      });
+      console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
       broadcastGameState();
       checkAchievements();
+    } else {
+      socket.emit('notification', 'Este nome já está em uso!');
+      console.log(`[Erro] Tentativa de adicionar jogador duplicado: ${playerData.name}`);
     }
   });
 
@@ -208,61 +219,141 @@ io.on('connection', (socket) => {
       player.clicks += clickValue;
       player.contribution += clickValue;
       gameState.clicks += clickValue;
+      gameState.teamClicksRemaining -= clickValue;
 
-      if (player.clicks >= (player.targetClicks || 10)) {
-        levelUp(player);
+      console.log(`[Clique] Jogador: ${player.name}, Valor do clique: ${clickValue}, Cliques totais: ${player.clicks}, Contribuição: ${player.contribution}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
+
+      if (gameState.teamClicksRemaining <= 0) {
+        console.log('[Equipe] Objetivo da equipe atingido! Subindo nível de todos os jogadores.');
+        levelUpTeam();
       }
       broadcastGameState();
       checkAchievements();
+    } else {
+      console.log('[Erro] Jogador não encontrado para clique:', socket.id);
     }
   });
 
   socket.on('buyUpgrade', (upgradeId) => {
     const player = gameState.players.find(p => p.id === socket.id);
-    if (player) {
-      const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
-      if (!upgrade) return;
+    if (!player) {
+      console.log('[Erro] Jogador não encontrado para compra de upgrade:', socket.id);
+      socket.emit('notification', 'Jogador não encontrado!');
+      return;
+    }
 
-      let price = getUpgradePrice(upgrade);
-      const upgraderDiscount = gameState.players.some(p => p.role === 'upgrader') && upgrade.level < upgrade.maxLevel
-        ? gameState.players.filter(p => p.role === 'upgrader').reduce((sum, p) => sum + (p.bonus?.value || -0.15), 0)
-        : 0;
-      price = Math.round(price * (1 + upgraderDiscount));
+    if (!isActivePlayer(socket.id, player.id)) {
+      console.log(`[Erro] ${player.name} não é o jogador ativo para este cliente`);
+      socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
+      return;
+    }
 
-      if (player.coins >= price && upgrade.level < upgrade.maxLevel) {
-        player.coins -= price;
-        upgrade.level++;
+    const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+    if (!upgrade) {
+      console.log(`[Erro] Upgrade ${upgradeId} não encontrado`);
+      socket.emit('notification', 'Upgrade não encontrado!');
+      return;
+    }
 
-        if (upgrade.id === 'click-power') {
-          gameState.players.forEach(p => {
-            if (p.role === 'clicker') {
-              p.bonus = { type: 'clickPower', value: 0.2 + upgrade.effect(upgrade.level) };
-            }
-          });
-        }
+    let price = getUpgradePrice(upgrade);
+    console.log(`[Upgrade] Jogador: ${player.name} tentando comprar ${upgrade.name} nível ${upgrade.level + 1} por ${price} moedas. Moedas do time: ${gameState.teamCoins}`);
 
-        io.emit('chatMessage', {
-          text: `${player.name} comprou ${upgrade.name} nível ${upgrade.level}!`,
-          type: 'player'
-        });
+    if (gameState.teamCoins >= price && upgrade.level < upgrade.maxLevel) {
+      gameState.teamCoins -= price;
+      upgrade.level++;
+      console.log(`[Upgrade] Compra bem-sucedida: ${upgrade.name} agora é nível ${upgrade.level}`);
 
-        // Distribuir recompensas compartilhadas após a compra
-        const sharedRewardBonus = getUpgradeEffect('shared-rewards');
-        if (sharedRewardBonus > 0) {
-          gameState.players.forEach(p => {
-            if (p.id !== socket.id) {
-              const sharedCoins = Math.round(price * sharedRewardBonus);
-              p.coins += sharedCoins;
-              io.emit('chatMessage', {
-                text: `${p.name} recebeu ${sharedCoins} moedas compartilhadas!`,
-                type: 'system'
-              });
-            }
-          });
-        }
+      const sharedRewardBonus = getUpgradeEffect('shared-rewards');
+      if (sharedRewardBonus > 0) {
+        const sharedCoins = Math.round(price * sharedRewardBonus);
+        gameState.teamCoins += sharedCoins;
+        console.log(`[Recompensa Compartilhada] Time recebeu ${sharedCoins} moedas`);
+      }
 
+      broadcastGameState();
+      checkAchievements();
+    } else {
+      if (gameState.teamCoins < price) {
+        console.log(`[Erro] Moedas insuficientes para o time: ${gameState.teamCoins}/${price}`);
+        socket.emit('notification', `Moedas insuficientes! Necessário: ${price}, Disponível: ${gameState.teamCoins}`);
+      } else if (upgrade.level >= upgrade.maxLevel) {
+        console.log(`[Erro] Upgrade ${upgrade.name} já está no nível máximo`);
+        socket.emit('notification', `${upgrade.name} já está no nível máximo!`);
+      }
+    }
+  });
+
+  socket.on('prestige', () => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) {
+      console.log('[Erro] Jogador não encontrado para prestígio:', socket.id);
+      socket.emit('notification', 'Jogador não encontrado!');
+      return;
+    }
+
+    if (!isActivePlayer(socket.id, player.id)) {
+      console.log(`[Erro] ${player.name} não é o jogador ativo para este cliente`);
+      socket.emit('notification', 'Você só pode prestigiar quando for o jogador ativo!');
+      return;
+    }
+
+    if (player.level >= 25) {
+      player.prestige = (player.prestige || 0) + 1;
+      player.prestigeMultiplier = 1 + player.prestige * 0.1;
+      player.clicks = 0;
+      player.level = 1;
+      player.contribution = 0;
+      gameState.teamCoins = 0; // Resetar moedas do time no prestígio
+      gameState.upgrades.forEach(u => u.level = 0);
+      io.to(player.id).emit('notification', `Prestígio ativado! Multiplicador: x${player.prestigeMultiplier.toFixed(1)}`);
+      console.log(`[Prestígio] ${player.name} ativou prestígio ${player.prestige}`);
+      broadcastGameState();
+    }
+  });
+
+  socket.on('activatePowerUp', (powerUpId) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) {
+      console.log('[Erro] Jogador não encontrado para ativar power-up:', socket.id);
+      socket.emit('notification', 'Jogador não encontrado!');
+      return;
+    }
+
+    if (!isActivePlayer(socket.id, player.id)) {
+      console.log(`[Erro] ${player.name} não é o jogador ativo para este cliente`);
+      socket.emit('notification', 'Você só pode ativar power-ups quando for o jogador ativo!');
+      return;
+    }
+
+    const powerUp = gameState.powerUps[powerUpId];
+    if (!powerUp) {
+      console.log(`[Erro] Power-up ${powerUpId} não encontrado`);
+      socket.emit('notification', 'Power-up não encontrado!');
+      return;
+    }
+
+    const powerUpCost = 50;
+    console.log(`[Power-Up] Jogador: ${player.name} tentando ativar ${powerUpId}. Moedas do time: ${gameState.teamCoins}, Ativo? ${powerUp.active}`);
+
+    if (gameState.teamCoins >= powerUpCost && !powerUp.active) {
+      gameState.teamCoins -= powerUpCost;
+      powerUp.active = true;
+      console.log(`[Power-Up] ${player.name} ativou ${powerUpId}. Moedas do time restantes: ${gameState.teamCoins}`);
+      io.to(player.id).emit('notification', `${powerUpId} ativado por 30 segundos!`);
+      broadcastGameState();
+
+      setTimeout(() => {
+        powerUp.active = false;
+        console.log(`[Power-Up] ${powerUpId} expirou`);
         broadcastGameState();
-        checkAchievements();
+      }, powerUp.duration);
+    } else {
+      if (gameState.teamCoins < powerUpCost) {
+        console.log(`[Erro] Moedas insuficientes para o time: ${gameState.teamCoins}/${powerUpCost}`);
+        socket.emit('notification', `Moedas insuficientes! Necessário: ${powerUpCost}, Disponível: ${gameState.teamCoins}`);
+      } else if (powerUp.active) {
+        console.log(`[Erro] ${powerUpId} já está ativo`);
+        socket.emit('notification', `${powerUpId} já está ativo!`);
       }
     }
   });
@@ -272,21 +363,14 @@ io.on('connection', (socket) => {
     if (playerIndex !== -1) {
       const playerName = gameState.players[playerIndex].name;
       gameState.players.splice(playerIndex, 1);
-      io.emit('chatMessage', {
-        text: `${playerName} saiu do jogo.`,
-        type: 'system'
-      });
-      console.log(`Jogador ${playerName} desconectado`);
+      console.log(`[Desconexão] Jogador ${playerName} desconectado`);
       broadcastGameState();
     }
   });
 });
 
 function calculateClickValue(player) {
-  let clickPower = 1;
-  if (player.role === 'clicker') {
-    clickPower *= (1 + (player.bonus?.value || 0.2));
-  }
+  let clickPower = 1 * (player.prestigeMultiplier || 1);
   const clickPowerUpgrade = gameState.upgrades.find(u => u.id === 'click-power');
   if (clickPowerUpgrade) {
     clickPower += clickPowerUpgrade.effect(clickPowerUpgrade.level) - 1;
@@ -295,55 +379,39 @@ function calculateClickValue(player) {
   if (teamSynergyBonus > 0) {
     clickPower *= (1 + teamSynergyBonus);
   }
+  if (gameState.powerUps['click-frenzy'].active) {
+    clickPower *= gameState.powerUps['click-frenzy'].multiplier;
+  }
+  console.log(`[Click Value] Calculado para ${player.name}: ${clickPower}`);
   return clickPower;
 }
 
-function levelUp(player) {
-  player.level++;
-  player.clicks = 0;
+function levelUpTeam() {
+  gameState.teamLevel++;
   
-  // Ajustar a dificuldade com o boost de progresso
-  const difficultyCurve = getUpgradeEffect('progress-boost') || 1.25;
-  player.targetClicks = Math.ceil((player.targetClicks || 10) * difficultyCurve);
-
-  // Calcular moedas ganhas com o boost de moedas
-  const coinBoost = getUpgradeEffect('coin-boost') || 1;
-  const coinsAwarded = Math.round(player.level * 5 * coinBoost);
-  player.coins += coinsAwarded;
-  gameState.coins += coinsAwarded;
-
-  io.emit('chatMessage', {
-    text: `${player.name} alcançou o nível ${player.level}! +${coinsAwarded} moedas`,
-    type: 'system'
+  gameState.players.forEach(player => {
+    player.level++;
+    const coinsAwarded = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost'); // Aplicar boost de moedas
+    gameState.teamCoins += coinsAwarded;
+    console.log(`[Level Up] Jogador: ${player.name} subiu para nível ${player.level}. Time ganhou ${coinsAwarded} moedas.`);
   });
 
-  // Distribuir recompensas compartilhadas para jogadores inativos
-  const sharedRewardBonus = getUpgradeEffect('shared-rewards');
-  if (sharedRewardBonus > 0) {
-    gameState.players.forEach(p => {
-      if (p.id !== player.id) {
-        const sharedCoins = Math.round(coinsAwarded * sharedRewardBonus);
-        p.coins += sharedCoins;
-        io.emit('chatMessage', {
-          text: `${p.name} recebeu ${sharedCoins} moedas compartilhadas!`,
-          type: 'system'
-        });
-      }
-    });
+  const highestLevel = gameState.players.reduce((max, p) => Math.max(max, p.level), 0);
+  console.log(`[Progresso Equipe] Nível mais alto: ${highestLevel}, Objetivo atual: ${gameState.teamGoal}`);
+  if (highestLevel === gameState.teamGoal) {
+    gameState.teamGoal++;
+    console.log(`[Objetivo Equipe] Novo objetivo: Nível ${gameState.teamGoal}`);
   }
 
-  const highestLevel = gameState.players.reduce((max, p) => Math.max(max, p.level), 0);
-  if (highestLevel >= gameState.teamGoal) {
-    gameState.teamLevel++;
-    gameState.teamGoal += 5;
-    io.emit('chatMessage', {
-      text: `Equipe atingiu o nível ${gameState.teamLevel}! Todos ganham +${gameState.teamLevel * 10}% de moedas!`,
-      type: 'system'
-    });
-    gameState.players.forEach(player => {
-      player.coins += Math.round(player.coins * (gameState.teamLevel * 0.1));
-    });
-  }
+  gameState.teamClicksRemaining = 100 * gameState.teamLevel;
+
+  const teamBonus = gameState.teamLevel * 10;
+  const bonusCoins = Math.round(gameState.teamCoins * (teamBonus / 100));
+  gameState.teamCoins += bonusCoins;
+  console.log(`[Bônus Equipe] Time recebeu bônus de ${teamBonus}%: ${bonusCoins} moedas. Total agora é ${gameState.teamCoins}`);
+
+  broadcastGameState();
+  checkAchievements();
 }
 
 function getUpgradePrice(upgrade) {
@@ -365,9 +433,12 @@ setInterval(() => {
       player.clicks += clickValue;
       player.contribution += clickValue;
       gameState.clicks += clickValue;
+      gameState.teamClicksRemaining -= clickValue;
+      console.log(`[Auto-Clicker] Jogador: ${player.name}, Cliques automáticos: ${clickValue}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
 
-      if (player.clicks >= (player.targetClicks || 10)) {
-        levelUp(player);
+      if (gameState.teamClicksRemaining <= 0) {
+        console.log('[Auto-Clicker] Objetivo da equipe atingido! Subindo nível de todos os jogadores.');
+        levelUpTeam();
       }
     });
     broadcastGameState();
@@ -381,5 +452,5 @@ setInterval(checkAchievements, 2000);
 // Configurar porta para o Render
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${port}`);
+  console.log(`[Inicialização] Servidor rodando na porta ${port}`);
 });
