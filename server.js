@@ -66,7 +66,9 @@ let gameState = {
     {
       id: 'team-synergy',
       name: 'Sinergia de Equipe',
-@@ -72,314 +27,185 @@ let gameState = {
+      description: 'Aumenta o poder de clique baseado no número de jogadores',
+      basePrice: 40,
+      level: 0,
       maxLevel: 5,
       effect: level => level * (gameState.players.length * 0.1), // 10% por jogador por nível
       priceIncrease: 1.7
@@ -148,58 +150,11 @@ let gameState = {
       reward: 25
     }
   ]
-
-
-
 };
 
 // Função para atualizar todos os clientes
 function broadcastGameState() {
   io.emit('gameStateUpdate', gameState);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
 // Função para verificar conquistas
@@ -244,30 +199,6 @@ io.on('connection', (socket) => {
       broadcastGameState();
       checkAchievements();
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   });
 
   socket.on('click', () => {
@@ -315,7 +246,6 @@ io.on('connection', (socket) => {
           type: 'player'
         });
 
-
         // Distribuir recompensas compartilhadas após a compra
         const sharedRewardBonus = getUpgradeEffect('shared-rewards');
         if (sharedRewardBonus > 0) {
@@ -335,14 +265,6 @@ io.on('connection', (socket) => {
         checkAchievements();
       }
     }
-
-
-
-
-
-
-
-
   });
 
   socket.on('disconnect', () => {
