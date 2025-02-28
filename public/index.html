@@ -44,6 +44,14 @@
       border-radius: 10px;
     }
 
+    .team-shared-progress-bar {
+      height: 100%;
+      background-color: #007bff; /* Cor diferente para a barra da equipe */
+      width: 100%; /* Começa cheia */
+      transition: width 0.2s;
+      border-radius: 10px;
+    }
+
     .stats {
       display: flex;
       justify-content: space-between;
@@ -405,6 +413,10 @@
       background-color: #76c776;
     }
 
+    body.dark-mode .team-shared-progress-bar {
+      background-color: #1e90ff; /* Cor diferente para a barra da equipe no modo noturno */
+    }
+
     body.dark-mode .stat-box {
       background-color: #2a2a2a;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
@@ -648,7 +660,10 @@
     
     <div class="team-goal-section">
       <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
-      <!-- Removido o progresso e a barra de progresso -->
+      <!-- Nova barra de progresso combinada para todos os jogadores -->
+      <div class="progress-container">
+        <div class="team-shared-progress-bar" id="team-shared-progress-bar"></div>
+      </div>
       <div class="bonus-message" id="team-bonus-message">
         Trabalhem juntos para ganhar bônus para toda a equipe!
       </div>
@@ -746,6 +761,7 @@
     const teamBonusMessage = document.getElementById('team-bonus-message');
     const chatContainer = document.getElementById('chat-container');
     const themeToggleButton = document.getElementById('theme-toggle');
+    const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
 
     // Função para alternar o modo noturno
     function toggleTheme() {
@@ -841,6 +857,12 @@
           // Barra de progresso individual (já ajustada para diminuir)
           progressBar.style.width = `${Math.max(0, 100 - (activePlayer.clicks / (activePlayer.targetClicks || 10)) * 100)}%`;
         }
+
+        // Calcular o progresso combinado de todos os jogadores
+        const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
+        const teamTargetClicks = gameState.players.reduce((sum, player) => sum + (player.targetClicks || 10), 0);
+        // Barra de progresso da equipe (diminui à medida que os cliques combinados se aproximam da meta combinada)
+        teamSharedProgressBar.style.width = `${Math.max(0, 100 - (totalClicks / (teamTargetClicks || 1)) * 100)}%`;
       } else {
         clicksDisplay.textContent = 0;
         levelDisplay.textContent = 1;
@@ -848,6 +870,7 @@
         coinsDisplay.textContent = 0;
         clickPowerDisplay.textContent = 1;
         progressBar.style.width = '100%'; // Barra cheia quando não há jogador ativo
+        teamSharedProgressBar.style.width = '100%'; // Barra da equipe cheia quando não há jogadores
         activePlayerDisplay.textContent = '-';
       }
 
