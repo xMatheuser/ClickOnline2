@@ -53,7 +53,7 @@ body {
   border-radius: 10px;
   margin: 10px 0;
   overflow: hidden;
-  position: relative; /* Para posicionar a porcentagem */
+  position: relative;
 }
 
 .team-shared-progress-bar {
@@ -63,7 +63,7 @@ body {
   transition: width 0.2s;
   border-radius: 10px;
   animation: pulseProgress 2s infinite;
-  position: relative; /* Para conter a porcentagem */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,7 +73,7 @@ body {
   color: #fff;
   font-size: 0.9rem;
   font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Para legibilidade */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   position: absolute;
 }
 
@@ -155,8 +155,7 @@ h3 {
 }
 
 .upgrade-item,
-.achievement-item,
-.powerup-item {
+.achievement-item {
   background-color: #f9f9f9;
   border-radius: 8px;
   padding: 8px;
@@ -168,13 +167,11 @@ h3 {
   font-size: 0.9rem;
 }
 
-.upgrade-item:hover,
-.powerup-item:hover {
+.upgrade-item:hover {
   background-color: #f0f0f0;
 }
 
-.upgrade-item.disabled,
-.powerup-item.disabled {
+.upgrade-item.disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
@@ -211,7 +208,8 @@ h3 {
   color: #777;
 }
 
-.notification {
+.notification,
+.powerup-notification {
   position: fixed;
   bottom: 10px;
   right: 10px;
@@ -226,7 +224,8 @@ h3 {
   max-width: 90%;
 }
 
-.notification.show {
+.notification.show,
+.powerup-notification.show {
   opacity: 1;
 }
 
@@ -366,6 +365,33 @@ h3 {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
+/* Floating Power-Up Button */
+.floating-powerup {
+  position: absolute;
+  background-color: #ff4500;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+  font-size: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 999;
+  animation: float 3s ease-in-out infinite;
+}
+
+.floating-powerup:hover {
+  background-color: #ff6347;
+  transform: scale(1.1);
+}
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0); }
+}
+
 /* Dark Mode */
 body.dark-mode {
   background-color: #1a1a1a;
@@ -405,19 +431,16 @@ body.dark-mode .click-area:active {
 }
 
 body.dark-mode .upgrade-item,
-body.dark-mode .achievement-item,
-body.dark-mode .powerup-item {
+body.dark-mode .achievement-item {
   background-color: #333;
   color: #e0e0e0;
 }
 
-body.dark-mode .upgrade-item:hover,
-body.dark-mode .powerup-item:hover {
+body.dark-mode .upgrade-item:hover {
   background-color: #444;
 }
 
-body.dark-mode .upgrade-item.disabled,
-body.dark-mode .powerup-item.disabled {
+body.dark-mode .upgrade-item.disabled {
   opacity: 0.5;
 }
 
@@ -432,7 +455,8 @@ body.dark-mode .achievement-item.locked {
   color: #999;
 }
 
-body.dark-mode .notification {
+body.dark-mode .notification,
+body.dark-mode .powerup-notification {
   background-color: #76c776;
   color: #1a1a1a;
 }
@@ -475,6 +499,14 @@ body.dark-mode .theme-toggle:hover {
 body.dark-mode .tooltip {
   background-color: #555;
   color: #e0e0e0;
+}
+
+body.dark-mode .floating-powerup {
+  background-color: #ff4500;
+}
+
+body.dark-mode .floating-powerup:hover {
+  background-color: #ff6347;
 }
 
 /* Media Queries */
@@ -520,8 +552,7 @@ body.dark-mode .tooltip {
     font-size: 0.8rem;
   }
   .upgrade-item,
-  .achievement-item,
-  .powerup-item {
+  .achievement-item {
     padding: 6px;
     font-size: 0.8rem;
   }
@@ -531,5 +562,9 @@ body.dark-mode .tooltip {
     padding: 6px 10px;
     font-size: 0.8rem;
     position: fixed;
+  }
+  .floating-powerup {
+    padding: 8px 12px;
+    font-size: 0.9rem;
   }
 }

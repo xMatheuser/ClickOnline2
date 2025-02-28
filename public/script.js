@@ -17,6 +17,7 @@ const gameContainer = document.querySelector('.game-container');
 const upgradesContainer = document.getElementById('upgrades-container');
 const achievementsContainer = document.getElementById('achievements-container');
 const notification = document.getElementById('notification');
+const powerupNotification = document.getElementById('powerup-notification');
 const playerList = document.getElementById('player-list');
 const playerNameInput = document.getElementById('player-name');
 const addPlayerButton = document.getElementById('add-player');
@@ -73,6 +74,44 @@ function hideTooltip() {
 function isOwnPlayer() {
   const activePlayer = gameState.players[activePlayerIndex];
   return activePlayer && activePlayer.id === socket.id;
+}
+
+// Função para mostrar notificação de power-up
+function showPowerupNotification(message) {
+  powerupNotification.textContent = message;
+  powerupNotification.classList.add('show');
+  setTimeout(() => powerupNotification.classList.remove('show'), 10000); // 10 segundos
+}
+
+// Função para posicionar o botão flutuante aleatoriamente
+function spawnFloatingPowerUp() {
+  const gameContainerRect = gameContainer.getBoundingClientRect();
+  const buttonWidth = activateClickFrenzyButton.offsetWidth;
+  const buttonHeight = activateClickFrenzyButton.offsetHeight;
+
+  const maxX = gameContainerRect.width - buttonWidth - 20;
+  const maxY = gameContainerRect.height - buttonHeight - 20;
+
+  const randomX = Math.floor(Math.random() * maxX) + 10;
+  const randomY = Math.floor(Math.random() * maxY) + 10;
+
+  activateClickFrenzyButton.style.left = `${randomX}px`;
+  activateClickFrenzyButton.style.top = `${randomY}px`;
+  activateClickFrenzyButton.style.display = 'block';
+
+  // Esconder após 10 segundos se não for clicado
+  setTimeout(() => {
+    if (activateClickFrenzyButton.style.display === 'block') {
+      activateClickFrenzyButton.style.display = 'none';
+      scheduleNextSpawn();
+    }
+  }, 10000); // 10 segundos
+}
+
+// Função para agendar o próximo aparecimento aleatório
+function scheduleNextSpawn() {
+  const randomDelay = Math.floor(Math.random() * 300000) + 90000; // Entre 1.5 min e 5 min
+  setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
 // Inicializar jogo
@@ -141,20 +180,25 @@ function initGame() {
     }
     console.log(`[Client] Tentando ativar Clique Frenzy. Moedas do time: ${gameState.teamCoins}, Ativo? ${gameState.powerUps['click-frenzy'].active}`);
     socket.emit('activatePowerUp', 'click-frenzy');
+    activateClickFrenzyButton.style.display = 'none';
+    showPowerupNotification('Clique Frenzy ativado! +100% poder de clique por 30 segundos');
+    scheduleNextSpawn();
   });
 
   renderUpgrades();
   renderAchievements();
+
+  // Iniciar o ciclo de spawn do power-up
+  scheduleNextSpawn();
 }
 
 // Atualizar o estado do jogo
 socket.on('gameStateUpdate', (newState) => {
   gameState = newState;
 
-  // Inicialmente, definir o activePlayerIndex como o jogador cujo id corresponde ao socket.id
   if (activePlayerIndex === -1 && gameState.players && gameState.players.length > 0) {
     const ownPlayerIndex = gameState.players.findIndex(player => player.id === socket.id);
-    activePlayerIndex = ownPlayerIndex !== -1 ? ownPlayerIndex : 0; // Se não encontrar, usa o primeiro jogador
+    activePlayerIndex = ownPlayerIndex !== -1 ? ownPlayerIndex : 0;
   }
 
   if (gameState.players && gameState.players.length > 0 && activePlayerIndex >= 0) {
@@ -167,10 +211,6 @@ socket.on('gameStateUpdate', (newState) => {
       targetDisplay.textContent = '-';
       prestigeDisplay.textContent = activePlayer.prestige || 0;
       prestigeButton.style.display = activePlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
-      // Atualizar estado do botão do power-up
-      const canAffordPowerUp = gameState.teamCoins >= 50;
-      const isPowerUpActive = gameState.powerUps['click-frenzy'].active;
-      activateClickFrenzyButton.disabled = !canAffordPowerUp || isPowerUpActive || !isOwnPlayer();
     }
     const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
     const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
@@ -185,7 +225,6 @@ socket.on('gameStateUpdate', (newState) => {
     teamSharedProgressBar.style.width = '100%';
     progressPercentage.textContent = '100%';
     activePlayerDisplay.textContent = '-';
-    activateClickFrenzyButton.disabled = true;
     prestigeButton.style.display = 'none';
   }
 
@@ -335,12 +374,10 @@ function renderUpgrades() {
   const activePlayer = gameState.players[activePlayerIndex];
   if (!activePlayer) return;
 
-  // Verificar se todos os upgrades tier 1 estão maximizados
   const allTier1MaxedOut = gameState.upgrades
     .filter(upgrade => upgrade.tier === 1)
     .every(upgrade => upgrade.level >= upgrade.maxLevel);
 
-  // Filtrar e ordenar upgrades
   const visibleUpgrades = gameState.upgrades
     .filter(upgrade => {
       if (upgrade.tier === 1) return true;
@@ -348,9 +385,7 @@ function renderUpgrades() {
       return false;
     })
     .sort((a, b) => {
-      // Ordenar por tier decrescente (2 antes de 1)
       if (b.tier !== a.tier) return b.tier - a.tier;
-      // Manter a ordem original dentro do mesmo tier
       return gameState.upgrades.indexOf(a) - gameState.upgrades.indexOf(b);
     });
 
@@ -398,16 +433,6 @@ function renderUpgrades() {
 
     upgradesContainer.appendChild(upgradeElement);
   });
-
-  // Adicionar tooltip ao power-up
-  const powerUpItem = document.querySelector('.powerup-item');
-  if (powerUpItem) {
-    powerUpItem.addEventListener('mousemove', (event) => {
-      const tooltipText = powerUpItem.getAttribute('data-tooltip');
-      showTooltip(event, tooltipText);
-    });
-    powerUpItem.addEventListener('mouseleave', hideTooltip);
-  }
 }
 
 // Renderizar as conquistas

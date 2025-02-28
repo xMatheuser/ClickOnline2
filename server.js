@@ -24,7 +24,7 @@ let gameState = {
   teamGoal: 5,
   teamClicksRemaining: 100,
   clicks: 0,
-  teamCoins: 0, // Moedas unificadas do time
+  teamCoins: 1000000, // Moedas unificadas do time
   upgrades: upgrades,
   achievements: achievements,
   powerUps: {
