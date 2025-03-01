@@ -224,6 +224,44 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('activatePowerUp', () => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !isActivePlayer(socket.id, player.id)) {
+      socket.emit('notification', 'Você só pode ativar power-ups quando for o jogador ativo!');
+      return;
+    }
+
+    // Selecionar um power-up aleatório que não esteja ativo
+    const availablePowerUps = Object.entries(gameState.powerUps)
+      .filter(([_, powerUp]) => !powerUp.active)
+      .map(([id, powerUp]) => ({ id, ...powerUp }));
+
+    if (availablePowerUps.length === 0) {
+      socket.emit('notification', 'Todos os power-ups estão ativos!');
+      return;
+    }
+
+    const randomPowerUp = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
+    const powerUpId = randomPowerUp.id;
+    const powerUp = gameState.powerUps[powerUpId];
+
+    powerUp.active = true;
+    console.log(`[Power-Up] ${player.name} ativou ${powerUp.name}`);
+    io.to(player.id).emit('powerUpActivated', {
+        name: powerUp.name,
+        description: powerUp.description,
+        duration: powerUp.duration,
+        color: powerUp.color
+    });
+    broadcastGameState();
+
+    setTimeout(() => {
+      powerUp.active = false;
+      console.log(`[Power-Up] ${powerUp.name} expirou`);
+      broadcastGameState();
+    }, powerUp.duration);
+  });
+
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
@@ -247,6 +285,9 @@ function calculateClickValue(player) {
   }
   if (gameState.powerUps['click-frenzy'].active) {
     clickPower *= gameState.powerUps['click-frenzy'].multiplier;
+  }
+  if (gameState.powerUps['team-spirit'].active) {
+    clickPower *= gameState.powerUps['team-spirit'].multiplier;
   }
   console.log(`[Click Value] Calculado para ${player.name}: ${clickPower}`);
   return clickPower;

@@ -77,20 +77,22 @@ function isOwnPlayer() {
 }
 
 // Função para mostrar notificação de power-up
-function showPowerupNotification(message) {
-  powerupNotification.textContent = message;
+function showPowerupNotification(powerUpInfo) {
+  powerupNotification.textContent = `${powerUpInfo.name} ativado! ${powerUpInfo.description} por ${powerUpInfo.duration/1000} segundos!`;
+  powerupNotification.style.backgroundColor = powerUpInfo.color;
   powerupNotification.classList.add('show');
-  setTimeout(() => powerupNotification.classList.remove('show'), 10000); // 10 segundos
+  setTimeout(() => powerupNotification.classList.remove('show'), 10000);
 }
 
 // Função para posicionar o botão flutuante aleatoriamente
 function spawnFloatingPowerUp() {
-  const gameContainerRect = gameContainer.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
   const buttonWidth = activateClickFrenzyButton.offsetWidth;
   const buttonHeight = activateClickFrenzyButton.offsetHeight;
 
-  const maxX = gameContainerRect.width - buttonWidth - 20;
-  const maxY = gameContainerRect.height - buttonHeight - 20;
+  const maxX = viewportWidth - buttonWidth - 20;
+  const maxY = viewportHeight - buttonHeight - 20;
 
   const randomX = Math.floor(Math.random() * maxX) + 10;
   const randomY = Math.floor(Math.random() * maxY) + 10;
@@ -99,19 +101,27 @@ function spawnFloatingPowerUp() {
   activateClickFrenzyButton.style.top = `${randomY}px`;
   activateClickFrenzyButton.style.display = 'block';
 
-  // Esconder após 10 segundos se não for clicado
+  // Escolher uma cor aleatória dos power-ups disponíveis
+  const availableColors = Object.values(gameState.powerUps).map(p => p.color);
+  const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+  activateClickFrenzyButton.style.backgroundColor = randomColor;
+  
+  // Esconder após exatamente 5 segundos
   setTimeout(() => {
     if (activateClickFrenzyButton.style.display === 'block') {
       activateClickFrenzyButton.style.display = 'none';
       scheduleNextSpawn();
     }
-  }, 10000); // 10 segundos
+  }, 5000); // 5 segundos fixos
 }
 
 // Função para agendar o próximo aparecimento aleatório
 function scheduleNextSpawn() {
-  const randomDelay = Math.floor(Math.random() * 300000) + 90000; // Entre 1.5 min e 5 min
-  setTimeout(spawnFloatingPowerUp, randomDelay);
+    const minDelay = 60000; // 1 minuto em milissegundos
+    const maxDelay = 180000; // 3 minutos em milissegundos
+    const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
+    console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
+    setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
 // Inicializar jogo
@@ -178,10 +188,11 @@ function initGame() {
       showNotification('Você só pode ativar power-ups quando for o jogador ativo!');
       return;
     }
-    console.log(`[Client] Tentando ativar Clique Frenzy. Moedas do time: ${gameState.teamCoins}, Ativo? ${gameState.powerUps['click-frenzy'].active}`);
-    socket.emit('activatePowerUp', 'click-frenzy');
+    socket.emit('activatePowerUp');
     activateClickFrenzyButton.style.display = 'none';
-    showPowerupNotification('Clique Frenzy ativado! +100% poder de clique por 30 segundos');
+    const powerUpName = gameState.powerUps['click-frenzy'].name;
+    const powerUpDesc = gameState.powerUps['click-frenzy'].description;
+    showPowerupNotification(`${powerUpName} ativado! ${powerUpDesc} por 30 segundos!`);
     scheduleNextSpawn();
   });
 
@@ -236,6 +247,11 @@ socket.on('gameStateUpdate', (newState) => {
   renderUpgrades();
   renderAchievements();
   teamGoalDisplay.textContent = gameState.teamGoal;
+});
+
+// Adicionar listener para o evento powerUpActivated
+socket.on('powerUpActivated', (powerUpInfo) => {
+  showPowerupNotification(powerUpInfo);
 });
 
 // Função para alternar entre jogadores
@@ -413,8 +429,6 @@ function renderUpgrades() {
     const buyButton = upgradeElement.querySelector('.buy-button');
     buyButton.addEventListener('click', () => {
       if (!isOwnPlayer()) {
-        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
-        return;
       }
       console.log(`[Client] Tentando comprar ${upgrade.name}. Moedas do time: ${gameState.teamCoins}, Preço: ${price}, Pode comprar? ${canAfford}`);
       socket.emit('buyUpgrade', upgrade.id);
