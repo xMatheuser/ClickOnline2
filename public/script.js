@@ -168,10 +168,11 @@ function startGame() {
   startScreen.style.opacity = '0';
   gameContainer.style.display = 'block';
   
-  // Após o fade out da tela de início, escondê-la e completar o fade in do jogo
+  // Após o fade out da tela de início, escondê-la, completar o fade in do jogo e mostrar a top-bar
   setTimeout(() => {
     startScreen.style.display = 'none';
     gameContainer.style.opacity = '1';
+    document.querySelector('.top-bar').classList.add('visible'); // Mostrar a barra superior
     initGame();
   }, 500);
 }

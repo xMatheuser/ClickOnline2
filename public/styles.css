@@ -459,6 +459,12 @@ h3 {
   left: 0;
   right: 0;
   z-index: 1001;
+  display: none; /* Inicialmente oculta */
+  transition: opacity 0.3s ease-in-out; /* Opcional: transição suave */
+}
+
+.top-bar.visible {
+  display: block; /* Mostra a barra quando a classe 'visible' é adicionada */
 }
 
 .top-bar-content {
