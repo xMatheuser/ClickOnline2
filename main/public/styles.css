@@ -545,6 +545,9 @@ h3 {
   margin: 0;
   font-size: 1.5rem;
   color: #333; /* Cor do texto para contraste com fundo branco */
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Top Bar Buttons Group */
@@ -688,6 +691,10 @@ body.dark-mode .prestige-upgrades {
   padding: 5px 10px;
   border-radius: 5px;
   transition: background-color 0.3s;
+  margin-left: 10px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  color: inherit;
 }
 
 .prestige-link:hover {
