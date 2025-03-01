@@ -739,7 +739,7 @@ body.dark-mode .floating-powerup:hover {
 }
 
 body.dark-mode .start-screen {
-  background: url('confy.gif') no-repeat center center fixed; /* Mantém a mesma imagem */
+  background: url('startscreen.gif') no-repeat center center fixed; /* Mantém a mesma imagem */
   background-size: cover;
 }
 
