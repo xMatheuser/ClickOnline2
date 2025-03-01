@@ -45,6 +45,7 @@ body {
   margin: 10px auto;
   position: relative;
   transition: opacity 0.5s ease-in-out; /* Transição suave para o fade */
+  margin-top: 70px; /* Add margin to account for fixed top bar */
 }
 
 .progress-container {
@@ -336,23 +337,17 @@ h3 {
 }
 
 .theme-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
+  position: static; /* Remove absolute positioning */
   padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
   transition: background-color 0.3s;
-  z-index: 1000;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.theme-toggle:hover {
-  background-color: #45a049;
+  z-index: 1000;
 }
 
 /* Tooltip */
@@ -454,6 +449,67 @@ h3 {
   min-height: 1rem;
 }
 
+/* Top Bar Styles */
+.top-bar {
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 10px 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+}
+
+.top-bar-content {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-bar-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+/* Top Bar Buttons Group */
+.top-bar-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.fullscreen-toggle {
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  transition: background-color 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  height: 34px; /* Match theme toggle height */
+}
+
+.fullscreen-toggle:hover {
+  background-color: #45a049;
+}
+
+.fullscreen-icon {
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(90deg);
+  height: 100%;
+}
+
 /* Dark Mode */
 body.dark-mode {
   background-color: #1a1a1a;
@@ -552,6 +608,15 @@ body.dark-mode .theme-toggle:hover {
   background-color: #65a565;
 }
 
+body.dark-mode .fullscreen-toggle {
+  background-color: #76c776;
+  color: #1a1a1a;
+}
+
+body.dark-mode .fullscreen-toggle:hover {
+  background-color: #65a565;
+}
+
 body.dark-mode .tooltip {
   background-color: #555;
   color: #e0e0e0;
@@ -582,6 +647,15 @@ body.dark-mode .start-container .player-input {
   background-color: #333;
   color: #e0e0e0;
   border: 1px solid #555;
+}
+
+body.dark-mode .top-bar {
+  background-color: #2a2a2a;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .top-bar-title {
+  color: #e0e0e0;
 }
 
 /* Media Queries */
@@ -651,5 +725,12 @@ body.dark-mode .start-container .player-input {
   .start-container .buy-button {
     padding: 8px 16px;
     font-size: 0.9rem;
+  }
+  .top-bar-title {
+    font-size: 1.2rem;
+  }
+
+  .top-bar-content {
+    width: 95%;
   }
 }

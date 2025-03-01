@@ -8,6 +8,19 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-content">
+      <h1 class="top-bar-title">Super Amigos</h1>
+      <div class="top-bar-buttons">
+        <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
+        <button class="fullscreen-toggle" id="fullscreen-toggle">
+          <span class="fullscreen-icon">⛶</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Tela de Início -->
   <div class="start-screen" id="start-screen">
     <div class="start-container">
@@ -21,7 +34,6 @@
 
   <!-- Conteúdo Principal do Jogo -->
   <div class="game-container" id="game-container" style="display: none; opacity: 0;">
-    <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
     <div class="main-layout">
       <!-- Left Column: Upgrades -->
       <div class="left-column">
@@ -33,7 +45,6 @@
 
       <!-- Center Column: Main Game Content -->
       <div class="center-column">
-        <h1>Super Amigos</h1>
         <div class="player-setup">
           <h2>Jogadores</h2>
           <div class="player-list" id="player-list"></div>

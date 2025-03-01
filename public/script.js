@@ -39,6 +39,7 @@ const progressPercentage = document.getElementById('progress-percentage');
 // const prestigeButton = document.getElementById('prestige-button'); // Comentado para remover da interface
 const activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
 const tooltip = document.getElementById('tooltip');
+const fullscreenButton = document.getElementById('fullscreen-toggle');
 
 // Criar objetos de áudio para os sons
 const levelUpSound = new Audio('/levelUp.mp3');
@@ -221,10 +222,33 @@ function initGame() {
     scheduleNextSpawn();
   });
 
+  fullscreenButton.addEventListener('click', toggleFullscreen);
+
+  document.addEventListener('fullscreenchange', () => {
+    const icon = fullscreenButton.querySelector('.fullscreen-icon');
+    icon.textContent = document.fullscreenElement ? '⛶' : '⛶';
+    icon.style.transform = document.fullscreenElement ? 'rotate(0deg)' : 'rotate(90deg)';
+  });
+
   renderUpgrades();
   renderAchievements();
   scheduleNextSpawn();
   setInterval(updateClicksPerSecond, 1000);
+}
+
+// Função para alternar o modo de tela cheia
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log(`Erro ao entrar em fullscreen: ${err.message}`);
+    });
+    fullscreenButton.querySelector('.fullscreen-icon').textContent = '⛶';
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+      fullscreenButton.querySelector('.fullscreen-icon').textContent = '⛶';
+    }
+  }
 }
 
 // Função para atualizar os cliques por segundo
