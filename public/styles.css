@@ -510,6 +510,33 @@ h3 {
   height: 100%;
 }
 
+.mute-toggle {
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  transition: background-color 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  height: 34px; /* Match theme toggle height */
+}
+
+.mute-toggle:hover {
+  background-color: #45a049;
+}
+
+.mute-icon {
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
 /* Dark Mode */
 body.dark-mode {
   background-color: #1a1a1a;
@@ -614,6 +641,15 @@ body.dark-mode .fullscreen-toggle {
 }
 
 body.dark-mode .fullscreen-toggle:hover {
+  background-color: #65a565;
+}
+
+body.dark-mode .mute-toggle {
+  background-color: #76c776;
+  color: #1a1a1a;
+}
+
+body.dark-mode .mute-toggle:hover {
   background-color: #65a565;
 }
 

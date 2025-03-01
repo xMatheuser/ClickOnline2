@@ -40,12 +40,16 @@ const progressPercentage = document.getElementById('progress-percentage');
 const activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
 const tooltip = document.getElementById('tooltip');
 const fullscreenButton = document.getElementById('fullscreen-toggle');
+const muteButton = document.getElementById('mute-toggle');
 
 // Criar objetos de áudio para os sons
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 levelUpSound.volume = 0.1;
 const tickSound = new Audio('/assets/sounds/tick.mp3');
 tickSound.volume = 0.6;
+
+// Adicionar variável de estado para mute
+let isMuted = localStorage.getItem('isMuted') === 'true';
 
 // Função para alternar o modo noturno
 function toggleTheme() {
@@ -68,6 +72,23 @@ function loadTheme() {
 
 // Adicionar evento ao botão de alternância de tema
 themeToggleButton.addEventListener('click', toggleTheme);
+
+// Função para alternar mute
+function toggleMute() {
+  isMuted = !isMuted;
+  localStorage.setItem('isMuted', isMuted);
+  updateMuteButton();
+  
+  // Atualizar volume de todos os sons
+  levelUpSound.volume = isMuted ? 0 : 0.1;
+  tickSound.volume = isMuted ? 0 : 0.6;
+}
+
+// Função para atualizar o ícone do botão mute
+function updateMuteButton() {
+  const icon = muteButton.querySelector('.mute-icon');
+  icon.textContent = isMuted ? '🔇' : '🔊';
+}
 
 // Função para mostrar tooltip
 function showTooltip(event, text) {
@@ -229,6 +250,13 @@ function initGame() {
     icon.textContent = document.fullscreenElement ? '⛶' : '⛶';
     icon.style.transform = document.fullscreenElement ? 'rotate(0deg)' : 'rotate(90deg)';
   });
+
+  muteButton.addEventListener('click', toggleMute);
+  updateMuteButton();
+
+  // Aplicar estado inicial do mute
+  levelUpSound.volume = isMuted ? 0 : 0.1;
+  tickSound.volume = isMuted ? 0 : 0.6;
 
   renderUpgrades();
   renderAchievements();
