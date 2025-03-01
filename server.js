@@ -2,9 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const upgrades = require('./upgrades');
-const achievements = require('./achievements');
-const powerUps = require('./powerUps');
+const upgrades = require('./main/gameModules/upgrades');
+const achievements = require('./main/gameModules/achievements');
+const powerUps = require('./main/gameModules/powerUps');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,9 +15,9 @@ const io = new Server(server, {
   }
 });
 
-// Servir arquivos estáticos da pasta 'public' e assets
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// Update static file paths to use main directory
+app.use(express.static(path.join(__dirname, 'main/public')));
+app.use('/assets', express.static(path.join(__dirname, 'main/assets')));
 
 // Estado global do jogo
 let gameState = {
