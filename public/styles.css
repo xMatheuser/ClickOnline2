@@ -44,6 +44,7 @@ body {
   max-width: 1200px;
   margin: 10px auto;
   position: relative;
+  transition: opacity 0.5s ease-in-out; /* Transição suave para o fade */
 }
 
 .progress-container {
@@ -230,24 +231,24 @@ h3 {
 }
 
 .powerup-notification {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: #4CAF50;
-    color: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    opacity: 0;
-    transition: opacity 0.3s, background-color 0.3s;
-    font-size: 1rem;
-    max-width: 300px;
-    z-index: 1000;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.3s, background-color 0.3s;
+  font-size: 1rem;
+  max-width: 300px;
+  z-index: 1000;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .powerup-notification.show {
-    opacity: 1;
+  opacity: 1;
 }
 
 .player-setup {
@@ -278,23 +279,6 @@ h3 {
 .player-tag[data-active="true"] {
   background-color: #d4edda;
   border: 1px solid #4CAF50;
-}
-
-.player-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.player-input {
-  padding: 8px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  width: 100%;
-  max-width: 200px;
-  font-size: 1rem;
 }
 
 .team-goal-section {
@@ -388,7 +372,7 @@ h3 {
 
 /* Floating Power-Up Button */
 .floating-powerup {
-  position: fixed; /* Mudado de absolute para fixed */
+  position: fixed;
   background-color: #ff4500;
   color: white;
   border: none;
@@ -411,6 +395,63 @@ h3 {
   0% { transform: translateY(0); }
   50% { transform: translateY(-15px); }
   100% { transform: translateY(0); }
+}
+
+/* Tela de Início */
+.start-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out; /* Transição suave para o fade */
+}
+
+.start-container {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+}
+
+.start-container h1 {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.start-container p {
+  font-size: 1rem;
+  margin-bottom: 15px;
+  color: #666;
+}
+
+.start-container .player-input {
+  width: 80%;
+  padding: 10px;
+  margin-bottom: 15px;
+  font-size: 1rem;
+}
+
+.start-container .buy-button {
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+
+.error-message {
+  color: #ff4444;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  min-height: 1rem;
 }
 
 /* Dark Mode */
@@ -492,12 +533,6 @@ body.dark-mode .player-tag[data-active="true"] {
   border: 1px solid #76c776;
 }
 
-body.dark-mode .player-input {
-  background-color: #333;
-  color: #e0e0e0;
-  border: 1px solid #555;
-}
-
 body.dark-mode .team-goal-section {
   background-color: #2a2a3a;
 }
@@ -528,6 +563,25 @@ body.dark-mode .floating-powerup {
 
 body.dark-mode .floating-powerup:hover {
   background-color: #ff6347;
+}
+
+body.dark-mode .start-container {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+}
+
+body.dark-mode .start-container h1 {
+  color: #e0e0e0;
+}
+
+body.dark-mode .start-container p {
+  color: #bbb;
+}
+
+body.dark-mode .start-container .player-input {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
 }
 
 /* Media Queries */
@@ -564,10 +618,6 @@ body.dark-mode .floating-powerup:hover {
     height: 120px;
     font-size: 1rem;
   }
-  .player-input {
-    max-width: 100%;
-    font-size: 0.9rem;
-  }
   .buy-button {
     padding: 6px 10px;
     font-size: 0.8rem;
@@ -586,6 +636,20 @@ body.dark-mode .floating-powerup:hover {
   }
   .floating-powerup {
     padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+  .start-container h1 {
+    font-size: 1.5rem;
+  }
+  .start-container p {
+    font-size: 0.9rem;
+  }
+  .start-container .player-input {
+    width: 90%;
+    padding: 8px;
+  }
+  .start-container .buy-button {
+    padding: 8px 16px;
     font-size: 0.9rem;
   }
 }

@@ -3,12 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Amigos Coop</title>
+  <title>Clicker Coop</title>
   <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="game-container">
+  <!-- Tela de Início -->
+  <div class="start-screen" id="start-screen">
+    <div class="start-container">
+      <h1>Bem-vindo ao Clicker Coop!</h1>
+      <p>Digite seu nome para começar:</p>
+      <input type="text" id="start-player-name" placeholder="Seu nome" class="player-input">
+      <button id="start-game-button" class="buy-button">Iniciar Jogo</button>
+      <div id="start-error" class="error-message"></div>
+    </div>
+  </div>
+
+  <!-- Conteúdo Principal do Jogo -->
+  <div class="game-container" id="game-container" style="display: none; opacity: 0;">
     <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
     <div class="main-layout">
       <!-- Left Column: Upgrades -->
@@ -21,14 +33,10 @@
 
       <!-- Center Column: Main Game Content -->
       <div class="center-column">
-        <h1>Super Amigos</h1>
+        <h1>Clicker Coop</h1>
         <div class="player-setup">
           <h2>Jogadores</h2>
           <div class="player-list" id="player-list"></div>
-          <div class="player-controls">
-            <input type="text" class="player-input" id="player-name" placeholder="Seu nome">
-            <button class="buy-button" id="add-player">Adicionar Jogador</button>
-          </div>
         </div>
         <div class="team-goal-section">
           <h2>Objetivo da Equipe: Nível <span id="team-goal">5</span></h2>
@@ -75,5 +83,5 @@
   <div class="powerup-notification" id="powerup-notification"></div>
   <div class="tooltip" id="tooltip"></div>
   <script src="script.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9194891c2fe3674f',t:'MTc0MDc4ODkxOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>

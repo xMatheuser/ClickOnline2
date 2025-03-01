@@ -4,24 +4,28 @@ const socket = io('/');
 // Estado local mínimo
 let gameState = { players: [] };
 let isSpacePressed = false;
-let clickCountThisSecond = 0; // Contador de cliques no último segundo
-let lastClickCount = 0; // Última soma total de cliques registrada
+let clickCountThisSecond = 0;
+let lastClickCount = 0;
 
-// Elementos DOM
+// Elementos DOM da tela de início
+const startScreen = document.getElementById('start-screen');
+const startPlayerNameInput = document.getElementById('start-player-name');
+const startGameButton = document.getElementById('start-game-button');
+const startError = document.getElementById('start-error');
+const gameContainer = document.getElementById('game-container');
+
+// Elementos DOM do jogo
 const clicksDisplay = document.getElementById('clicks');
 const levelDisplay = document.getElementById('level');
 const targetDisplay = document.getElementById('target');
 const teamCoinsDisplay = document.getElementById('team-coins');
 const clickPowerDisplay = document.getElementById('click-power');
 const clickArea = document.getElementById('click-area');
-const gameContainer = document.querySelector('.game-container');
 const upgradesContainer = document.getElementById('upgrades-container');
 const achievementsContainer = document.getElementById('achievements-container');
 const notification = document.getElementById('notification');
 const powerupNotification = document.getElementById('powerup-notification');
 const playerList = document.getElementById('player-list');
-const playerNameInput = document.getElementById('player-name');
-const addPlayerButton = document.getElementById('add-player');
 const activePlayerDisplay = document.getElementById('active-player');
 const contributionContainer = document.getElementById('contribution-container');
 const teamGoalDisplay = document.getElementById('team-goal');
@@ -49,7 +53,6 @@ function loadTheme() {
     document.body.classList.add('dark-mode');
     themeToggleButton.textContent = 'Modo Claro';
   } else {
-    document.body.classList.remove('dark-mode');
     themeToggleButton.textContent = 'Modo Noturno';
   }
 }
@@ -101,18 +104,16 @@ function spawnFloatingPowerUp() {
   activateClickFrenzyButton.style.top = `${randomY}px`;
   activateClickFrenzyButton.style.display = 'block';
 
-  // Escolher uma cor aleatória dos power-ups disponíveis
   const availableColors = Object.values(gameState.powerUps).map(p => p.color);
   const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
   activateClickFrenzyButton.style.backgroundColor = randomColor;
-  
-  // Esconder após exatamente 5 segundos
+
   setTimeout(() => {
     if (activateClickFrenzyButton.style.display === 'block') {
       activateClickFrenzyButton.style.display = 'none';
       scheduleNextSpawn();
     }
-  }, 5000); // 5 segundos fixos
+  }, 5000);
 }
 
 // Função para agendar o próximo aparecimento aleatório
@@ -124,13 +125,43 @@ function scheduleNextSpawn() {
   setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
-// Inicializar jogo
-function initGame() {
-  loadTheme();
+// Função para iniciar o jogo
+function startGame() {
+  const playerName = startPlayerNameInput.value.trim();
+  if (playerName === '') {
+    startError.textContent = 'Por favor, insira um nome!';
+    return;
+  }
+  socket.emit('addPlayer', { name: playerName });
+  
+  // Iniciar transição suave
+  startScreen.style.opacity = '0';
+  gameContainer.style.display = 'block';
+  
+  // Após o fade out da tela de início, escondê-la e completar o fade in do jogo
+  setTimeout(() => {
+    startScreen.style.display = 'none';
+    gameContainer.style.opacity = '1';
+    initGame();
+  }, 500); // Tempo deve coincidir com a duração da transição (0.5s)
+}
 
+// Inicializar a tela de início
+function initStartScreen() {
+  loadTheme();
+  startGameButton.addEventListener('click', startGame);
+  startPlayerNameInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+      startGame();
+    }
+  });
+}
+
+// Inicializar o jogo principal
+function initGame() {
   clickArea.addEventListener('click', () => {
     socket.emit('click');
-    clickCountThisSecond += 1; // Incrementa o contador de cliques locais
+    clickCountThisSecond += 1;
   });
 
   clickArea.addEventListener('touchstart', (event) => {
@@ -161,21 +192,6 @@ function initGame() {
     }
   });
 
-  addPlayerButton.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim();
-    if (playerName === '') {
-      showNotification('Por favor, insira um nome para o jogador');
-      return;
-    }
-    if (gameState.players && gameState.players.length >= 3) {
-      showNotification('O limite de 3 jogadores foi atingido!');
-      playerNameInput.value = '';
-      return;
-    }
-    socket.emit('addPlayer', { name: playerName });
-    playerNameInput.value = '';
-  });
-
   prestigeButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
       showNotification('Você só pode prestigiar quando for o jogador ativo!');
@@ -196,11 +212,7 @@ function initGame() {
 
   renderUpgrades();
   renderAchievements();
-
-  // Iniciar o ciclo de spawn do power-up
   scheduleNextSpawn();
-
-  // Atualizar cliques por segundo a cada segundo
   setInterval(updateClicksPerSecond, 1000);
 }
 
@@ -208,9 +220,9 @@ function initGame() {
 function updateClicksPerSecond() {
   const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
   const clicksThisSecond = totalClicks - lastClickCount + clickCountThisSecond;
-  targetDisplay.textContent = clicksThisSecond.toFixed(1); // Exibe com 1 casa decimal
+  targetDisplay.textContent = clicksThisSecond.toFixed(1);
   lastClickCount = totalClicks;
-  clickCountThisSecond = 0; // Reseta o contador local
+  clickCountThisSecond = 0;
 }
 
 // Atualizar o estado do jogo
@@ -219,10 +231,10 @@ socket.on('gameStateUpdate', (newState) => {
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
-    clicksDisplay.textContent = Math.floor(gameState.players.reduce((sum, p) => sum + p.clicks, 0)); // Soma total dos cliques
+    clicksDisplay.textContent = Math.floor(gameState.players.reduce((sum, p) => sum + p.clicks, 0));
     levelDisplay.textContent = ownPlayer.level;
     teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
-    clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1); // Usa o valor do servidor
+    clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
     prestigeDisplay.textContent = ownPlayer.prestige || 0;
     prestigeButton.style.display = ownPlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
     const isAnyPowerUpActive = Object.values(gameState.powerUps).some(p => p.active);
@@ -252,14 +264,13 @@ socket.on('gameStateUpdate', (newState) => {
   teamGoalDisplay.textContent = gameState.teamGoal;
 });
 
-// Adicionar listener para o evento powerUpActivated
 socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
 });
 
 // Obter o valor de clique do servidor
 function getClickValue(player) {
-  return player.clickValue || 1; // Usa o valor enviado pelo servidor, default 1 se não estiver presente
+  return player.clickValue || 1;
 }
 
 // Renderizar a lista de jogadores
@@ -433,5 +444,5 @@ function showNotification(message) {
   setTimeout(() => notification.classList.remove('show'), 3000);
 }
 
-// Inicializar o jogo
-initGame();
+// Inicializar a tela de início
+initStartScreen();
