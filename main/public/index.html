@@ -11,7 +11,10 @@
   <!-- Top Bar -->
   <div class="top-bar">
     <div class="top-bar-content">
-      <h1 class="top-bar-title">Super Amigos</h1>
+      <div class="title-section">
+        <h1 class="top-bar-title">Super Amigos</h1>
+        <button class="prestige-link" id="open-prestige">⚡ Prestígio</button>
+      </div>
       <div class="top-bar-buttons">
         <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
         <button class="fullscreen-toggle" id="fullscreen-toggle">
@@ -20,6 +23,30 @@
         <button class="mute-toggle" id="mute-toggle">
           <span class="mute-icon">🔊</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prestige Popup -->
+  <div class="prestige-overlay" id="prestige-overlay">
+    <div class="prestige-popup">
+      <div class="prestige-header">
+        <h1 class="top-bar-title">Prestígio</h1>
+        <button class="close-prestige" id="close-prestige">×</button>
+      </div>
+      <div class="prestige-content">
+        <div class="prestige-info">
+          <h2>Prestígio</h2>
+          <p>Reinicie seu progresso para ganhar fragmentos mágicos!</p>
+          <p>Você receberá <span id="potential-fragments">0</span> fragmentos ao prestigiar.</p>
+          <p class="fragments">🔮 <span id="fragments-count">0</span> Fragmentos</p>
+          <button id="prestige-button" class="prestige-button">Prestigiar</button>
+        </div>
+
+        <div class="prestige-upgrades">
+          <h2>Upgrades de Prestígio</h2>
+          <div id="prestige-upgrades-container"></div>
+        </div>
       </div>
     </div>
   </div>

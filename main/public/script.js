@@ -41,6 +41,9 @@ const activateClickFrenzyButton = document.getElementById('activate-click-frenzy
 const tooltip = document.getElementById('tooltip');
 const fullscreenButton = document.getElementById('fullscreen-toggle');
 const muteButton = document.getElementById('mute-toggle');
+const prestigeOverlay = document.getElementById('prestige-overlay');
+const openPrestigeBtn = document.getElementById('open-prestige');
+const closePrestigeBtn = document.getElementById('close-prestige');
 
 // Criar objetos de áudio para os sons
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
@@ -263,6 +266,26 @@ function initGame() {
   renderAchievements();
   scheduleNextSpawn();
   setInterval(updateClicksPerSecond, 1000);
+
+  // Prestige popup controls
+  openPrestigeBtn.addEventListener('click', () => {
+    prestigeOverlay.classList.add('active');
+    updatePrestigeUI();
+  });
+
+  closePrestigeBtn.addEventListener('click', () => {
+    prestigeOverlay.classList.remove('active');
+  });
+
+  // Close on outside click
+  prestigeOverlay.addEventListener('click', (e) => {
+    if (e.target === prestigeOverlay) {
+      prestigeOverlay.classList.remove('active');
+    }
+  });
+
+  // Initialize prestige upgrades
+  renderPrestigeUpgrades();
 }
 
 // Função para alternar o modo de tela cheia
@@ -345,6 +368,10 @@ socket.on('gameStateUpdate', (newState) => {
   renderUpgrades();
   renderAchievements();
   teamGoalDisplay.textContent = gameState.teamGoal;
+
+  if (prestigeOverlay.classList.contains('active')) {
+    updatePrestigeUI();
+  }
 });
 
 socket.on('powerUpActivated', (powerUpInfo) => {
@@ -529,3 +556,27 @@ function showNotification(message) {
 
 // Inicializar a tela de início
 initStartScreen();
+
+function updatePrestigeUI() {
+  document.getElementById('fragments-count').textContent = gameState?.fragments || 0;
+  document.getElementById('potential-fragments').textContent = calculatePrestigeReward();
+  renderPrestigeUpgrades();
+}
+
+function calculatePrestigeReward() {
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return 0;
+  return Math.floor(Math.sqrt(player.level) * 2);
+}
+
+function renderPrestigeUpgrades() {
+  const container = document.getElementById('prestige-upgrades-container');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  if (!gameState?.prestigeUpgrades) return;
+
+  gameState.prestigeUpgrades.forEach(upgrade => {
+    // ... existing prestige upgrade rendering code ...
+  });
+}

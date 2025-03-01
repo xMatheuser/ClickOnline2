@@ -5,6 +5,7 @@ const path = require('path');
 const upgrades = require('./main/gameModules/upgrades');
 const achievements = require('./main/gameModules/achievements');
 const powerUps = require('./main/gameModules/powerUps');
+const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 
 const app = express();
 const server = http.createServer(app);
@@ -29,7 +30,9 @@ let gameState = {
   teamCoins: 0, // Moedas unificadas do time
   upgrades: upgrades,
   achievements: achievements,
-  powerUps: powerUps
+  powerUps: powerUps,
+  fragments: 0,
+  prestigeUpgrades: prestigeUpgrades
 };
 
 // Função para atualizar todos os clientes
@@ -188,6 +191,19 @@ io.on('connection', (socket) => {
       console.log(`[Prestígio] ${player.name} ativou prestígio ${player.prestige}`);
       broadcastGameState();
     }
+
+    const fragmentsToGain = Math.floor(Math.sqrt(player.level) * 2);
+    gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
+    
+    // Reset player progress
+    player.level = 1;
+    player.clicks = 0;
+    player.contribution = 0;
+    gameState.teamCoins = 0;
+    gameState.upgrades.forEach(u => u.level = 0);
+    
+    socket.emit('notification', `Prestígio realizado! Ganhou ${fragmentsToGain} fragmentos!`);
+    broadcastGameState();
   });
 
   socket.on('activatePowerUp', (powerUpId) => {
