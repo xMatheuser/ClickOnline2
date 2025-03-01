@@ -6,6 +6,8 @@ let gameState = { players: [] };
 let isSpacePressed = false;
 let clickCountThisSecond = 0;
 let lastClickCount = 0;
+let lastTeamLevel = 1; // Para rastrear o nível anterior do time
+let lastUpgradesState = []; // Para rastrear o estado anterior dos upgrades
 
 // Elementos DOM da tela de início
 const startScreen = document.getElementById('start-screen');
@@ -33,10 +35,16 @@ const teamBonusMessage = document.getElementById('team-bonus-message');
 const themeToggleButton = document.getElementById('theme-toggle');
 const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
 const progressPercentage = document.getElementById('progress-percentage');
-const prestigeDisplay = document.getElementById('prestige');
-const prestigeButton = document.getElementById('prestige-button');
+// const prestigeDisplay = document.getElementById('prestige'); // Comentado para remover da interface
+// const prestigeButton = document.getElementById('prestige-button'); // Comentado para remover da interface
 const activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
 const tooltip = document.getElementById('tooltip');
+
+// Criar objetos de áudio para os sons
+const levelUpSound = new Audio('/levelUp.mp3');
+levelUpSound.volume = 0.1;
+const tickSound = new Audio('/tick.mp3');
+tickSound.volume = 0.6;
 
 // Função para alternar o modo noturno
 function toggleTheme() {
@@ -143,7 +151,7 @@ function startGame() {
     startScreen.style.display = 'none';
     gameContainer.style.opacity = '1';
     initGame();
-  }, 500); // Tempo deve coincidir com a duração da transição (0.5s)
+  }, 500);
 }
 
 // Inicializar a tela de início
@@ -192,6 +200,8 @@ function initGame() {
     }
   });
 
+  // Comentado para desativar a funcionalidade de prestígio
+  /*
   prestigeButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
       showNotification('Você só pode prestigiar quando for o jogador ativo!');
@@ -199,6 +209,7 @@ function initGame() {
     }
     socket.emit('prestige');
   });
+  */
 
   activateClickFrenzyButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
@@ -227,7 +238,9 @@ function updateClicksPerSecond() {
 
 // Atualizar o estado do jogo
 socket.on('gameStateUpdate', (newState) => {
+  const oldUpgradesState = lastUpgradesState;
   gameState = newState;
+  lastUpgradesState = gameState.upgrades.map(u => ({ id: u.id, level: u.level }));
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
@@ -235,8 +248,8 @@ socket.on('gameStateUpdate', (newState) => {
     levelDisplay.textContent = ownPlayer.level;
     teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
-    prestigeDisplay.textContent = ownPlayer.prestige || 0;
-    prestigeButton.style.display = ownPlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
+    // prestigeDisplay.textContent = ownPlayer.prestige || 0; // Comentado para remover da interface
+    // prestigeButton.style.display = ownPlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none'; // Comentado para esconder o botão
     const isAnyPowerUpActive = Object.values(gameState.powerUps).some(p => p.active);
     activateClickFrenzyButton.disabled = isAnyPowerUpActive || !isOwnPlayer();
     activePlayerDisplay.textContent = ownPlayer.name;
@@ -245,17 +258,34 @@ socket.on('gameStateUpdate', (newState) => {
     levelDisplay.textContent = 1;
     teamCoinsDisplay.textContent = 0;
     clickPowerDisplay.textContent = 1;
-    prestigeDisplay.textContent = 0;
+    // prestigeDisplay.textContent = 0; // Comentado para remover da interface
     teamSharedProgressBar.style.width = '100%';
     progressPercentage.textContent = '100%';
     activePlayerDisplay.textContent = '-';
-    prestigeButton.style.display = 'none';
+    // prestigeButton.style.display = 'none'; // Comentado para esconder o botão
   }
 
   const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
   const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
   teamSharedProgressBar.style.width = `${percentage}%`;
   progressPercentage.textContent = `${percentage}%`;
+
+  // Verificar se o time subiu de nível (barra completou)
+  if (gameState.teamLevel > lastTeamLevel) {
+    levelUpSound.play();
+    lastTeamLevel = gameState.teamLevel;
+  }
+
+  // Verificar se um upgrade foi comprado
+  if (oldUpgradesState.length > 0) {
+    const upgradePurchased = gameState.upgrades.some((upgrade, index) => {
+      const oldUpgrade = oldUpgradesState.find(u => u.id === upgrade.id);
+      return oldUpgrade && upgrade.level > oldUpgrade.level;
+    });
+    if (upgradePurchased) {
+      tickSound.play();
+    }
+  }
 
   renderPlayers();
   renderContributions();

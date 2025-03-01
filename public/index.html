@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clicker Coop</title>
+  <title>Super Amigos Coop</title>
   <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,7 +11,7 @@
   <!-- Tela de Início -->
   <div class="start-screen" id="start-screen">
     <div class="start-container">
-      <h1>Bem-vindo ao Clicker Coop!</h1>
+      <h1>Bem-vindo ao Super Amigos Coop!</h1>
       <p>Digite seu nome para começar:</p>
       <input type="text" id="start-player-name" placeholder="Seu nome" class="player-input">
       <button id="start-game-button" class="buy-button">Iniciar Jogo</button>
@@ -33,7 +33,7 @@
 
       <!-- Center Column: Main Game Content -->
       <div class="center-column">
-        <h1>Clicker Coop</h1>
+        <h1>Super Amigos</h1>
         <div class="player-setup">
           <h2>Jogadores</h2>
           <div class="player-list" id="player-list"></div>
@@ -56,12 +56,12 @@
           <div class="stat-box"><h3>Cliques/s</h3><div id="target">0</div></div>
           <div class="stat-box"><h3>Moedas do Time</h3><div id="team-coins">0</div></div>
           <div class="stat-box"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
-          <div class="stat-box"><h3>Prestígio</h3><div id="prestige">0</div></div>
+          <!-- <div class="stat-box"><h3>Prestígio</h3><div id="prestige">0</div></div> --> <!-- Comentado para remover da interface -->
         </div>
         <div class="section">
           <h2>Contribuição dos Jogadores</h2>
           <div id="contribution-container"></div>
-          <button class="buy-button" id="prestige-button" style="display: none;">Prestigiar</button>
+          <!-- <button class="buy-button" id="prestige-button" style="display: none;">Prestigiar</button> --> <!-- Comentado para remover da interface -->
         </div>
         <div class="click-area" id="click-area">
           Clique aqui ou pressione "P"!
