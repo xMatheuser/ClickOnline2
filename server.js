@@ -15,8 +15,9 @@ const io = new Server(server, {
   }
 });
 
-// Servir arquivos estáticos da pasta 'public'
+// Servir arquivos estáticos da pasta 'public' e assets
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Estado global do jogo
 let gameState = {

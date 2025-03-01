@@ -42,9 +42,9 @@ const tooltip = document.getElementById('tooltip');
 const fullscreenButton = document.getElementById('fullscreen-toggle');
 
 // Criar objetos de áudio para os sons
-const levelUpSound = new Audio('/levelUp.mp3');
+const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 levelUpSound.volume = 0.1;
-const tickSound = new Audio('/tick.mp3');
+const tickSound = new Audio('/assets/sounds/tick.mp3');
 tickSound.volume = 0.6;
 
 // Função para alternar o modo noturno
