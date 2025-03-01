@@ -33,6 +33,9 @@ let gameState = {
 
 // Função para atualizar todos os clientes
 function broadcastGameState() {
+  gameState.players.forEach(player => {
+    player.clickValue = calculateClickValue(player); // Adiciona o valor calculado ao jogador
+  });
   gameState.players.sort((a, b) => b.contribution - a.contribution);
   io.emit('gameStateUpdate', gameState);
 }

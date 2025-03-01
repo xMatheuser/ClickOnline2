@@ -2,9 +2,10 @@
 const socket = io('/');
 
 // Estado local mínimo
-let activePlayerIndex = -1;
 let gameState = { players: [] };
 let isSpacePressed = false;
+let clickCountThisSecond = 0; // Contador de cliques no último segundo
+let lastClickCount = 0; // Última soma total de cliques registrada
 
 // Elementos DOM
 const clicksDisplay = document.getElementById('clicks');
@@ -21,7 +22,6 @@ const powerupNotification = document.getElementById('powerup-notification');
 const playerList = document.getElementById('player-list');
 const playerNameInput = document.getElementById('player-name');
 const addPlayerButton = document.getElementById('add-player');
-const switchPlayerButton = document.getElementById('switch-player');
 const activePlayerDisplay = document.getElementById('active-player');
 const contributionContainer = document.getElementById('contribution-container');
 const teamGoalDisplay = document.getElementById('team-goal');
@@ -70,10 +70,10 @@ function hideTooltip() {
   tooltip.style.display = 'none';
 }
 
-// Verificar se o jogador ativo é o "dono" deste cliente
+// Verificar se o jogador é o "dono" deste cliente
 function isOwnPlayer() {
-  const activePlayer = gameState.players[activePlayerIndex];
-  return activePlayer && activePlayer.id === socket.id;
+  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+  return !!ownPlayer;
 }
 
 // Função para mostrar notificação de power-up
@@ -117,11 +117,11 @@ function spawnFloatingPowerUp() {
 
 // Função para agendar o próximo aparecimento aleatório
 function scheduleNextSpawn() {
-    const minDelay = 60000; // 1 minuto em milissegundos
-    const maxDelay = 180000; // 3 minutos em milissegundos
-    const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
-    console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
-    setTimeout(spawnFloatingPowerUp, randomDelay);
+  const minDelay = 60000; // 1 min
+  const maxDelay = 180000; // 3 min
+  const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
+  console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
+  setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
 // Inicializar jogo
@@ -130,11 +130,13 @@ function initGame() {
 
   clickArea.addEventListener('click', () => {
     socket.emit('click');
+    clickCountThisSecond += 1; // Incrementa o contador de cliques locais
   });
 
   clickArea.addEventListener('touchstart', (event) => {
     event.preventDefault();
     socket.emit('click');
+    clickCountThisSecond += 1;
     clickArea.classList.add('active');
   });
 
@@ -147,6 +149,7 @@ function initGame() {
       event.preventDefault();
       isSpacePressed = true;
       socket.emit('click');
+      clickCountThisSecond += 1;
       clickArea.classList.add('active');
     }
   });
@@ -173,8 +176,6 @@ function initGame() {
     playerNameInput.value = '';
   });
 
-  switchPlayerButton.addEventListener('click', switchPlayer);
-
   prestigeButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
       showNotification('Você só pode prestigiar quando for o jogador ativo!');
@@ -190,9 +191,6 @@ function initGame() {
     }
     socket.emit('activatePowerUp');
     activateClickFrenzyButton.style.display = 'none';
-    const powerUpName = gameState.powerUps['click-frenzy'].name;
-    const powerUpDesc = gameState.powerUps['click-frenzy'].description;
-    showPowerupNotification(`${powerUpName} ativado! ${powerUpDesc} por 30 segundos!`);
     scheduleNextSpawn();
   });
 
@@ -201,35 +199,35 @@ function initGame() {
 
   // Iniciar o ciclo de spawn do power-up
   scheduleNextSpawn();
+
+  // Atualizar cliques por segundo a cada segundo
+  setInterval(updateClicksPerSecond, 1000);
+}
+
+// Função para atualizar os cliques por segundo
+function updateClicksPerSecond() {
+  const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
+  const clicksThisSecond = totalClicks - lastClickCount + clickCountThisSecond;
+  targetDisplay.textContent = clicksThisSecond.toFixed(1); // Exibe com 1 casa decimal
+  lastClickCount = totalClicks;
+  clickCountThisSecond = 0; // Reseta o contador local
 }
 
 // Atualizar o estado do jogo
 socket.on('gameStateUpdate', (newState) => {
   gameState = newState;
 
-  if (activePlayerIndex === -1 && gameState.players && gameState.players.length > 0) {
-    const ownPlayerIndex = gameState.players.findIndex(player => player.id === socket.id);
-    activePlayerIndex = ownPlayerIndex !== -1 ? ownPlayerIndex : 0;
-  }
-
-  if (gameState.players && gameState.players.length > 0 && activePlayerIndex >= 0) {
-    const activePlayer = gameState.players[activePlayerIndex];
-    if (activePlayer) {
-      clicksDisplay.textContent = Math.floor(activePlayer.clicks);
-      levelDisplay.textContent = activePlayer.level;
-      teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
-      clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
-      targetDisplay.textContent = '-';
-      prestigeDisplay.textContent = activePlayer.prestige || 0;
-      prestigeButton.style.display = activePlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
-      // Remover verificação de moedas para o power-up
-      const isPowerUpActive = gameState.powerUps['click-frenzy'].active;
-      activateClickFrenzyButton.disabled = isPowerUpActive || !isOwnPlayer();
-    }
-    const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
-    const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
-    teamSharedProgressBar.style.width = `${percentage}%`;
-    progressPercentage.textContent = `${percentage}%`;
+  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+  if (ownPlayer) {
+    clicksDisplay.textContent = Math.floor(gameState.players.reduce((sum, p) => sum + p.clicks, 0)); // Soma total dos cliques
+    levelDisplay.textContent = ownPlayer.level;
+    teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
+    clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1); // Usa o valor do servidor
+    prestigeDisplay.textContent = ownPlayer.prestige || 0;
+    prestigeButton.style.display = ownPlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
+    const isAnyPowerUpActive = Object.values(gameState.powerUps).some(p => p.active);
+    activateClickFrenzyButton.disabled = isAnyPowerUpActive || !isOwnPlayer();
+    activePlayerDisplay.textContent = ownPlayer.name;
   } else {
     clicksDisplay.textContent = 0;
     levelDisplay.textContent = 1;
@@ -241,6 +239,11 @@ socket.on('gameStateUpdate', (newState) => {
     activePlayerDisplay.textContent = '-';
     prestigeButton.style.display = 'none';
   }
+
+  const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
+  const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
+  teamSharedProgressBar.style.width = `${percentage}%`;
+  progressPercentage.textContent = `${percentage}%`;
 
   renderPlayers();
   renderContributions();
@@ -254,69 +257,19 @@ socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
 });
 
-// Função para alternar entre jogadores
-function switchPlayer() {
-  if (!gameState.players || gameState.players.length === 0) {
-    showNotification('Não há jogadores para alternar!');
-    return;
-  }
-  activePlayerIndex = (activePlayerIndex + 1) % gameState.players.length;
-  updateActivePlayer();
-  updateDisplays();
-}
-
-// Atualizar o jogador ativo
-function updateActivePlayer() {
-  const playerTags = document.querySelectorAll('.player-tag');
-  playerTags.forEach((tag, index) => {
-    tag.setAttribute('data-active', index === activePlayerIndex ? 'true' : 'false');
-  });
-  if (gameState.players && gameState.players.length > 0 && activePlayerIndex >= 0) {
-    activePlayerDisplay.textContent = gameState.players[activePlayerIndex]?.name || '-';
-  } else {
-    activePlayerDisplay.textContent = '-';
-  }
-}
-
-// Calcular o valor do clique
-function calculateClickValue(player) {
-  let clickPower = 1 * (player.prestigeMultiplier || 1);
-  if (gameState.powerUps && gameState.powerUps['click-frenzy']?.active) {
-    clickPower *= gameState.powerUps['click-frenzy'].multiplier;
-  }
-  return clickPower;
-}
-
-// Atualizar as exibições
-function updateDisplays() {
-  if (gameState.players && gameState.players.length > 0 && activePlayerIndex >= 0) {
-    const activePlayer = gameState.players[activePlayerIndex];
-    if (activePlayer) {
-      clicksDisplay.textContent = Math.floor(activePlayer.clicks);
-      levelDisplay.textContent = activePlayer.level;
-      teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
-      clickPowerDisplay.textContent = calculateClickValue(activePlayer).toFixed(1);
-      targetDisplay.textContent = '-';
-      prestigeDisplay.textContent = activePlayer.prestige || 0;
-      prestigeButton.style.display = activePlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none';
-    }
-  } else {
-    clicksDisplay.textContent = 0;
-    levelDisplay.textContent = 1;
-    teamCoinsDisplay.textContent = 0;
-    clickPowerDisplay.textContent = 1;
-    prestigeDisplay.textContent = 0;
-  }
+// Obter o valor de clique do servidor
+function getClickValue(player) {
+  return player.clickValue || 1; // Usa o valor enviado pelo servidor, default 1 se não estiver presente
 }
 
 // Renderizar a lista de jogadores
 function renderPlayers() {
   playerList.innerHTML = '';
   if (!gameState.players) return;
-  gameState.players.forEach((player, index) => {
+  gameState.players.forEach((player) => {
     const playerTag = document.createElement('div');
     playerTag.className = 'player-tag';
-    playerTag.setAttribute('data-active', index === activePlayerIndex ? 'true' : 'false');
+    playerTag.setAttribute('data-active', player.id === socket.id ? 'true' : 'false');
     const initials = player.name.slice(0, 2).toUpperCase();
     playerTag.innerHTML = `
       <div class="player-avatar" style="background-color: #007bff">${initials}</div>
@@ -388,10 +341,10 @@ function getUpgradeEffectDescription(upgrade) {
 // Renderizar os upgrades com tooltips
 function renderUpgrades() {
   upgradesContainer.innerHTML = '';
-  if (!gameState.upgrades || !gameState.players || activePlayerIndex < 0) return;
+  if (!gameState.upgrades || !gameState.players) return;
 
-  const activePlayer = gameState.players[activePlayerIndex];
-  if (!activePlayer) return;
+  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+  if (!ownPlayer) return;
 
   const allTier1MaxedOut = gameState.upgrades
     .filter(upgrade => upgrade.tier === 1)
@@ -429,6 +382,8 @@ function renderUpgrades() {
     const buyButton = upgradeElement.querySelector('.buy-button');
     buyButton.addEventListener('click', () => {
       if (!isOwnPlayer()) {
+        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
+        return;
       }
       console.log(`[Client] Tentando comprar ${upgrade.name}. Moedas do time: ${gameState.teamCoins}, Preço: ${price}, Pode comprar? ${canAfford}`);
       socket.emit('buyUpgrade', upgrade.id);
