@@ -24,7 +24,6 @@ app.use('/assets', express.static(path.join(__dirname, 'main/assets')));
 let gameState = {
   players: [],
   teamLevel: 1,
-  teamGoal: 5,
   teamClicksRemaining: 100,
   clicks: 0,
   teamCoins: 0, // Moedas unificadas do time
@@ -106,7 +105,7 @@ io.on('connection', (socket) => {
       console.log(`[Clique] Jogador: ${player.name}, Valor do clique: ${clickValue}, Cliques totais: ${player.clicks}, Contribuição: ${player.contribution}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
 
       if (gameState.teamClicksRemaining <= 0) {
-        console.log('[Equipe] Objetivo da equipe atingido! Subindo nível de todos os jogadores.');
+        console.log('[Equipe] Nível da equipe aumentado!');
         levelUpTeam();
       }
       broadcastGameState();
@@ -251,7 +250,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Selecionar um power-up aleatório que não esteja ativo
     const availablePowerUps = Object.entries(gameState.powerUps)
       .filter(([_, powerUp]) => !powerUp.active)
       .map(([id, powerUp]) => ({ id, ...powerUp }));
@@ -282,7 +280,6 @@ io.on('connection', (socket) => {
     }, powerUp.duration);
   });
 
-  // Manipulador para compra de upgrades de prestígio
   socket.on('buyPrestigeUpgrade', (upgradeId) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (!player) {
@@ -360,17 +357,10 @@ function levelUpTeam() {
   
   gameState.players.forEach(player => {
     player.level++;
-    const coinsAwarded = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost'); // Aplicar boost de moedas
+    const coinsAwarded = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost');
     gameState.teamCoins += coinsAwarded;
     console.log(`[Level Up] Jogador: ${player.name} subiu para nível ${player.level}. Time ganhou ${coinsAwarded} moedas.`);
   });
-
-  const highestLevel = gameState.players.reduce((max, p) => Math.max(max, p.level), 0);
-  console.log(`[Progresso Equipe] Nível mais alto: ${highestLevel}, Objetivo atual: ${gameState.teamGoal}`);
-  if (highestLevel === gameState.teamGoal) {
-    gameState.teamGoal++;
-    console.log(`[Objetivo Equipe] Novo objetivo: Nível ${gameState.teamGoal}`);
-  }
 
   gameState.teamClicksRemaining = 100 * gameState.teamLevel;
 
@@ -406,7 +396,7 @@ setInterval(() => {
       console.log(`[Auto-Clicker] Jogador: ${player.name}, Cliques automáticos: ${clickValue}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
 
       if (gameState.teamClicksRemaining <= 0) {
-        console.log('[Auto-Clicker] Objetivo da equipe atingido! Subindo nível de todos os jogadores.');
+        console.log('[Auto-Clicker] Nível da equipe aumentado!');
         levelUpTeam();
       }
     });

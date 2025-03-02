@@ -337,7 +337,6 @@ socket.on('gameStateUpdate', (newState) => {
     levelDisplay.textContent = 1;
     teamCoinsDisplay.textContent = 0;
     clickPowerDisplay.textContent = 1;
-    // prestigeDisplay.textContent = 0; // Comentado para remover da interface
     teamSharedProgressBar.style.width = '100%';
     progressPercentage.textContent = '100%';
     activePlayerDisplay.textContent = '-';
@@ -370,7 +369,7 @@ socket.on('gameStateUpdate', (newState) => {
   renderContributions();
   renderUpgrades();
   renderAchievements();
-  teamGoalDisplay.textContent = gameState.teamGoal;
+  teamGoalDisplay.textContent = gameState.teamLevel; // Exibe apenas o teamLevel
 
   if (prestigeOverlay.classList.contains('active')) {
     updatePrestigeUI();
