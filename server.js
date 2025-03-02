@@ -179,7 +179,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (player.level >= 25) {
+    if (player.level >= 2) {
       player.prestige = (player.prestige || 0) + 1;
       player.prestigeMultiplier = 1 + player.prestige * 0.1;
       player.clicks = 0;
@@ -280,6 +280,48 @@ io.on('connection', (socket) => {
       console.log(`[Power-Up] ${powerUp.name} expirou`);
       broadcastGameState();
     }, powerUp.duration);
+  });
+
+  // Manipulador para compra de upgrades de prestígio
+  socket.on('buyPrestigeUpgrade', (upgradeId) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) {
+      console.log('[Erro] Jogador não encontrado para compra de upgrade de prestígio:', socket.id);
+      socket.emit('notification', 'Jogador não encontrado!');
+      return;
+    }
+
+    if (!isActivePlayer(socket.id, player.id)) {
+      console.log(`[Erro] ${player.name} não é o jogador ativo para este cliente`);
+      socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
+      return;
+    }
+
+    const upgrade = gameState.prestigeUpgrades.find(u => u.id === upgradeId);
+    if (!upgrade) {
+      console.log(`[Erro] Upgrade de prestígio ${upgradeId} não encontrado`);
+      socket.emit('notification', 'Upgrade não encontrado!');
+      return;
+    }
+
+    let price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
+    console.log(`[Upgrade de Prestígio] Jogador: ${player.name} tentando comprar ${upgrade.name} nível ${upgrade.level + 1} por ${price} fragmentos. Fragmentos disponíveis: ${gameState.fragments}`);
+
+    if (gameState.fragments >= price && upgrade.level < upgrade.maxLevel) {
+      gameState.fragments -= price;
+      upgrade.level++;
+      console.log(`[Upgrade de Prestígio] Compra bem-sucedida: ${upgrade.name} agora é nível ${upgrade.level}`);
+      broadcastGameState();
+      socket.emit('notification', `Upgrade ${upgrade.name} comprado! Agora é nível ${upgrade.level}`);
+    } else {
+      if (gameState.fragments < price) {
+        console.log(`[Erro] Fragmentos insuficientes: ${gameState.fragments}/${price}`);
+        socket.emit('notification', `Fragmentos insuficientes! Necessário: ${price}, Disponível: ${gameState.fragments}`);
+      } else if (upgrade.level >= upgrade.maxLevel) {
+        console.log(`[Erro] Upgrade ${upgrade.name} já está no nível máximo`);
+        socket.emit('notification', `${upgrade.name} já está no nível máximo!`);
+      }
+    }
   });
 
   socket.on('disconnect', () => {

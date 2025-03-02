@@ -226,16 +226,19 @@ function initGame() {
     }
   });
 
-  // Comentado para desativar a funcionalidade de prestígio
-  /*
-  prestigeButton.addEventListener('click', () => {
+  // Adicionar evento ao botão de prestígio
+  document.getElementById('prestige-button').addEventListener('click', () => {
     if (!isOwnPlayer()) {
       showNotification('Você só pode prestigiar quando for o jogador ativo!');
       return;
     }
+    const player = gameState.players.find(player => player.id === socket.id);
+    if (player && player.level < 2) {
+      showNotification('Você precisa estar pelo menos no nível 25 para prestigiar!');
+      return;
+    }
     socket.emit('prestige');
   });
-  */
 
   activateClickFrenzyButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
@@ -577,6 +580,45 @@ function renderPrestigeUpgrades() {
   if (!gameState?.prestigeUpgrades) return;
 
   gameState.prestigeUpgrades.forEach(upgrade => {
-    // ... existing prestige upgrade rendering code ...
+    const price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
+    const canAfford = (gameState.fragments || 0) >= price;
+    const maxedOut = upgrade.level >= upgrade.maxLevel;
+    const canBuy = canAfford && !maxedOut && isOwnPlayer();
+
+    const upgradeElement = document.createElement('div');
+    upgradeElement.className = `upgrade-item ${(!canBuy) ? 'disabled' : ''}`;
+    const tooltipText = `${upgrade.description} (Efeito: x${(upgrade.effect(upgrade.level + 1)).toFixed(1)} no próximo nível)`;
+    upgradeElement.setAttribute('data-tooltip', tooltipText);
+    upgradeElement.innerHTML = `
+      <div class="upgrade-info">
+        <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
+        <div>${upgrade.description}</div>
+      </div>
+      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : price + ' 🔮'}</button>
+    `;
+
+    const buyButton = upgradeElement.querySelector('.buy-button');
+    buyButton.addEventListener('click', () => {
+      if (!isOwnPlayer()) {
+        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
+        return;
+      }
+      socket.emit('buyPrestigeUpgrade', upgrade.id);
+    });
+    buyButton.addEventListener('touchstart', (event) => {
+      event.preventDefault();
+      if (!isOwnPlayer()) {
+        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
+        return;
+      }
+      socket.emit('buyPrestigeUpgrade', upgrade.id);
+    });
+
+    upgradeElement.addEventListener('mousemove', (event) => {
+      showTooltip(event, tooltipText);
+    });
+    upgradeElement.addEventListener('mouseleave', hideTooltip);
+
+    container.appendChild(upgradeElement);
   });
 }
