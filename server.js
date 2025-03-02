@@ -16,17 +16,17 @@ const io = new Server(server, {
   }
 });
 
-// Update static file paths to use main directory
 app.use(express.static(path.join(__dirname, 'main/public')));
 app.use('/assets', express.static(path.join(__dirname, 'main/assets')));
 
-// Estado global do jogo
+// console.log('[Debug] Prestige Upgrades inicializados:', prestigeUpgrades);
+
 let gameState = {
   players: [],
   teamLevel: 1,
   teamClicksRemaining: 100,
   clicks: 0,
-  teamCoins: 0, // Moedas unificadas do time
+  teamCoins: 0,
   upgrades: upgrades,
   achievements: achievements,
   powerUps: powerUps,
@@ -34,22 +34,32 @@ let gameState = {
   prestigeUpgrades: prestigeUpgrades
 };
 
-// Função para atualizar todos os clientes
-function broadcastGameState() {
-  gameState.players.forEach(player => {
-    player.clickValue = calculateClickValue(player); // Adiciona o valor calculado ao jogador
-  });
-  gameState.players.sort((a, b) => b.contribution - a.contribution);
-  io.emit('gameStateUpdate', gameState);
+// Função para preparar gameState para envio, removendo funções
+function prepareGameStateForBroadcast(state) {
+  const preparedState = JSON.parse(JSON.stringify(state, (key, value) => {
+    if (typeof value === 'function') {
+      return undefined; // Remove funções do objeto
+    }
+    return value;
+  }));
+  return preparedState;
 }
 
-// Função para verificar conquistas
+function broadcastGameState() {
+  gameState.players.forEach(player => {
+    player.clickValue = calculateClickValue(player);
+  });
+  gameState.players.sort((a, b) => b.contribution - a.contribution);
+  const preparedState = prepareGameStateForBroadcast(gameState);
+  io.emit('gameStateUpdate', preparedState);
+}
+
 function checkAchievements() {
   let newUnlocks = false;
   gameState.achievements.forEach(achievement => {
     if (!achievement.unlocked && achievement.requirement(gameState)) {
       achievement.unlocked = true;
-      gameState.teamCoins += achievement.reward; // Adicionar ao teamCoins
+      gameState.teamCoins += achievement.reward;
       console.log(`[Conquista] ${achievement.name} desbloqueada. Recompensa: ${achievement.reward} moedas`);
       newUnlocks = true;
     }
@@ -59,18 +69,18 @@ function checkAchievements() {
   }
 }
 
-// Verificar se o jogador é o ativo no cliente que enviou o pedido
 function isActivePlayer(socketId, playerId) {
   return socketId === playerId;
 }
 
 io.on('connection', (socket) => {
   console.log('[Conexão] Novo jogador conectado:', socket.id);
-  socket.emit('gameStateUpdate', gameState);
+  const preparedState = prepareGameStateForBroadcast(gameState);
+  socket.emit('gameStateUpdate', preparedState);
 
   socket.on('addPlayer', (playerData) => {
     if (gameState.players.length >= 3) {
-      socket.emit('gameStateUpdate', gameState);
+      socket.emit('gameStateUpdate', prepareGameStateForBroadcast(gameState));
       socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
       console.log(`[Erro] Tentativa de adicionar jogador falhou: Limite de 3 jogadores atingido`);
       return;
@@ -184,17 +194,17 @@ io.on('connection', (socket) => {
       player.clicks = 0;
       player.level = 1;
       player.contribution = 0;
-      gameState.teamCoins = 0; // Resetar moedas do time no prestígio
+      gameState.teamCoins = 0;
       gameState.upgrades.forEach(u => u.level = 0);
       io.to(player.id).emit('notification', `Prestígio ativado! Multiplicador: x${player.prestigeMultiplier.toFixed(1)}`);
       console.log(`[Prestígio] ${player.name} ativou prestígio ${player.prestige}`);
-      broadcastGameState();
     }
 
-    const fragmentsToGain = Math.floor(Math.sqrt(player.level) * 2);
+    const fragmentMultiplier = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.effect(gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.level) || 1;
+    const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
+    const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier);
     gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
     
-    // Reset player progress
     player.level = 1;
     player.clicks = 0;
     player.contribution = 0;
@@ -383,7 +393,6 @@ function getUpgradeEffect(upgradeId) {
   return upgrade.effect(upgrade.level);
 }
 
-// Iniciar timer do auto-clicker
 setInterval(() => {
   const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
   if (autoClickerUpgrade && autoClickerUpgrade.level > 0) {
@@ -405,10 +414,8 @@ setInterval(() => {
   }
 }, 1000);
 
-// Verificar conquistas periodicamente
 setInterval(checkAchievements, 2000);
 
-// Configurar porta para o Render
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
   console.log(`[Inicialização] Servidor rodando na porta ${port}`);

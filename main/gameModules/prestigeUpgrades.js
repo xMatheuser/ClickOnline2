@@ -8,8 +8,7 @@ const prestigeUpgrades = [
         maxLevel: 10,
         effect: level => 1 + level * 0.2,
         priceIncrease: 2
-    },
-    // ...other prestige upgrades...
+    }
 ];
 
 module.exports = prestigeUpgrades;

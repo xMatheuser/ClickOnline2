@@ -1,22 +1,33 @@
-// Conectar ao servidor
 const socket = io('/');
 
-// Estado local mínimo
 let gameState = { players: [] };
 let isSpacePressed = false;
 let clickCountThisSecond = 0;
 let lastClickCount = 0;
-let lastTeamLevel = 1; // Para rastrear o nível anterior do time
-let lastUpgradesState = []; // Para rastrear o estado anterior dos upgrades
+let lastTeamLevel = 1;
+let lastUpgradesState = [];
+let userHasInteracted = false;
 
-// Elementos DOM da tela de início
+// Estrutura dos prestigeUpgrades no cliente para restaurar funções
+const prestigeUpgradesTemplate = {
+  'fragment-multiplier': {
+    id: 'fragment-multiplier',
+    name: 'Multiplicador de Fragmentos',
+    description: 'Aumenta a quantidade de fragmentos ganhos ao prestigiar',
+    basePrice: 5,
+    level: 0,
+    maxLevel: 10,
+    effect: level => 1 + level * 0.2,
+    priceIncrease: 2
+  }
+};
+
 const startScreen = document.getElementById('start-screen');
 const startPlayerNameInput = document.getElementById('start-player-name');
 const startGameButton = document.getElementById('start-game-button');
 const startError = document.getElementById('start-error');
 const gameContainer = document.getElementById('game-container');
 
-// Elementos DOM do jogo
 const clicksDisplay = document.getElementById('clicks');
 const levelDisplay = document.getElementById('level');
 const targetDisplay = document.getElementById('target');
@@ -35,8 +46,6 @@ const teamBonusMessage = document.getElementById('team-bonus-message');
 const themeToggleButton = document.getElementById('theme-toggle');
 const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
 const progressPercentage = document.getElementById('progress-percentage');
-// const prestigeDisplay = document.getElementById('prestige'); // Comentado para remover da interface
-// const prestigeButton = document.getElementById('prestige-button'); // Comentado para remover da interface
 const activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
 const tooltip = document.getElementById('tooltip');
 const fullscreenButton = document.getElementById('fullscreen-toggle');
@@ -45,16 +54,13 @@ const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
 const closePrestigeBtn = document.getElementById('close-prestige');
 
-// Criar objetos de áudio para os sons
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 levelUpSound.volume = 0.1;
 const tickSound = new Audio('/assets/sounds/tick.mp3');
 tickSound.volume = 0.6;
 
-// Adicionar variável de estado para mute
 let isMuted = localStorage.getItem('isMuted') === 'true';
 
-// Função para alternar o modo noturno
 function toggleTheme() {
   document.body.classList.toggle('dark-mode');
   const isDarkMode = document.body.classList.contains('dark-mode');
@@ -62,7 +68,6 @@ function toggleTheme() {
   localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
 }
 
-// Carregar tema salvo no localStorage
 function loadTheme() {
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'dark') {
@@ -73,27 +78,21 @@ function loadTheme() {
   }
 }
 
-// Adicionar evento ao botão de alternância de tema
 themeToggleButton.addEventListener('click', toggleTheme);
 
-// Função para alternar mute
 function toggleMute() {
   isMuted = !isMuted;
   localStorage.setItem('isMuted', isMuted);
   updateMuteButton();
-  
-  // Atualizar volume de todos os sons
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
 }
 
-// Função para atualizar o ícone do botão mute
 function updateMuteButton() {
   const icon = muteButton.querySelector('.mute-icon');
   icon.textContent = isMuted ? '🔇' : '🔊';
 }
 
-// Função para mostrar tooltip
 function showTooltip(event, text) {
   tooltip.textContent = text;
   tooltip.style.display = 'block';
@@ -101,18 +100,15 @@ function showTooltip(event, text) {
   tooltip.style.top = `${event.pageY + 10}px`;
 }
 
-// Função para esconder tooltip
 function hideTooltip() {
   tooltip.style.display = 'none';
 }
 
-// Verificar se o jogador é o "dono" deste cliente
 function isOwnPlayer() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   return !!ownPlayer;
 }
 
-// Função para mostrar notificação de power-up
 function showPowerupNotification(powerUpInfo) {
   powerupNotification.textContent = `${powerUpInfo.name} ativado! ${powerUpInfo.description} por ${powerUpInfo.duration/1000} segundos!`;
   powerupNotification.style.backgroundColor = powerUpInfo.color;
@@ -120,7 +116,6 @@ function showPowerupNotification(powerUpInfo) {
   setTimeout(() => powerupNotification.classList.remove('show'), 10000);
 }
 
-// Função para posicionar o botão flutuante aleatoriamente
 function spawnFloatingPowerUp() {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -149,16 +144,14 @@ function spawnFloatingPowerUp() {
   }, 5000);
 }
 
-// Função para agendar o próximo aparecimento aleatório
 function scheduleNextSpawn() {
-  const minDelay = 60000; // 1 min
-  const maxDelay = 180000; // 3 min
+  const minDelay = 60000;
+  const maxDelay = 180000;
   const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
   console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
   setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
-// Função para iniciar o jogo
 function startGame() {
   const playerName = startPlayerNameInput.value.trim();
   if (playerName === '') {
@@ -167,38 +160,40 @@ function startGame() {
   }
   socket.emit('addPlayer', { name: playerName });
   
-  // Iniciar transição suave
   startScreen.style.opacity = '0';
   gameContainer.style.display = 'block';
   
-  // Após o fade out da tela de início, escondê-la, completar o fade in do jogo e mostrar a top-bar
   setTimeout(() => {
     startScreen.style.display = 'none';
     gameContainer.style.opacity = '1';
-    document.querySelector('.top-bar').classList.add('visible'); // Mostrar a barra superior
+    document.querySelector('.top-bar').classList.add('visible');
     initGame();
   }, 500);
 }
 
-// Inicializar a tela de início
 function initStartScreen() {
   loadTheme();
-  startGameButton.addEventListener('click', startGame);
+  startGameButton.addEventListener('click', () => {
+    userHasInteracted = true;
+    startGame();
+  });
   startPlayerNameInput.addEventListener('keypress', (event) => {
     if (event.key === 'Enter') {
+      userHasInteracted = true;
       startGame();
     }
   });
 }
 
-// Inicializar o jogo principal
 function initGame() {
   clickArea.addEventListener('click', () => {
+    userHasInteracted = true;
     socket.emit('click');
     clickCountThisSecond += 1;
   });
 
   clickArea.addEventListener('touchstart', (event) => {
+    userHasInteracted = true;
     event.preventDefault();
     socket.emit('click');
     clickCountThisSecond += 1;
@@ -211,6 +206,7 @@ function initGame() {
 
   document.addEventListener('keydown', (event) => {
     if (event.code === 'KeyP' && !isSpacePressed) {
+      userHasInteracted = true;
       event.preventDefault();
       isSpacePressed = true;
       socket.emit('click');
@@ -226,21 +222,22 @@ function initGame() {
     }
   });
 
-  // Adicionar evento ao botão de prestígio
   document.getElementById('prestige-button').addEventListener('click', () => {
+    userHasInteracted = true;
     if (!isOwnPlayer()) {
       showNotification('Você só pode prestigiar quando for o jogador ativo!');
       return;
     }
     const player = gameState.players.find(player => player.id === socket.id);
     if (player && player.level < 2) {
-      showNotification('Você precisa estar pelo menos no nível 25 para prestigiar!');
+      showNotification('Você precisa estar pelo menos no nível 2 para prestigiar!');
       return;
     }
     socket.emit('prestige');
   });
 
   activateClickFrenzyButton.addEventListener('click', () => {
+    userHasInteracted = true;
     if (!isOwnPlayer()) {
       showNotification('Você só pode ativar power-ups quando for o jogador ativo!');
       return;
@@ -261,17 +258,18 @@ function initGame() {
   muteButton.addEventListener('click', toggleMute);
   updateMuteButton();
 
-  // Aplicar estado inicial do mute
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
 
   renderUpgrades();
   renderAchievements();
+  renderPrestigeUpgrades();
   scheduleNextSpawn();
   setInterval(updateClicksPerSecond, 1000);
 
-  // Prestige popup controls
   openPrestigeBtn.addEventListener('click', () => {
+    userHasInteracted = true;
+    console.log('[Debug] Abrindo popup de prestígio');
     prestigeOverlay.classList.add('active');
     updatePrestigeUI();
   });
@@ -280,18 +278,13 @@ function initGame() {
     prestigeOverlay.classList.remove('active');
   });
 
-  // Close on outside click
   prestigeOverlay.addEventListener('click', (e) => {
     if (e.target === prestigeOverlay) {
       prestigeOverlay.classList.remove('active');
     }
   });
-
-  // Initialize prestige upgrades
-  renderPrestigeUpgrades();
 }
 
-// Função para alternar o modo de tela cheia
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(err => {
@@ -306,7 +299,6 @@ function toggleFullscreen() {
   }
 }
 
-// Função para atualizar os cliques por segundo
 function updateClicksPerSecond() {
   const totalClicks = gameState.players.reduce((sum, player) => sum + player.clicks, 0);
   const clicksThisSecond = totalClicks - lastClickCount + clickCountThisSecond;
@@ -315,11 +307,23 @@ function updateClicksPerSecond() {
   clickCountThisSecond = 0;
 }
 
-// Atualizar o estado do jogo
 socket.on('gameStateUpdate', (newState) => {
   const oldUpgradesState = lastUpgradesState;
   gameState = newState;
   lastUpgradesState = gameState.upgrades.map(u => ({ id: u.id, level: u.level }));
+
+  // Restaurar funções effect nos prestigeUpgrades
+  if (gameState.prestigeUpgrades && Array.isArray(gameState.prestigeUpgrades)) {
+    gameState.prestigeUpgrades = gameState.prestigeUpgrades.map(upgrade => {
+      if (prestigeUpgradesTemplate[upgrade.id]) {
+        return {
+          ...upgrade,
+          effect: prestigeUpgradesTemplate[upgrade.id].effect
+        };
+      }
+      return upgrade;
+    });
+  }
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
@@ -327,8 +331,6 @@ socket.on('gameStateUpdate', (newState) => {
     levelDisplay.textContent = ownPlayer.level;
     teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
-    // prestigeDisplay.textContent = ownPlayer.prestige || 0; // Comentado para remover da interface
-    // prestigeButton.style.display = ownPlayer.level >= 25 && isOwnPlayer() ? 'block' : 'none'; // Comentado para esconder o botão
     const isAnyPowerUpActive = Object.values(gameState.powerUps).some(p => p.active);
     activateClickFrenzyButton.disabled = isAnyPowerUpActive || !isOwnPlayer();
     activePlayerDisplay.textContent = ownPlayer.name;
@@ -340,7 +342,6 @@ socket.on('gameStateUpdate', (newState) => {
     teamSharedProgressBar.style.width = '100%';
     progressPercentage.textContent = '100%';
     activePlayerDisplay.textContent = '-';
-    // prestigeButton.style.display = 'none'; // Comentado para esconder o botão
   }
 
   const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
@@ -348,20 +349,18 @@ socket.on('gameStateUpdate', (newState) => {
   teamSharedProgressBar.style.width = `${percentage}%`;
   progressPercentage.textContent = `${percentage}%`;
 
-  // Verificar se o time subiu de nível (barra completou)
   if (gameState.teamLevel > lastTeamLevel) {
-    levelUpSound.play();
+    if (userHasInteracted) levelUpSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar levelUpSound:', err));
     lastTeamLevel = gameState.teamLevel;
   }
 
-  // Verificar se um upgrade foi comprado
   if (oldUpgradesState.length > 0) {
     const upgradePurchased = gameState.upgrades.some((upgrade, index) => {
       const oldUpgrade = oldUpgradesState.find(u => u.id === upgrade.id);
       return oldUpgrade && upgrade.level > oldUpgrade.level;
     });
-    if (upgradePurchased) {
-      tickSound.play();
+    if (upgradePurchased && userHasInteracted) {
+      tickSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar tickSound:', err));
     }
   }
 
@@ -369,7 +368,7 @@ socket.on('gameStateUpdate', (newState) => {
   renderContributions();
   renderUpgrades();
   renderAchievements();
-  teamGoalDisplay.textContent = gameState.teamLevel; // Exibe apenas o teamLevel
+  teamGoalDisplay.textContent = gameState.teamLevel;
 
   if (prestigeOverlay.classList.contains('active')) {
     updatePrestigeUI();
@@ -380,12 +379,10 @@ socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
 });
 
-// Obter o valor de clique do servidor
 function getClickValue(player) {
   return player.clickValue || 1;
 }
 
-// Renderizar a lista de jogadores
 function renderPlayers() {
   playerList.innerHTML = '';
   if (!gameState.players) return;
@@ -402,7 +399,6 @@ function renderPlayers() {
   });
 }
 
-// Renderizar as contribuições dos jogadores com leaderboard
 function renderContributions() {
   contributionContainer.innerHTML = '<h3>Ranking de Contribuição</h3>';
   if (!gameState.players || gameState.players.length === 0) {
@@ -435,12 +431,10 @@ function renderContributions() {
   });
 }
 
-// Calcular o preço do upgrade
 function calculateUpgradePrice(upgrade) {
   return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
 }
 
-// Calcular o efeito do upgrade para tooltip
 function getUpgradeEffectDescription(upgrade) {
   switch (upgrade.id) {
     case 'click-power':
@@ -461,7 +455,6 @@ function getUpgradeEffectDescription(upgrade) {
   }
 }
 
-// Renderizar os upgrades com tooltips
 function renderUpgrades() {
   upgradesContainer.innerHTML = '';
   if (!gameState.upgrades || !gameState.players) return;
@@ -530,7 +523,6 @@ function renderUpgrades() {
   });
 }
 
-// Renderizar as conquistas
 function renderAchievements() {
   achievementsContainer.innerHTML = '';
   if (!gameState.achievements) return;
@@ -549,17 +541,16 @@ function renderAchievements() {
   });
 }
 
-// Mostrar notificação
 function showNotification(message) {
   notification.textContent = message;
   notification.classList.add('show');
   setTimeout(() => notification.classList.remove('show'), 3000);
 }
 
-// Inicializar a tela de início
 initStartScreen();
 
 function updatePrestigeUI() {
+  console.log('[Debug] Atualizando UI de prestígio');
   document.getElementById('fragments-count').textContent = gameState?.fragments || 0;
   document.getElementById('potential-fragments').textContent = calculatePrestigeReward();
   renderPrestigeUpgrades();
@@ -568,17 +559,36 @@ function updatePrestigeUI() {
 function calculatePrestigeReward() {
   const player = gameState.players.find(p => p.id === socket.id);
   if (!player) return 0;
-  return Math.floor(Math.sqrt(player.level) * 2);
+
+  // Aplicar o multiplicador de fragmentos ao calcular a recompensa
+  const fragmentMultiplierUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier');
+  const fragmentMultiplier = fragmentMultiplierUpgrade && typeof fragmentMultiplierUpgrade.effect === 'function'
+    ? fragmentMultiplierUpgrade.effect(fragmentMultiplierUpgrade.level)
+    : 1;
+  const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
+  return Math.floor(baseFragments * fragmentMultiplier);
 }
 
 function renderPrestigeUpgrades() {
   const container = document.getElementById('prestige-upgrades-container');
+  console.log('[Debug] Container encontrado:', container);
   if (!container) return;
-  
+
+  console.log('[Debug] Prestige Upgrades:', gameState?.prestigeUpgrades);
   container.innerHTML = '';
-  if (!gameState?.prestigeUpgrades) return;
+  if (!gameState?.prestigeUpgrades || gameState.prestigeUpgrades.length === 0) {
+    console.log('[Debug] Nenhum prestigeUpgrades encontrado em gameState');
+    container.innerHTML = '<p>Nenhum upgrade de prestígio disponível.</p>';
+    return;
+  }
 
   gameState.prestigeUpgrades.forEach(upgrade => {
+    console.log('[Debug] Renderizando upgrade:', upgrade);
+    if (!upgrade || !upgrade.id || !upgrade.name || !upgrade.description || !upgrade.basePrice || typeof upgrade.level === 'undefined' || !upgrade.maxLevel || !upgrade.priceIncrease) {
+      console.error('[Error] Upgrade de prestígio inválido:', upgrade);
+      return;
+    }
+
     const price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
     const canAfford = (gameState.fragments || 0) >= price;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
@@ -586,7 +596,8 @@ function renderPrestigeUpgrades() {
 
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${(!canBuy) ? 'disabled' : ''}`;
-    const tooltipText = `${upgrade.description} (Efeito: x${(upgrade.effect(upgrade.level + 1)).toFixed(1)} no próximo nível)`;
+    const effectValue = typeof upgrade.effect === 'function' ? upgrade.effect(upgrade.level + 1) : 1;
+    const tooltipText = `${upgrade.description} (Efeito: x${effectValue.toFixed(1)} no próximo nível)`;
     upgradeElement.setAttribute('data-tooltip', tooltipText);
     upgradeElement.innerHTML = `
       <div class="upgrade-info">
