@@ -26,7 +26,7 @@ let gameState = {
   teamLevel: 1,
   teamClicksRemaining: 100,
   clicks: 0,
-  teamCoins: 1000000,
+  teamCoins: 0,
   upgrades: upgrades,
   achievements: achievements,
   powerUps: powerUps,
