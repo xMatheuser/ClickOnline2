@@ -144,7 +144,7 @@ io.on('connection', (socket) => {
     const totalOfflineClicks = manualOfflineClicks + autoOfflineClicks;
     
     if (totalOfflineClicks > 0) {
-      console.log(`[Progresso Offline] Calculando ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks} automáticos) em ${timeDiff.toFixed(0)} segundos`);
+      console.log(`[Progresso Offline] Calculando ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks}) em ${timeDiff.toFixed(0)} segundos`);
       
       const progress = applyOfflineClicks(totalOfflineClicks);
       gameState.clicks += totalOfflineClicks;
@@ -276,30 +276,37 @@ io.on('connection', (socket) => {
     }
 
     if (player.level >= 2) {
+      // Calcular fragmentos antes de resetar
+      const fragmentMultiplier = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.effect(gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.level) || 1;
+      const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
+      const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier);
+      
+      // Atualizar prestígio do jogador
       player.prestige = (player.prestige || 0) + 1;
       player.prestigeMultiplier = 1 + player.prestige * 0.1;
+      
+      // Resetar estado do jogador
       player.clicks = 0;
       player.level = 1;
       player.contribution = 0;
+      
+      // Resetar estado do time
       gameState.teamCoins = 0;
+      gameState.teamLevel = 1; // Reset explícito do teamLevel
+      gameState.levelProgressRemaining = 100; // Reset do progresso para o valor inicial
       gameState.upgrades.forEach(u => u.level = 0);
-      io.to(player.id).emit('notification', `Prestígio ativado! Multiplicador: x${player.prestigeMultiplier.toFixed(1)}`);
-      console.log(`[Prestígio] ${player.name} ativou prestígio ${player.prestige}`);
+      
+      // Adicionar fragmentos ganhos
+      gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
+      
+      // Notificar jogador
+      io.to(player.id).emit('notification', `Prestígio ativado!\nMultiplicador: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
+      console.log(`[Prestígio] ${player.name} ativou prestígio ${player.prestige}. Team Level resetado para 1.`);
+      
+      broadcastGameState();
+    } else {
+      socket.emit('notification', 'Você precisa estar pelo menos no nível 2 para prestigiar!');
     }
-
-    const fragmentMultiplier = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.effect(gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.level) || 1;
-    const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
-    const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier);
-    gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
-    
-    player.level = 1;
-    player.clicks = 0;
-    player.contribution = 0;
-    gameState.teamCoins = 0;
-    gameState.upgrades.forEach(u => u.level = 0);
-    
-    socket.emit('notification', `Prestígio realizado! Ganhou ${fragmentsToGain} fragmentos!`);
-    broadcastGameState();
   });
 
   socket.on('activatePowerUp', (powerUpId) => {
@@ -474,6 +481,7 @@ function levelUpTeam() {
     console.log(`[Level Up] Jogador: ${player.name} subiu para nível ${player.level}. Time ganhou ${coinsAwarded} moedas.`);
   });
 
+  // Garantir que o progresso necessário está correto após level up
   gameState.levelProgressRemaining = 100 * gameState.teamLevel;
 
   const teamBonus = gameState.teamLevel * 10;
