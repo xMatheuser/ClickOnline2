@@ -61,7 +61,12 @@
     <div class="main-layout">
       <div class="left-column">
         <div class="section">
-          <h2>Upgrades</h2>
+          <div class="section-header">
+            <h2>Upgrades</h2>
+            <button id="show-history" class="history-button" title="Ver Histórico de Upgrades">
+              📜
+            </button>
+          </div>
           <div id="upgrades-container"></div>
         </div>
       </div>
@@ -109,6 +114,20 @@
   <div class="notification" id="notification"></div>
   <div class="powerup-notification" id="powerup-notification"></div>
   <div class="tooltip" id="tooltip"></div>
+
+  <!-- Add History Overlay -->
+  <div class="history-overlay" id="history-overlay">
+    <div class="history-popup">
+      <div class="history-header">
+        <h2>Histórico de Upgrades</h2>
+        <button class="close-history" id="close-history">×</button>
+      </div>
+      <div class="history-content">
+        <div id="history-container"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>

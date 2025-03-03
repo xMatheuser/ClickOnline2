@@ -7,6 +7,10 @@ let lastClickCount = 0;
 let lastTeamLevel = 1;
 let lastUpgradesState = [];
 let userHasInteracted = false;
+let upgradeHistory = {
+  tier1: [],
+  tier2: []
+};
 
 // Estrutura dos prestigeUpgrades no cliente para restaurar funções
 const prestigeUpgradesTemplate = {
@@ -310,6 +314,25 @@ function initGame() {
       prestigeOverlay.classList.remove('active');
     }
   });
+
+  const showHistoryBtn = document.getElementById('show-history');
+  const historyOverlay = document.getElementById('history-overlay');
+  const closeHistoryBtn = document.getElementById('close-history');
+
+  showHistoryBtn.addEventListener('click', () => {
+    historyOverlay.classList.add('active');
+    renderUpgradeHistory();
+  });
+
+  closeHistoryBtn.addEventListener('click', () => {
+    historyOverlay.classList.remove('active');
+  });
+
+  historyOverlay.addEventListener('click', (e) => {
+    if (e.target === historyOverlay) {
+      historyOverlay.classList.remove('active');
+    }
+  });
 }
 
 function toggleFullscreen() {
@@ -512,6 +535,24 @@ function renderUpgrades() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (!ownPlayer) return;
 
+  // Check if tier 1 is completed
+  const tier1Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 1);
+  const tier1Completed = tier1Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
+
+  // Move completed tier 1 upgrades to history if tier 2 is available
+  if (tier1Completed && upgradeHistory.tier1.length === 0) {
+    upgradeHistory.tier1 = JSON.parse(JSON.stringify(tier1Upgrades));
+  }
+
+  // Check if tier 2 is completed
+  const tier2Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 2);
+  const tier2Completed = tier2Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
+
+  if (tier2Completed && upgradeHistory.tier2.length === 0) {
+    upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
+  }
+
+  // Show only active upgrades
   const allTier1MaxedOut = gameState.upgrades
     .filter(upgrade => upgrade.tier === 1)
     .every(upgrade => upgrade.level >= upgrade.maxLevel);
@@ -684,3 +725,160 @@ function renderPrestigeUpgrades() {
     container.appendChild(upgradeElement);
   });
 }
+
+function getUpgradeBuffDescription(upgrade) {
+  switch (upgrade.id) {
+    case 'click-power':
+    case 'click-power-2':
+      const clickBonus = upgrade.tier === 1 ? 
+        upgrade.level * 100 : 
+        upgrade.level * 200;
+      return `Aumenta o poder de clique em ${clickBonus}%`;
+    
+    case 'auto-clicker':
+    case 'auto-clicker-2':
+      const autoClicks = upgrade.tier === 1 ? 
+        upgrade.level : 
+        upgrade.level * 2;
+      return `Gera ${autoClicks} cliques automáticos por segundo`;
+    
+    case 'coin-boost':
+    case 'coin-boost-2':
+      const coinBonus = upgrade.tier === 1 ? 
+        upgrade.level * 20 : 
+        upgrade.level * 40;
+      return `Aumenta as moedas ganhas em ${coinBonus}%`;
+    
+    case 'progress-boost':
+    case 'progress-boost-2':
+      const progressBonus = upgrade.tier === 1 ? 
+        upgrade.level * 5 : 
+        upgrade.level * 8;
+      return `Reduz a dificuldade de progresso em ${progressBonus}%`;
+    
+    case 'team-synergy':
+    case 'team-synergy-2':
+      const synergyBonus = upgrade.tier === 1 ? 
+        upgrade.level * 10 : 
+        upgrade.level * 20;
+      return `Aumenta o poder de clique em ${synergyBonus}% por jogador`;
+    
+    case 'shared-rewards':
+    case 'shared-rewards-2':
+      const rewardBonus = upgrade.tier === 1 ? 
+        upgrade.level * 15 : 
+        upgrade.level * 30;
+      return `Retorna ${rewardBonus}% do custo dos upgrades em moedas`;
+    
+    default:
+      return upgrade.description;
+  }
+}
+
+function showBuffTooltip(event, text) {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'buff-tooltip';
+  tooltip.textContent = text;
+  
+  document.body.appendChild(tooltip);
+  
+  const rect = event.target.getBoundingClientRect();
+  tooltip.style.left = `${rect.right + 10}px`;
+  tooltip.style.top = `${rect.top - 10}px`;
+  
+  requestAnimationFrame(() => tooltip.classList.add('visible'));
+  
+  return tooltip;
+}
+
+function hideBuffTooltip(tooltip) {
+  tooltip.classList.remove('visible');
+  setTimeout(() => tooltip.remove(), 200);
+}
+
+function renderUpgradeHistory() {
+  const container = document.getElementById('history-container');
+  container.innerHTML = '';
+
+  // Render Tier 1 History
+  if (upgradeHistory.tier1.length > 0) {
+    const tier1Section = document.createElement('div');
+    tier1Section.className = 'history-tier';
+    tier1Section.innerHTML = `
+      <div class="history-tier-title">Tier 1 (Completado)</div>
+      ${upgradeHistory.tier1.map(upgrade => `
+        <div class="upgrade-item">
+          <div class="history-upgrade-info">
+            <div class="upgrade-info">
+              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div>${upgrade.description}</div>
+            </div>
+            <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="1">ℹ️</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    container.appendChild(tier1Section);
+  }
+
+  // Render Tier 2 History
+  if (upgradeHistory.tier2.length > 0) {
+    const tier2Section = document.createElement('div');
+    tier2Section.className = 'history-tier';
+    tier2Section.innerHTML = `
+      <div class="history-tier-title">Tier 2 (Completado)</div>
+      ${upgradeHistory.tier2.map(upgrade => `
+        <div class="upgrade-item">
+          <div class="history-upgrade-info">
+            <div class="upgrade-info">
+              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div>${upgrade.description}</div>
+            </div>
+            <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="2">ℹ️</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    container.appendChild(tier2Section);
+  }
+
+  // Add event listeners for buff info buttons
+  const buffButtons = container.querySelectorAll('.buff-info-button');
+  buffButtons.forEach(button => {
+    let activeTooltip = null;
+
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const upgradeId = button.dataset.upgradeId;
+      const tier = parseInt(button.dataset.tier);
+      const upgrade = tier === 1 ? 
+        upgradeHistory.tier1.find(u => u.id === upgradeId) :
+        upgradeHistory.tier2.find(u => u.id === upgradeId);
+
+      if (activeTooltip) {
+        hideBuffTooltip(activeTooltip);
+        activeTooltip = null;
+      } else {
+        const buffDescription = getUpgradeBuffDescription(upgrade);
+        activeTooltip = showBuffTooltip(e, buffDescription);
+      }
+    });
+
+    // Hide tooltip when clicking outside
+    document.addEventListener('click', () => {
+      if (activeTooltip) {
+        hideBuffTooltip(activeTooltip);
+        activeTooltip = null;
+      }
+    });
+  });
+}
+
+socket.on('prestige', () => {
+  // Reset upgrade history on prestige
+  upgradeHistory = {
+    tier1: [],
+    tier2: []
+  };
+  // ...existing prestige code...
+});
