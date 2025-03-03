@@ -344,7 +344,7 @@ socket.on('gameStateUpdate', (newState) => {
     activePlayerDisplay.textContent = '-';
   }
 
-  const teamProgress = (gameState.teamClicksRemaining / (gameState.teamLevel * 100)) * 100;
+  const teamProgress = (gameState.levelProgressRemaining / (gameState.teamLevel * 100)) * 100;
   const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
   teamSharedProgressBar.style.width = `${percentage}%`;
   progressPercentage.textContent = `${percentage}%`;

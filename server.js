@@ -24,7 +24,7 @@ app.use('/assets', express.static(path.join(__dirname, 'main/assets')));
 let gameState = {
   players: [],
   teamLevel: 1,
-  teamClicksRemaining: 100,
+  levelProgressRemaining: 100, // Renamed from teamClicksRemaining
   clicks: 0,
   teamCoins: 0,
   upgrades: upgrades,
@@ -89,9 +89,9 @@ function applyOfflineClicks(totalClicks) {
   while (remainingClicks > 0) {
     const currentLevelTarget = gameState.teamLevel * 100; // Cliques necessários para o nível atual
     
-    if (remainingClicks >= currentLevelTarget - gameState.teamClicksRemaining) {
+    if (remainingClicks >= gameState.levelProgressRemaining) {
       // Temos cliques suficientes para subir de nível
-      remainingClicks -= (currentLevelTarget - gameState.teamClicksRemaining);
+      remainingClicks -= gameState.levelProgressRemaining;
       levelsGained++;
       
       // Calcular moedas ganhas neste nível
@@ -100,12 +100,12 @@ function applyOfflineClicks(totalClicks) {
       
       // Preparar próximo nível
       gameState.teamLevel++;
-      gameState.teamClicksRemaining = currentLevelTarget;
+      gameState.levelProgressRemaining = currentLevelTarget;
       
       console.log(`[Progresso Offline] Level up para ${gameState.teamLevel}, Cliques restantes: ${remainingClicks}`);
     } else {
       // Não temos cliques suficientes para subir de nível
-      gameState.teamClicksRemaining -= remainingClicks;
+      gameState.levelProgressRemaining -= remainingClicks;
       remainingClicks = 0;
     }
   }
@@ -197,11 +197,11 @@ io.on('connection', (socket) => {
       player.contribution += clickValue;
       gameState.clicks += clickValue;
       gameState.totalClicks += clickValue; // Atualizar cliques totais
-      gameState.teamClicksRemaining -= clickValue;
+      gameState.levelProgressRemaining -= clickValue;
 
-      console.log(`[Clique] Jogador: ${player.name}, Valor do clique: ${clickValue}, Cliques totais: ${player.clicks}, Contribuição: ${player.contribution}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
+      console.log(`[Clique] Jogador: ${player.name}, Valor do clique: ${clickValue}, Cliques totais: ${player.clicks}, Contribuição: ${player.contribution}, Cliques restantes da equipe: ${gameState.levelProgressRemaining}`);
 
-      if (gameState.teamClicksRemaining <= 0) {
+      if (gameState.levelProgressRemaining <= 0) {
         console.log('[Equipe] Nível da equipe aumentado!');
         levelUpTeam();
       }
@@ -467,7 +467,7 @@ function levelUpTeam() {
     console.log(`[Level Up] Jogador: ${player.name} subiu para nível ${player.level}. Time ganhou ${coinsAwarded} moedas.`);
   });
 
-  gameState.teamClicksRemaining = 100 * gameState.teamLevel;
+  gameState.levelProgressRemaining = 100 * gameState.teamLevel;
 
   const teamBonus = gameState.teamLevel * 10;
   const bonusCoins = Math.round(gameState.teamCoins * (teamBonus / 100));
@@ -497,10 +497,10 @@ setInterval(() => {
       player.contribution += clickValue;
       gameState.clicks += clickValue;
       gameState.totalClicks += clickValue; // Atualizar cliques totais
-      gameState.teamClicksRemaining -= clickValue;
-      console.log(`[Auto-Clicker] Jogador: ${player.name}, Cliques automáticos: ${clickValue}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
+      gameState.levelProgressRemaining -= clickValue;
+      console.log(`[Auto-Clicker] Jogador: ${player.name}, Cliques automáticos: ${clickValue}, Cliques restantes da equipe: ${gameState.levelProgressRemaining}`);
 
-      if (gameState.teamClicksRemaining <= 0) {
+      if (gameState.levelProgressRemaining <= 0) {
         console.log('[Auto-Clicker] Nível da equipe aumentado!');
         levelUpTeam();
       }
