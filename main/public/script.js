@@ -552,16 +552,15 @@ function renderUpgrades() {
     upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
   }
 
-  // Show only active upgrades
-  const allTier1MaxedOut = gameState.upgrades
-    .filter(upgrade => upgrade.tier === 1)
-    .every(upgrade => upgrade.level >= upgrade.maxLevel);
-
+  // Show only active upgrades that are not completed
   const visibleUpgrades = gameState.upgrades
     .filter(upgrade => {
-      if (upgrade.tier === 1) return true;
-      if (upgrade.tier === 2) return allTier1MaxedOut;
-      return false;
+      // If tier 1 is completed, only show tier 2
+      if (tier1Completed) {
+        return upgrade.tier === 2 && !tier2Completed;
+      }
+      // Otherwise, only show tier 1
+      return upgrade.tier === 1;
     })
     .sort((a, b) => {
       if (b.tier !== a.tier) return b.tier - a.tier;
