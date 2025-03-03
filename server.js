@@ -31,8 +31,13 @@ let gameState = {
   achievements: achievements,
   powerUps: powerUps,
   fragments: 0,
-  prestigeUpgrades: prestigeUpgrades
+  prestigeUpgrades: prestigeUpgrades,
+  totalClicks: 0, // Novo campo para persistir cliques totais
+  lastAutoClickerLevel: 0, // Novo campo para rastrear nível do auto-clicker
 };
+
+let lastActiveTime = Date.now();
+let lastTotalCPS = 0;
 
 // Função para preparar gameState para envio, removendo funções
 function prepareGameStateForBroadcast(state) {
@@ -52,6 +57,9 @@ function broadcastGameState() {
   gameState.players.sort((a, b) => b.contribution - a.contribution);
   const preparedState = prepareGameStateForBroadcast(gameState);
   io.emit('gameStateUpdate', preparedState);
+
+  const totalClicks = gameState.players.reduce((sum, p) => sum + p.clicks, 0);
+  lastTotalCPS = totalClicks / 60; // média de cliques por segundo
 }
 
 function checkAchievements() {
@@ -75,6 +83,33 @@ function isActivePlayer(socketId, playerId) {
 
 io.on('connection', (socket) => {
   console.log('[Conexão] Novo jogador conectado:', socket.id);
+  
+  if (gameState.players.length === 0) {
+    const timeDiff = (Date.now() - lastActiveTime) / 1000; // segundos
+    
+    // Calcular cliques manuais offline
+    const manualOfflineClicks = Math.floor(lastTotalCPS * timeDiff);
+    
+    // Calcular cliques automáticos offline
+    const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+    const autoClickerLevel = autoClickerUpgrade ? autoClickerUpgrade.level : 0;
+    const autoClicksPerSecond = autoClickerLevel; // 1 clique por segundo por nível
+    const autoOfflineClicks = Math.floor(autoClicksPerSecond * timeDiff);
+    
+    const totalOfflineClicks = manualOfflineClicks + autoOfflineClicks;
+    
+    if (totalOfflineClicks > 0) {
+      console.log(`[Progresso Offline] Servidor ganhou ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks} automáticos) em ${timeDiff.toFixed(0)} segundos`);
+      gameState.clicks += totalOfflineClicks;
+      gameState.totalClicks += totalOfflineClicks; // Atualizar cliques totais
+      gameState.teamClicksRemaining -= totalOfflineClicks;
+
+      while (gameState.teamClicksRemaining <= 0) {
+        levelUpTeam();
+      }
+    }
+  }
+
   const preparedState = prepareGameStateForBroadcast(gameState);
   socket.emit('gameStateUpdate', preparedState);
 
@@ -110,6 +145,7 @@ io.on('connection', (socket) => {
       player.clicks += clickValue;
       player.contribution += clickValue;
       gameState.clicks += clickValue;
+      gameState.totalClicks += clickValue; // Atualizar cliques totais
       gameState.teamClicksRemaining -= clickValue;
 
       console.log(`[Clique] Jogador: ${player.name}, Valor do clique: ${clickValue}, Cliques totais: ${player.clicks}, Contribuição: ${player.contribution}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
@@ -337,6 +373,14 @@ io.on('connection', (socket) => {
       const playerName = gameState.players[playerIndex].name;
       gameState.players.splice(playerIndex, 1);
       console.log(`[Desconexão] Jogador ${playerName} desconectado`);
+      
+      if (gameState.players.length === 0) {
+        lastActiveTime = Date.now();
+        const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+        gameState.lastAutoClickerLevel = autoClickerUpgrade ? autoClickerUpgrade.level : 0;
+        console.log('[Servidor] Último jogador saiu, registrando tempo:', lastActiveTime);
+      }
+      
       broadcastGameState();
     }
   });
@@ -401,6 +445,7 @@ setInterval(() => {
       player.clicks += clickValue;
       player.contribution += clickValue;
       gameState.clicks += clickValue;
+      gameState.totalClicks += clickValue; // Atualizar cliques totais
       gameState.teamClicksRemaining -= clickValue;
       console.log(`[Auto-Clicker] Jogador: ${player.name}, Cliques automáticos: ${clickValue}, Cliques restantes da equipe: ${gameState.teamClicksRemaining}`);
 

@@ -327,7 +327,7 @@ socket.on('gameStateUpdate', (newState) => {
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
-    clicksDisplay.textContent = Math.floor(gameState.players.reduce((sum, p) => sum + p.clicks, 0));
+    clicksDisplay.textContent = Math.floor(gameState.totalClicks || 0); // Usar totalClicks ao invés da soma
     levelDisplay.textContent = ownPlayer.level;
     teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
