@@ -379,6 +379,18 @@ socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
 });
 
+socket.on('offlineProgress', (progress) => {
+  const hours = Math.floor(progress.timeDiff / 3600);
+  const minutes = Math.floor((progress.timeDiff % 3600) / 60);
+  
+  let message = `Bem-vindo de volta! Durante sua ausência de ${hours}h${minutes}m:\n`;
+  message += `→ ${progress.clicks.toLocaleString()} cliques gerados\n`;
+  message += `→ ${progress.levels} níveis ganhos\n`;
+  message += `→ ${progress.coins.toLocaleString()} moedas acumuladas`;
+  
+  showNotification(message);
+});
+
 function getClickValue(player) {
   return player.clickValue || 1;
 }
@@ -542,9 +554,9 @@ function renderAchievements() {
 }
 
 function showNotification(message) {
-  notification.textContent = message;
+  notification.innerHTML = message.replace(/\n/g, '<br>');
   notification.classList.add('show');
-  setTimeout(() => notification.classList.remove('show'), 3000);
+  setTimeout(() => notification.classList.remove('show'), 10000); // Aumentar tempo para 10s
 }
 
 initStartScreen();

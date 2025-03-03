@@ -26,7 +26,7 @@ let gameState = {
   teamLevel: 1,
   teamClicksRemaining: 100,
   clicks: 0,
-  teamCoins: 0,
+  teamCoins: 1000000,
   upgrades: upgrades,
   achievements: achievements,
   powerUps: powerUps,
@@ -81,6 +81,51 @@ function isActivePlayer(socketId, playerId) {
   return socketId === playerId;
 }
 
+function applyOfflineClicks(totalClicks) {
+  let remainingClicks = totalClicks;
+  let levelsGained = 0;
+  let coinsGained = 0;
+
+  while (remainingClicks > 0) {
+    const currentLevelTarget = gameState.teamLevel * 100; // Cliques necessários para o nível atual
+    
+    if (remainingClicks >= currentLevelTarget - gameState.teamClicksRemaining) {
+      // Temos cliques suficientes para subir de nível
+      remainingClicks -= (currentLevelTarget - gameState.teamClicksRemaining);
+      levelsGained++;
+      
+      // Calcular moedas ganhas neste nível
+      const coinsForThisLevel = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost');
+      coinsGained += coinsForThisLevel;
+      
+      // Preparar próximo nível
+      gameState.teamLevel++;
+      gameState.teamClicksRemaining = currentLevelTarget;
+      
+      console.log(`[Progresso Offline] Level up para ${gameState.teamLevel}, Cliques restantes: ${remainingClicks}`);
+    } else {
+      // Não temos cliques suficientes para subir de nível
+      gameState.teamClicksRemaining -= remainingClicks;
+      remainingClicks = 0;
+    }
+  }
+
+  // Atualizar níveis dos jogadores
+  if (levelsGained > 0) {
+    gameState.players.forEach(player => {
+      player.level += levelsGained;
+    });
+  }
+
+  // Adicionar moedas ganhas
+  gameState.teamCoins += coinsGained;
+
+  return {
+    levelsGained,
+    coinsGained
+  };
+}
+
 io.on('connection', (socket) => {
   console.log('[Conexão] Novo jogador conectado:', socket.id);
   
@@ -99,14 +144,20 @@ io.on('connection', (socket) => {
     const totalOfflineClicks = manualOfflineClicks + autoOfflineClicks;
     
     if (totalOfflineClicks > 0) {
-      console.log(`[Progresso Offline] Servidor ganhou ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks} automáticos) em ${timeDiff.toFixed(0)} segundos`);
+      console.log(`[Progresso Offline] Calculando ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks} automáticos) em ${timeDiff.toFixed(0)} segundos`);
+      
+      const progress = applyOfflineClicks(totalOfflineClicks);
       gameState.clicks += totalOfflineClicks;
-      gameState.totalClicks += totalOfflineClicks; // Atualizar cliques totais
-      gameState.teamClicksRemaining -= totalOfflineClicks;
+      gameState.totalClicks += totalOfflineClicks;
 
-      while (gameState.teamClicksRemaining <= 0) {
-        levelUpTeam();
-      }
+      socket.emit('offlineProgress', {
+        clicks: totalOfflineClicks,
+        levels: progress.levelsGained,
+        coins: progress.coinsGained,
+        timeDiff: Math.floor(timeDiff)
+      });
+
+      console.log(`[Progresso Offline] Ganhou ${progress.levelsGained} níveis e ${progress.coinsGained} moedas`);
     }
   }
 
