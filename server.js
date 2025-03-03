@@ -347,6 +347,13 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Verificar se Power-Ups estão desbloqueados
+    const powerupsUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'powerups-unlock');
+    if (!powerupsUpgrade || powerupsUpgrade.level === 0) {
+      socket.emit('notification', 'Desbloqueie os Power-Ups através do upgrade de prestígio!');
+      return;
+    }
+
     const availablePowerUps = Object.entries(gameState.powerUps)
       .filter(([_, powerUp]) => !powerUp.active)
       .map(([id, powerUp]) => ({ id, ...powerUp }));

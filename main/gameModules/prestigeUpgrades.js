@@ -8,6 +8,16 @@ const prestigeUpgrades = [
         maxLevel: 10,
         effect: level => 1 + level * 0.2,
         priceIncrease: 2
+    },
+    {
+        id: 'powerups-unlock',
+        name: 'Ativar Power-Ups',
+        description: 'Desbloqueia o sistema de Power-Ups, permitindo bônus temporários poderosos',
+        basePrice: 50,
+        level: 0,
+        maxLevel: 1,
+        effect: level => level > 0, // Retorna true se desbloqueado
+        priceIncrease: 1
     }
 ];
 

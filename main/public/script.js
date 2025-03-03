@@ -116,7 +116,27 @@ function showPowerupNotification(powerUpInfo) {
   setTimeout(() => powerupNotification.classList.remove('show'), 10000);
 }
 
+function arePowerUpsUnlocked() {
+  const powerupsUpgrade = gameState?.prestigeUpgrades?.find(u => u.id === 'powerups-unlock');
+  return powerupsUpgrade?.level > 0;
+}
+
+function scheduleFirstPowerUp() {
+  if (!arePowerUpsUnlocked()) {
+    console.log('[PowerUp] Sistema bloqueado - Compre o upgrade de prestígio');
+    return;
+  }
+
+  const minDelay = 60000;
+  const maxDelay = 180000;
+  const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
+  console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
+  setTimeout(spawnFloatingPowerUp, randomDelay);
+}
+
 function spawnFloatingPowerUp() {
+  if (!arePowerUpsUnlocked()) return;
+
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const buttonWidth = activateClickFrenzyButton.offsetWidth;
@@ -261,10 +281,17 @@ function initGame() {
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
 
+  // Atualizar visibilidade inicial do botão
+  activateClickFrenzyButton.style.display = 'none';
+  if (!arePowerUpsUnlocked()) {
+    activateClickFrenzyButton.classList.add('locked');
+    activateClickFrenzyButton.title = 'Desbloqueie através do upgrade de prestígio';
+  }
+
   renderUpgrades();
   renderAchievements();
   renderPrestigeUpgrades();
-  scheduleNextSpawn();
+  scheduleFirstPowerUp(); // Vai verificar se está desbloqueado antes de agendar
   setInterval(updateClicksPerSecond, 1000);
 
   openPrestigeBtn.addEventListener('click', () => {
@@ -308,6 +335,8 @@ function updateClicksPerSecond() {
 }
 
 socket.on('gameStateUpdate', (newState) => {
+  const wasPowerUpsUnlocked = arePowerUpsUnlocked();
+
   const oldUpgradesState = lastUpgradesState;
   gameState = newState;
   lastUpgradesState = gameState.upgrades.map(u => ({ id: u.id, level: u.level }));
@@ -362,6 +391,15 @@ socket.on('gameStateUpdate', (newState) => {
     if (upgradePurchased && userHasInteracted) {
       tickSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar tickSound:', err));
     }
+  }
+
+  // Verificar se Power-Ups foram desbloqueados nesta atualização
+  if (!wasPowerUpsUnlocked && arePowerUpsUnlocked()) {
+    console.log('[PowerUp] Sistema desbloqueado! Iniciando spawn...');
+    activateClickFrenzyButton.classList.remove('locked');
+    activateClickFrenzyButton.title = 'Power Up!';
+    scheduleFirstPowerUp();
+    showNotification('Power-Ups desbloqueados! Fique atento aos bônus temporários!');
   }
 
   renderPlayers();

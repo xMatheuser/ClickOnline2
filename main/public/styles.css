@@ -378,7 +378,7 @@ h3 {
   font-size: 0.8rem;
   display: none;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 2001; /* Aumentar para ficar acima do prestige-overlay que tem z-index: 2000 */
   max-width: 300px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
@@ -402,6 +402,17 @@ h3 {
 
 .floating-powerup:hover {
   transform: scale(1.1);
+}
+
+.floating-powerup.locked {
+  background-color: #666;
+  cursor: not-allowed;
+  animation: none;
+  opacity: 0.5;
+}
+
+.floating-powerup.locked:hover {
+  transform: none;
 }
 
 @keyframes float {
