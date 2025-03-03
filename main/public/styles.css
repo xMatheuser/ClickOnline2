@@ -1050,3 +1050,22 @@ body.dark-mode .top-bar-title {
     width: 95%;
   }
 }
+
+.coin-icon {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  background: url('/assets/gifs/coin.gif') no-repeat center center;
+  background-size: contain;
+  vertical-align: middle;
+  margin-left: 4px;
+  margin-right: 2px;
+}
+
+/* Ajustar alinhamento vertical nos botões e estatísticas */
+.buy-button .coin-icon,
+.stat-box .coin-icon {
+  width: 40px;
+  height: 40px;
+  margin-top: -2px;
+}

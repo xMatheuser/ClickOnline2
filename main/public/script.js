@@ -542,7 +542,7 @@ function renderUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : price + ' 🪙'}</button>
+      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${price}<span class="coin-icon"></span>`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
@@ -592,6 +592,8 @@ function renderAchievements() {
 }
 
 function showNotification(message) {
+  // Substituir o emoji de moeda pelo novo ícone
+  message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notification.innerHTML = message.replace(/\n/g, '<br>');
   notification.classList.add('show');
   setTimeout(() => notification.classList.remove('show'), 10000); // Aumentar tempo para 10s
@@ -654,7 +656,7 @@ function renderPrestigeUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : price + ' 🔮'}</button>
+      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${price}<span class="coin-icon"></span>`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
