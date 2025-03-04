@@ -24,7 +24,7 @@ let gameState = {
   teamLevel: 1,
   levelProgressRemaining: 100,
   clicks: 0,
-  teamCoins: 0,
+  teamCoins: 10000000000,
   upgrades: upgrades,
   achievements: achievements, // This is now the array
   achievementCategories: achievementCategories, // Add categories to gameState

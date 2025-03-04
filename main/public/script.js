@@ -380,6 +380,17 @@ function updateClicksPerSecond() {
   clickCountThisSecond = 0;
 }
 
+function formatNumber(num) {
+  if (num < 1000) return num.toFixed(0);
+  
+  const suffixes = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+  const base = Math.floor(Math.log(num) / Math.log(1000));
+  const suffix = suffixes[base] || `e${base*3}`;
+  const formatted = (num / Math.pow(1000, base)).toFixed(2);
+  
+  return formatted + suffix;
+}
+
 socket.on('gameStateUpdate', (newState) => {
   const wasPowerUpsUnlocked = arePowerUpsUnlocked();
 
@@ -399,9 +410,9 @@ socket.on('gameStateUpdate', (newState) => {
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
-    clicksDisplay.textContent = Math.floor(gameState.totalClicks || 0);
+    clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
     levelDisplay.textContent = ownPlayer.level;
-    teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
+    teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
     const isAnyPowerUpActive = Object.values(gameState.powerUps).some(p => p.active);
     activateClickFrenzyButton.disabled = isAnyPowerUpActive || !isOwnPlayer();
@@ -530,7 +541,7 @@ function renderContributions() {
         <div class="player-avatar" style="background-color: #007bff">${player.name.slice(0, 2).toUpperCase()}</div>
         ${medal} ${player.name} (Nv. ${player.level})
       </div>
-      <div>${Math.floor(player.contribution)} cliques (${percentage.toFixed(1)}%)</div>
+      <div>${formatNumber(player.contribution)} cliques (${percentage.toFixed(1)}%)</div>
     `;
     const barContainer = document.createElement('div');
     barContainer.className = 'contribution-bar';
@@ -616,7 +627,7 @@ function renderUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${price}<span class="coin-icon"></span>`}</button>
+      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)}<span class="coin-icon"></span>`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
@@ -780,7 +791,7 @@ function renderPrestigeUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${price}<span class="coin-icon"></span>`}</button>
+      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)}<span class="coin-icon"></span>`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
