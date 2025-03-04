@@ -63,10 +63,10 @@ const openAchievementsBtn = document.getElementById('open-achievements');
 
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 const tickSound = new Audio('/assets/sounds/tick.mp3');
-const achievementSound = new Audio('/assets/sounds/achievement.mp3'); // Nova linha
+const achievementSound = new Audio('/assets/sounds/achievement.mp3');
 levelUpSound.volume = 0.1;
 tickSound.volume = 0.6;
-achievementSound.volume = 0.2; // Nova linha
+achievementSound.volume = 0.2;
 
 let isMuted = localStorage.getItem('isMuted') === 'true';
 
@@ -95,7 +95,7 @@ function toggleMute() {
   updateMuteButton();
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
-  achievementSound.volume = isMuted ? 0 : 0.2; // Nova linha
+  achievementSound.volume = isMuted ? 0 : 0.2;
 }
 
 function updateMuteButton() {
@@ -437,13 +437,16 @@ socket.on('gameStateUpdate', (newState) => {
   }
 
   // Verificar novas conquistas
-  if (gameState.achievements.some(a => 
-    a.unlockedLevels.length > (oldAchievements.find(ach => ach.id === a.id)?.unlockedLevels.length || 0)
-  )) {
+  const newUnlocks = gameState.achievements.some(achievement => {
+    const oldAchievement = oldAchievements.find(a => a.id === achievement.id);
+    return achievement.unlockedLevels.length > (oldAchievement?.unlockedLevels.length || 0);
+  });
+
+  if (newUnlocks) {
     showNotification('Nova conquista desbloqueada!');
     notification.classList.add('pulse');
     if (userHasInteracted && !isMuted) {
-      achievementSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar achievementSound:', err));
+      achievementSound.play().catch(err => console.log('[Audio Error]:', err));
     }
     setTimeout(() => notification.classList.remove('pulse'), 1000);
   }
@@ -646,17 +649,57 @@ function renderAchievements() {
   achievementsContainer.innerHTML = '';
   if (!gameState.achievements) return;
 
+  // Agrupar conquistas por categoria
+  const groupedAchievements = {};
   gameState.achievements.forEach(achievement => {
-    const achievementElement = document.createElement('div');
-    const unlockedCount = achievement.unlockedLevels.length;
-    achievementElement.className = `achievement-item ${unlockedCount > 0 ? 'unlocked' : 'locked'}`;
-    achievementElement.innerHTML = `
-      <div class="achievement-info">
-        <div><strong>${achievement.name}</strong></div>
-        <div>${achievement.description} (${unlockedCount}/${achievement.levels.length})</div>
-      </div>
-    `;
-    achievementsContainer.appendChild(achievementElement);
+    const category = achievement.category || 'other';
+    if (!groupedAchievements[category]) {
+      groupedAchievements[category] = [];
+    }
+    groupedAchievements[category].push(achievement);
+  });
+
+  // Renderizar cada categoria
+  Object.entries(groupedAchievements).forEach(([category, achievements]) => {
+    const categoryInfo = gameState.achievementCategories[category];
+    
+    const categoryElement = document.createElement('div');
+    categoryElement.className = 'achievement-category';
+    categoryElement.innerHTML = `<h3>${categoryInfo.icon} ${categoryInfo.name}</h3>`;
+
+    achievements.forEach(achievement => {
+      const unlockedCount = achievement.unlockedLevels.length;
+      const maxLevel = achievement.levels.length;
+      const nextLevel = achievement.levels[unlockedCount] || achievement.levels[maxLevel - 1];
+      
+      const achievementElement = document.createElement('div');
+      achievementElement.className = `achievement-item ${unlockedCount === maxLevel ? 'completed' : unlockedCount > 0 ? 'unlocked' : 'locked'}`;
+      
+      achievementElement.innerHTML = `
+        <div class="achievement-info">
+          <div class="achievement-header">
+            <strong>${achievement.name}</strong>
+            <span class="achievement-progress">${unlockedCount}/${maxLevel}</span>
+          </div>
+          <div class="achievement-description">
+            ${achievement.description}
+            ${nextLevel ? `<br>Próximo nível: ${nextLevel.description}` : ''}
+          </div>
+          ${unlockedCount > 0 ? `
+            <div class="achievement-boost">
+              Bônus atual: +${(achievement.levels[unlockedCount-1].boost.value * 100).toFixed(0)}% ${achievement.levels[unlockedCount-1].boost.type}
+            </div>
+          ` : ''}
+          <div class="achievement-progress-bar">
+            <div class="progress-fill" style="width: ${(unlockedCount / maxLevel * 100)}%"></div>
+          </div>
+        </div>
+      `;
+      
+      categoryElement.appendChild(achievementElement);
+    });
+
+    achievementsContainer.appendChild(categoryElement);
   });
 }
 

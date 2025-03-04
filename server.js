@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const upgrades = require('./main/gameModules/upgrades');
-const achievements = require('./main/gameModules/achievements');
+const { achievements, achievementCategories } = require('./main/gameModules/achievements'); // Fix import
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 
@@ -26,7 +26,8 @@ let gameState = {
   clicks: 0,
   teamCoins: 0,
   upgrades: upgrades,
-  achievements: achievements,
+  achievements: achievements, // This is now the array
+  achievementCategories: achievementCategories, // Add categories to gameState
   powerUps: powerUps,
   fragments: 0,
   prestigeUpgrades: prestigeUpgrades,
