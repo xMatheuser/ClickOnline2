@@ -12,7 +12,6 @@ let upgradeHistory = {
   tier2: []
 };
 
-// Estrutura dos prestigeUpgrades no cliente para restaurar funções
 const prestigeUpgradesTemplate = {
   'fragment-multiplier': {
     id: 'fragment-multiplier',
@@ -57,6 +56,10 @@ const muteButton = document.getElementById('mute-toggle');
 const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
 const closePrestigeBtn = document.getElementById('close-prestige');
+const achievementsOverlay = document.getElementById('achievements-overlay');
+const closeAchievementsBtn = document.getElementById('close-achievements');
+const achievementsContent = document.getElementById('achievements-content');
+const openAchievementsBtn = document.getElementById('open-achievements');
 
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 levelUpSound.volume = 0.1;
@@ -132,7 +135,7 @@ function scheduleFirstPowerUp() {
   }
 
   const minDelay = 60000;
-  const maxDelay = 18000;
+  const maxDelay = 180000;
   const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
   console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
   setTimeout(spawnFloatingPowerUp, randomDelay);
@@ -146,13 +149,13 @@ function spawnFloatingPowerUp() {
   const buttonWidth = activateClickFrenzyButton.offsetWidth;
   const buttonHeight = activateClickFrenzyButton.offsetHeight;
 
-  const topBarHeight = document.querySelector('.top-bar').offsetHeight || 60; // Altura da top-bar, fallback para 60px
+  const topBarHeight = document.querySelector('.top-bar').offsetHeight || 60;
   const maxX = viewportWidth - buttonWidth - 20;
   const maxY = viewportHeight - buttonHeight - 20;
-  const minY = topBarHeight + 10; // Margem mínima abaixo da top-bar
+  const minY = topBarHeight + 10;
 
   const randomX = Math.floor(Math.random() * maxX) + 10;
-  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY; // Ajusta o intervalo de Y
+  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
   activateClickFrenzyButton.style.left = `${randomX}px`;
   activateClickFrenzyButton.style.top = `${randomY}px`;
@@ -287,7 +290,6 @@ function initGame() {
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
 
-  // Atualizar visibilidade inicial do botão
   activateClickFrenzyButton.style.display = 'none';
   if (!arePowerUpsUnlocked()) {
     activateClickFrenzyButton.classList.add('locked');
@@ -297,7 +299,7 @@ function initGame() {
   renderUpgrades();
   renderAchievements();
   renderPrestigeUpgrades();
-  scheduleFirstPowerUp(); // Vai verificar se está desbloqueado antes de agendar
+  scheduleFirstPowerUp();
   setInterval(updateClicksPerSecond, 1000);
 
   openPrestigeBtn.addEventListener('click', () => {
@@ -335,6 +337,22 @@ function initGame() {
       historyOverlay.classList.remove('active');
     }
   });
+
+  openAchievementsBtn.addEventListener('click', () => {
+    userHasInteracted = true;
+    achievementsOverlay.classList.add('active');
+    renderAchievementsScreen();
+  });
+
+  closeAchievementsBtn.addEventListener('click', () => {
+    achievementsOverlay.classList.remove('active');
+  });
+
+  achievementsOverlay.addEventListener('click', (e) => {
+    if (e.target === achievementsOverlay) {
+      achievementsOverlay.classList.remove('active');
+    }
+  });
 }
 
 function toggleFullscreen() {
@@ -363,17 +381,14 @@ socket.on('gameStateUpdate', (newState) => {
   const wasPowerUpsUnlocked = arePowerUpsUnlocked();
 
   const oldUpgradesState = lastUpgradesState;
+  const oldAchievements = gameState.achievements || [];
   gameState = newState;
   lastUpgradesState = gameState.upgrades.map(u => ({ id: u.id, level: u.level }));
 
-  // Restaurar funções effect nos prestigeUpgrades
   if (gameState.prestigeUpgrades && Array.isArray(gameState.prestigeUpgrades)) {
     gameState.prestigeUpgrades = gameState.prestigeUpgrades.map(upgrade => {
       if (prestigeUpgradesTemplate[upgrade.id]) {
-        return {
-          ...upgrade,
-          effect: prestigeUpgradesTemplate[upgrade.id].effect
-        };
+        return { ...upgrade, effect: prestigeUpgradesTemplate[upgrade.id].effect };
       }
       return upgrade;
     });
@@ -381,7 +396,7 @@ socket.on('gameStateUpdate', (newState) => {
 
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
-    clicksDisplay.textContent = Math.floor(gameState.totalClicks || 0); // Usar totalClicks ao invés da soma
+    clicksDisplay.textContent = Math.floor(gameState.totalClicks || 0);
     levelDisplay.textContent = ownPlayer.level;
     teamCoinsDisplay.textContent = Math.floor(gameState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
@@ -418,13 +433,18 @@ socket.on('gameStateUpdate', (newState) => {
     }
   }
 
-  // Verificar se Power-Ups foram desbloqueados nesta atualização
   if (!wasPowerUpsUnlocked && arePowerUpsUnlocked()) {
     console.log('[PowerUp] Sistema desbloqueado! Iniciando spawn...');
     activateClickFrenzyButton.classList.remove('locked');
     activateClickFrenzyButton.title = 'Power Up!';
     scheduleFirstPowerUp();
     showNotification('Power-Ups desbloqueados! Fique atento aos bônus temporários!');
+  }
+
+  if (gameState.achievements.some(a => a.unlockedLevels.length > (oldAchievements.find(ach => ach.id === a.id)?.unlockedLevels.length || 0))) {
+    showNotification('Nova conquista desbloqueada!');
+    notification.classList.add('pulse');
+    setTimeout(() => notification.classList.remove('pulse'), 1000);
   }
 
   renderPlayers();
@@ -537,16 +557,13 @@ function renderUpgrades() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (!ownPlayer) return;
 
-  // Check if tier 1 is completed
   const tier1Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 1);
   const tier1Completed = tier1Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
 
-  // Move completed tier 1 upgrades to history if tier 2 is available
   if (tier1Completed && upgradeHistory.tier1.length === 0) {
     upgradeHistory.tier1 = JSON.parse(JSON.stringify(tier1Upgrades));
   }
 
-  // Check if tier 2 is completed
   const tier2Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 2);
   const tier2Completed = tier2Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
 
@@ -554,14 +571,11 @@ function renderUpgrades() {
     upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
   }
 
-  // Show only active upgrades that are not completed
   const visibleUpgrades = gameState.upgrades
     .filter(upgrade => {
-      // If tier 1 is completed, only show tier 2
       if (tier1Completed) {
         return upgrade.tier === 2 && !tier2Completed;
       }
-      // Otherwise, only show tier 1
       return upgrade.tier === 1;
     })
     .sort((a, b) => {
@@ -593,7 +607,6 @@ function renderUpgrades() {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
         return;
       }
-      console.log(`[Client] Tentando comprar ${upgrade.name}. Moedas do time: ${gameState.teamCoins}, Preço: ${price}, Pode comprar? ${canAfford}`);
       socket.emit('buyUpgrade', upgrade.id);
     });
     buyButton.addEventListener('touchstart', (event) => {
@@ -602,7 +615,6 @@ function renderUpgrades() {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
         return;
       }
-      console.log(`[Client Touch] Tentando comprar ${upgrade.name}. Moedas do time: ${gameState.teamCoins}, Preço: ${price}`);
       socket.emit('buyUpgrade', upgrade.id);
     });
 
@@ -621,30 +633,52 @@ function renderAchievements() {
 
   gameState.achievements.forEach(achievement => {
     const achievementElement = document.createElement('div');
-    achievementElement.className = `achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}`;
+    const unlockedCount = achievement.unlockedLevels.length;
+    achievementElement.className = `achievement-item ${unlockedCount > 0 ? 'unlocked' : 'locked'}`;
     achievementElement.innerHTML = `
       <div class="achievement-info">
         <div><strong>${achievement.name}</strong></div>
-        <div>${achievement.description}</div>
-        <div>${achievement.unlocked ? 'Concluído ✓' : `Recompensa: ${achievement.reward} 🪙`}</div>
+        <div>${achievement.description} (${unlockedCount}/${achievement.levels.length})</div>
       </div>
     `;
     achievementsContainer.appendChild(achievementElement);
   });
 }
 
+function renderAchievementsScreen() {
+  achievementsContent.innerHTML = '<h2>Conquistas</h2>';
+  if (!gameState.achievements) return;
+
+  gameState.achievements.forEach(achievement => {
+    const achievementElement = document.createElement('div');
+    achievementElement.className = 'achievement-category';
+    achievementElement.innerHTML = `<h3>${achievement.name} (${achievement.category})</h3>`;
+    
+    achievement.levels.forEach((level, index) => {
+      const isUnlocked = achievement.unlockedLevels.includes(index);
+      const levelElement = document.createElement('div');
+      levelElement.className = `achievement-level ${isUnlocked ? 'unlocked' : 'locked'}`;
+      levelElement.innerHTML = `
+        <div>Nível ${index + 1}: ${achievement.description} (+${(level.boost.value * 100).toFixed(0)}% ${level.boost.type})</div>
+        <div>${isUnlocked ? 'Concluído ✓' : `Recompensa: ${level.reward} moedas`}</div>
+      `;
+      achievementElement.appendChild(levelElement);
+    });
+    
+    achievementsContent.appendChild(achievementElement);
+  });
+}
+
 function showNotification(message) {
-  // Substituir o emoji de moeda pelo novo ícone
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notification.innerHTML = message.replace(/\n/g, '<br>');
   notification.classList.add('show');
-  setTimeout(() => notification.classList.remove('show'), 10000); // Aumentar tempo para 10s
+  setTimeout(() => notification.classList.remove('show'), 10000);
 }
 
 initStartScreen();
 
 function updatePrestigeUI() {
-  console.log('[Debug] Atualizando UI de prestígio');
   document.getElementById('fragments-count').textContent = gameState?.fragments || 0;
   document.getElementById('potential-fragments').textContent = calculatePrestigeReward();
   renderPrestigeUpgrades();
@@ -654,7 +688,6 @@ function calculatePrestigeReward() {
   const player = gameState.players.find(p => p.id === socket.id);
   if (!player) return 0;
 
-  // Aplicar o multiplicador de fragmentos ao calcular a recompensa
   const fragmentMultiplierUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier');
   const fragmentMultiplier = fragmentMultiplierUpgrade && typeof fragmentMultiplierUpgrade.effect === 'function'
     ? fragmentMultiplierUpgrade.effect(fragmentMultiplierUpgrade.level)
@@ -665,24 +698,15 @@ function calculatePrestigeReward() {
 
 function renderPrestigeUpgrades() {
   const container = document.getElementById('prestige-upgrades-container');
-  console.log('[Debug] Container encontrado:', container);
   if (!container) return;
 
-  console.log('[Debug] Prestige Upgrades:', gameState?.prestigeUpgrades);
   container.innerHTML = '';
   if (!gameState?.prestigeUpgrades || gameState.prestigeUpgrades.length === 0) {
-    console.log('[Debug] Nenhum prestigeUpgrades encontrado em gameState');
     container.innerHTML = '<p>Nenhum upgrade de prestígio disponível.</p>';
     return;
   }
 
   gameState.prestigeUpgrades.forEach(upgrade => {
-    console.log('[Debug] Renderizando upgrade:', upgrade);
-    if (!upgrade || !upgrade.id || !upgrade.name || !upgrade.description || !upgrade.basePrice || typeof upgrade.level === 'undefined' || !upgrade.maxLevel || !upgrade.priceIncrease) {
-      console.error('[Error] Upgrade de prestígio inválido:', upgrade);
-      return;
-    }
-
     const price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
     const canAfford = (gameState.fragments || 0) >= price;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
@@ -731,46 +755,28 @@ function getUpgradeBuffDescription(upgrade) {
   switch (upgrade.id) {
     case 'click-power':
     case 'click-power-2':
-      const clickBonus = upgrade.tier === 1 ? 
-        upgrade.level * 100 : 
-        upgrade.level * 200;
+      const clickBonus = upgrade.tier === 1 ? upgrade.level * 100 : upgrade.level * 200;
       return `Aumenta o poder de clique em ${clickBonus}%`;
-    
     case 'auto-clicker':
     case 'auto-clicker-2':
-      const autoClicks = upgrade.tier === 1 ? 
-        upgrade.level : 
-        upgrade.level * 2;
+      const autoClicks = upgrade.tier === 1 ? upgrade.level : upgrade.level * 2;
       return `Gera ${autoClicks} cliques automáticos por segundo`;
-    
     case 'coin-boost':
     case 'coin-boost-2':
-      const coinBonus = upgrade.tier === 1 ? 
-        upgrade.level * 20 : 
-        upgrade.level * 40;
+      const coinBonus = upgrade.tier === 1 ? upgrade.level * 20 : upgrade.level * 40;
       return `Aumenta as moedas ganhas em ${coinBonus}%`;
-    
     case 'progress-boost':
     case 'progress-boost-2':
-      const progressBonus = upgrade.tier === 1 ? 
-        upgrade.level * 5 : 
-        upgrade.level * 8;
+      const progressBonus = upgrade.tier === 1 ? upgrade.level * 5 : upgrade.level * 8;
       return `Reduz a dificuldade de progresso em ${progressBonus}%`;
-    
     case 'team-synergy':
     case 'team-synergy-2':
-      const synergyBonus = upgrade.tier === 1 ? 
-        upgrade.level * 10 : 
-        upgrade.level * 20;
+      const synergyBonus = upgrade.tier === 1 ? upgrade.level * 10 : upgrade.level * 20;
       return `Aumenta o poder de clique em ${synergyBonus}% por jogador`;
-    
     case 'shared-rewards':
     case 'shared-rewards-2':
-      const rewardBonus = upgrade.tier === 1 ? 
-        upgrade.level * 15 : 
-        upgrade.level * 30;
+      const rewardBonus = upgrade.tier === 1 ? upgrade.level * 15 : upgrade.level * 30;
       return `Retorna ${rewardBonus}% do custo dos upgrades em moedas`;
-    
     default:
       return upgrade.description;
   }
@@ -801,7 +807,6 @@ function renderUpgradeHistory() {
   const container = document.getElementById('history-container');
   container.innerHTML = '';
 
-  // Render Tier 1 History
   if (upgradeHistory.tier1.length > 0) {
     const tier1Section = document.createElement('div');
     tier1Section.className = 'history-tier';
@@ -822,7 +827,6 @@ function renderUpgradeHistory() {
     container.appendChild(tier1Section);
   }
 
-  // Render Tier 2 History
   if (upgradeHistory.tier2.length > 0) {
     const tier2Section = document.createElement('div');
     tier2Section.className = 'history-tier';
@@ -843,7 +847,6 @@ function renderUpgradeHistory() {
     container.appendChild(tier2Section);
   }
 
-  // Add event listeners for buff info buttons
   const buffButtons = container.querySelectorAll('.buff-info-button');
   buffButtons.forEach(button => {
     let activeTooltip = null;
@@ -852,9 +855,7 @@ function renderUpgradeHistory() {
       e.stopPropagation();
       const upgradeId = button.dataset.upgradeId;
       const tier = parseInt(button.dataset.tier);
-      const upgrade = tier === 1 ? 
-        upgradeHistory.tier1.find(u => u.id === upgradeId) :
-        upgradeHistory.tier2.find(u => u.id === upgradeId);
+      const upgrade = tier === 1 ? upgradeHistory.tier1.find(u => u.id === upgradeId) : upgradeHistory.tier2.find(u => u.id === upgradeId);
 
       if (activeTooltip) {
         hideBuffTooltip(activeTooltip);
@@ -865,7 +866,6 @@ function renderUpgradeHistory() {
       }
     });
 
-    // Hide tooltip when clicking outside
     document.addEventListener('click', () => {
       if (activeTooltip) {
         hideBuffTooltip(activeTooltip);
@@ -876,10 +876,8 @@ function renderUpgradeHistory() {
 }
 
 socket.on('prestige', () => {
-  // Reset upgrade history on prestige
   upgradeHistory = {
     tier1: [],
     tier2: []
   };
-  // ...existing prestige code...
 });

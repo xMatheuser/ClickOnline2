@@ -11,7 +11,10 @@
   <div class="top-bar">
     <div class="top-bar-content">
       <div class="title-section">
-        <h1 class="top-bar-title">Super Amigos <button class="prestige-link" id="open-prestige">⚡ Prestígio</button></h1>
+        <h1 class="top-bar-title">Super Amigos 
+          <button class="prestige-link" id="open-prestige">⚡ Prestígio</button>
+          <button class="nav-link" id="open-achievements">🏆 Conquistas</button>
+        </h1>
       </div>
       <div class="top-bar-buttons">
         <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
@@ -44,6 +47,16 @@
           <div id="prestige-upgrades-container"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="achievements-overlay" id="achievements-overlay">
+    <div class="achievements-popup">
+      <div class="achievements-header">
+        <h2>Conquistas</h2>
+        <button class="close-achievements" id="close-achievements">×</button>
+      </div>
+      <div class="achievements-content" id="achievements-content"></div>
     </div>
   </div>
 
@@ -129,5 +142,5 @@
   </div>
 
   <script src="script.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ad33b6dabe12e7',t:'MTc0MTA0NzU2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
