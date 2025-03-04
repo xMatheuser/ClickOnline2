@@ -396,7 +396,7 @@ h3 {
   transition: transform 0.2s;
   font-size: 1.2rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  z-index: 1010; /* Alterado de 1000 para 1010 */
   animation: float 3s ease-in-out infinite;
 }
 

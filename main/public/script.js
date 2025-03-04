@@ -132,7 +132,7 @@ function scheduleFirstPowerUp() {
   }
 
   const minDelay = 60000;
-  const maxDelay = 180000;
+  const maxDelay = 18000;
   const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay)) + minDelay;
   console.log(`[PowerUp] Próximo power-up em ${(randomDelay/1000).toFixed(0)} segundos`);
   setTimeout(spawnFloatingPowerUp, randomDelay);
@@ -146,11 +146,13 @@ function spawnFloatingPowerUp() {
   const buttonWidth = activateClickFrenzyButton.offsetWidth;
   const buttonHeight = activateClickFrenzyButton.offsetHeight;
 
+  const topBarHeight = document.querySelector('.top-bar').offsetHeight || 60; // Altura da top-bar, fallback para 60px
   const maxX = viewportWidth - buttonWidth - 20;
   const maxY = viewportHeight - buttonHeight - 20;
+  const minY = topBarHeight + 10; // Margem mínima abaixo da top-bar
 
   const randomX = Math.floor(Math.random() * maxX) + 10;
-  const randomY = Math.floor(Math.random() * maxY) + 10;
+  const randomY = Math.floor(Math.random() * (maxY - minY)) + minY; // Ajusta o intervalo de Y
 
   activateClickFrenzyButton.style.left = `${randomX}px`;
   activateClickFrenzyButton.style.top = `${randomY}px`;
