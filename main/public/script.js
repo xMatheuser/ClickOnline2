@@ -62,9 +62,11 @@ const achievementsContent = document.getElementById('achievements-content');
 const openAchievementsBtn = document.getElementById('open-achievements');
 
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
-levelUpSound.volume = 0.1;
 const tickSound = new Audio('/assets/sounds/tick.mp3');
+const achievementSound = new Audio('/assets/sounds/achievement.mp3'); // Nova linha
+levelUpSound.volume = 0.1;
 tickSound.volume = 0.6;
+achievementSound.volume = 0.2; // Nova linha
 
 let isMuted = localStorage.getItem('isMuted') === 'true';
 
@@ -93,6 +95,7 @@ function toggleMute() {
   updateMuteButton();
   levelUpSound.volume = isMuted ? 0 : 0.1;
   tickSound.volume = isMuted ? 0 : 0.6;
+  achievementSound.volume = isMuted ? 0 : 0.2; // Nova linha
 }
 
 function updateMuteButton() {
@@ -431,6 +434,18 @@ socket.on('gameStateUpdate', (newState) => {
     if (upgradePurchased && userHasInteracted) {
       tickSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar tickSound:', err));
     }
+  }
+
+  // Verificar novas conquistas
+  if (gameState.achievements.some(a => 
+    a.unlockedLevels.length > (oldAchievements.find(ach => ach.id === a.id)?.unlockedLevels.length || 0)
+  )) {
+    showNotification('Nova conquista desbloqueada!');
+    notification.classList.add('pulse');
+    if (userHasInteracted && !isMuted) {
+      achievementSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar achievementSound:', err));
+    }
+    setTimeout(() => notification.classList.remove('pulse'), 1000);
   }
 
   if (!wasPowerUpsUnlocked && arePowerUpsUnlocked()) {
