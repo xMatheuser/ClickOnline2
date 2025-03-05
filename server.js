@@ -76,6 +76,11 @@ function checkAchievements() {
         achievement.unlockedLevels.push(index);
         applyAchievementBoost(level.boost);
         console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada`);
+        io.emit('achievementUnlocked', {
+          name: achievement.name,
+          level: index + 1,
+          boost: level.boost
+        });
         newUnlocks = true;
       }
     });

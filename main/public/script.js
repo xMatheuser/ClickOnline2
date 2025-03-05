@@ -1017,3 +1017,12 @@ socket.on('prestige', () => {
   };
   viewedAchievements.clear(); // Limpar todos os níveis visualizados
 });
+
+socket.on('achievementUnlocked', (achievement) => {
+  const boostValue = (achievement.boost.value * 100).toFixed(0);
+  const message = `🏆 Nova Conquista Desbloqueada!\n${achievement.name} Nível ${achievement.level}\n+${boostValue}% ${achievement.boost.type}`;
+  showNotification(message);
+  if (userHasInteracted) achievementSound.play().catch(err => console.log('[Audio Error]:', err));
+  newAchievements++;
+  updateAchievementBadge();
+});
