@@ -344,7 +344,10 @@ function initGame() {
   openAchievementsBtn.addEventListener('click', () => {
     userHasInteracted = true;
     achievementsOverlay.classList.add('active');
-    renderAchievementsScreen();
+    newAchievements = 0;
+    updateAchievementBadge();
+    renderAchievements();
+    updateAchievementStats();
   });
 
   closeAchievementsBtn.addEventListener('click', () => {
@@ -389,6 +392,46 @@ function formatNumber(num) {
   const formatted = (num / Math.pow(1000, base)).toFixed(2);
   
   return formatted + suffix;
+}
+
+let newAchievements = 0;
+
+function updateAchievementBadge() {
+  const existingBadge = openAchievementsBtn.querySelector('.achievement-badge');
+  if (newAchievements > 0) {
+    if (existingBadge) {
+      existingBadge.textContent = newAchievements;
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'achievement-badge';
+      badge.textContent = newAchievements;
+      openAchievementsBtn.appendChild(badge);
+    }
+  } else if (existingBadge) {
+    existingBadge.remove();
+  }
+}
+
+function updateAchievementStats() {
+  const statsContainer = document.getElementById('achievements-stats');
+  if (!statsContainer || !gameState.achievements) return;
+
+  const totalAchievements = gameState.achievements.reduce((sum, a) => sum + a.levels.length, 0);
+  const unlockedAchievements = gameState.achievements.reduce((sum, a) => sum + a.unlockedLevels.length, 0);
+  const percentage = ((unlockedAchievements / totalAchievements) * 100).toFixed(1);
+
+  statsContainer.innerHTML = `
+    <div class="achievements-stats">
+      <div class="stat-item">
+        <div class="stat-value">${unlockedAchievements}/${totalAchievements}</div>
+        <div class="stat-label">Conquistas Desbloqueadas</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">${percentage}%</div>
+        <div class="stat-label">Completado</div>
+      </div>
+    </div>
+  `;
 }
 
 socket.on('gameStateUpdate', (newState) => {
@@ -450,7 +493,12 @@ socket.on('gameStateUpdate', (newState) => {
   // Verificar novas conquistas
   const newUnlocks = gameState.achievements.some(achievement => {
     const oldAchievement = oldAchievements.find(a => a.id === achievement.id);
-    return achievement.unlockedLevels.length > (oldAchievement?.unlockedLevels.length || 0);
+    const newlyUnlocked = achievement.unlockedLevels.length > (oldAchievement?.unlockedLevels.length || 0);
+    if (newlyUnlocked) {
+      newAchievements++;
+      return true;
+    }
+    return false;
   });
 
   if (newUnlocks) {
@@ -460,6 +508,7 @@ socket.on('gameStateUpdate', (newState) => {
       achievementSound.play().catch(err => console.log('[Audio Error]:', err));
     }
     setTimeout(() => notification.classList.remove('pulse'), 1000);
+    updateAchievementBadge();
   }
 
   if (!wasPowerUpsUnlocked && arePowerUpsUnlocked()) {
@@ -476,10 +525,18 @@ socket.on('gameStateUpdate', (newState) => {
     setTimeout(() => notification.classList.remove('pulse'), 1000);
   }
 
+  // Update achievements UI if overlay is open
+  if (achievementsOverlay.classList.contains('active')) {
+    renderAchievements();
+    updateAchievementStats();
+  }
+
   renderPlayers();
   renderContributions();
   renderUpgrades();
-  renderAchievements();
+  if (document.getElementById('achievements-container')) {
+    renderAchievements();
+  }
   teamGoalDisplay.textContent = gameState.teamLevel;
 
   if (prestigeOverlay.classList.contains('active')) {
@@ -657,8 +714,10 @@ function renderUpgrades() {
 }
 
 function renderAchievements() {
-  achievementsContainer.innerHTML = '';
-  if (!gameState.achievements) return;
+  const container = document.getElementById('achievements-container');
+  if (!container || !gameState.achievements) return;
+
+  container.innerHTML = '';
 
   // Agrupar conquistas por categoria
   const groupedAchievements = {};

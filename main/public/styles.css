@@ -21,9 +21,8 @@ body {
 }
 
 /* Estilo das colunas */
-.left-column,
-.right-column {
-  width: 25%;
+.left-column {
+  width: 30%;
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -32,7 +31,7 @@ body {
 }
 
 .center-column {
-  width: 50%;
+  width: 70%;
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -705,6 +704,7 @@ h3 {
     padding: 5px 10px;
     border-radius: 5px;
     transition: background-color 0.3s;
+    position: relative;
 }
 
 .nav-link:hover {
@@ -1361,4 +1361,57 @@ body.dark-mode .buff-info-button:hover {
 body.dark-mode .buff-tooltip {
   background-color: #1a1a1a;
   border: 1px solid #444;
+}
+
+/* Achievement notification badge */
+.achievement-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.achievements-summary {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.achievements-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 10px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+/* Dark mode updates */
+body.dark-mode .achievements-summary {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .stat-item {
+  background-color: #333;
 }
