@@ -406,24 +406,78 @@ function getUpgradeEffect(upgradeId) {
   return upgrade.effect(upgrade.level, gameState) * gameState.achievementBoosts.upgradeEffect;
 }
 
-setInterval(() => {
-  const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
-  if (autoClickerUpgrade && autoClickerUpgrade.level > 0) {
+// Remover o autoClickInterval antigo e adicionar estas novas variáveis
+let autoClickerInterval;
+const AUTO_CLICK_INTERVAL = 100; // Processar a cada 100ms para mais suavidade
+let lastBroadcastTime = Date.now();
+const BROADCAST_INTERVAL = 1000; // Enviar atualizações a cada 1s
+
+function startAutoClickProcessor() {
+  if (autoClickerInterval) {
+    clearInterval(autoClickerInterval);
+  }
+
+  autoClickerInterval = setInterval(() => {
+    if (gameState.players.length === 0) return;
+
+    let totalAutoClicks = 0;
     gameState.players.forEach(player => {
-      const clickValue = calculateClickValue(player) * autoClickerUpgrade.effect(autoClickerUpgrade.level) * gameState.achievementBoosts.autoMultiplier;
-      player.clicks += clickValue;
-      player.contribution += clickValue;
-      gameState.clicks += clickValue;
-      gameState.totalClicks += clickValue;
-      gameState.levelProgressRemaining -= clickValue;
+      const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+      const autoClicker2Upgrade = gameState.upgrades.find(u => u.id === 'auto-clicker-2');
+      
+      if (!autoClickerUpgrade && !autoClicker2Upgrade) return;
+
+      const baseAutoClicks = (
+        (autoClickerUpgrade?.level || 0) + 
+        ((autoClicker2Upgrade?.level || 0) * 2)
+      ) * (AUTO_CLICK_INTERVAL / 1000);
+
+      if (baseAutoClicks <= 0) return;
+
+      const autoClickValue = baseAutoClicks * gameState.achievementBoosts.autoMultiplier;
+      const clickValue = calculateClickValue(player);
+      const totalValue = autoClickValue * clickValue;
+      
+      // Aplicar power-ups
+      let finalValue = totalValue;
+      if (gameState.powerUps['speed-demon'].active) {
+        finalValue *= gameState.powerUps['speed-demon'].multiplier;
+      }
+
+      totalAutoClicks += finalValue;
+      player.clicks += finalValue;
+      player.contribution += finalValue;
+    });
+
+    if (totalAutoClicks > 0) {
+      gameState.clicks += totalAutoClicks;
+      gameState.totalClicks += totalAutoClicks;
+      gameState.levelProgressRemaining -= totalAutoClicks;
+
       if (gameState.levelProgressRemaining <= 0) {
         levelUpTeam();
       }
-    });
-    broadcastGameState();
-    checkAchievements();
-  }
-}, 1000);
+
+      // Broadcast apenas a cada BROADCAST_INTERVAL
+      const now = Date.now();
+      if (now - lastBroadcastTime >= BROADCAST_INTERVAL) {
+        broadcastGameState();
+        checkAchievements();
+        lastBroadcastTime = now;
+      }
+    }
+  }, AUTO_CLICK_INTERVAL);
+}
+
+// Substituir o antigo setInterval no final do arquivo
+// Remover:
+// setInterval(() => {
+//   const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+//   ...
+// }, 1000);
+
+// Adicionar:
+startAutoClickProcessor();
 
 setInterval(checkAchievements, 2000);
 
