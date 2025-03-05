@@ -596,7 +596,8 @@ function renderUpgrades() {
     })
     .sort((a, b) => {
       if (b.tier !== a.tier) return b.tier - a.tier;
-      return calculateUpgradePrice(a) - calculateUpgradePrice(b);
+      // Remove the price-based sorting, maintaining original order
+      return 0;
     });
 
   visibleUpgrades.forEach(upgrade => {
