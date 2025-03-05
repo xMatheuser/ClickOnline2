@@ -795,14 +795,12 @@ function renderAchievementsScreen() {
   const gridContainer = achievementsContent.querySelector('.achievements-grid');
   if (!gameState.achievements) return;
 
-  // Ordenar conquistas por categoria
   const sortedAchievements = [...gameState.achievements].sort((a, b) => {
     const catA = gameState.achievementCategories[a.category].name;
     const catB = gameState.achievementCategories[b.category].name;
     return catA.localeCompare(catB);
   });
 
-  // Criar blocos para cada nível de cada conquista
   sortedAchievements.forEach(achievement => {
     achievement.levels.forEach((level, levelIndex) => {
       const categoryInfo = gameState.achievementCategories[achievement.category];
@@ -818,14 +816,14 @@ function renderAchievementsScreen() {
         ${isNew ? '<div class="achievement-new-badge">NOVO!</div>' : ''}
         <div class="achievement-info-overlay">
           <h4>${achievement.name} - Nível ${levelIndex + 1}</h4>
-          <p>${level.description}</p>
           ${isUnlocked ? `
             <p class="achievement-boost">
               +${(level.boost.value * 100).toFixed(0)}% 
               ${level.boost.type}
             </p>
-            <p class="achievement-complete">✓ Completo</p>
-          ` : ''}
+          ` : `
+            <p class="achievement-requirement">${level.description}</p>
+          `}
         </div>
         <div class="achievement-progress-bar">
           <div class="achievement-progress-fill" style="width: ${isUnlocked ? '100%' : '0%'}"></div>
