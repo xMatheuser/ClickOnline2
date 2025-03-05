@@ -445,7 +445,30 @@ socket.on('gameStateUpdate', (newState) => {
   if (now - lastUpdate < UPDATE_THROTTLE) return;
   lastUpdate = now;
 
+  // Check for tier completion before updating gameState
+  const oldTier1Complete = gameState.upgrades?.filter(u => u.tier === 1).every(u => u.level >= u.maxLevel);
+  const oldTier2Complete = gameState.upgrades?.filter(u => u.tier === 2).every(u => u.level >= u.maxLevel);
+
   gameState = newState;
+
+  // Check current completion status
+  const tier1Upgrades = gameState.upgrades.filter(u => u.tier === 1);
+  const tier2Upgrades = gameState.upgrades.filter(u => u.tier === 2);
+  const tier1Complete = tier1Upgrades.every(u => u.level >= u.maxLevel);
+  const tier2Complete = tier2Upgrades.every(u => u.level >= u.maxLevel);
+
+  // If tier1 just completed, save to history
+  if (tier1Complete && !oldTier1Complete && upgradeHistory.tier1.length === 0) {
+    upgradeHistory.tier1 = JSON.parse(JSON.stringify(tier1Upgrades));
+    console.log('[History] Tier 1 upgrades saved to history');
+  }
+
+  // If tier2 just completed, save to history
+  if (tier2Complete && !oldTier2Complete && upgradeHistory.tier2.length === 0) {
+    upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
+    console.log('[History] Tier 2 upgrades saved to history');
+  }
+
   updateUI();
 });
 
