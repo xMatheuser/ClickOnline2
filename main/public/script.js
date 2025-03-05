@@ -445,62 +445,35 @@ socket.on('gameStateUpdate', (newState) => {
   if (now - lastUpdate < UPDATE_THROTTLE) return;
   lastUpdate = now;
 
-  const oldState = { ...gameState };
   gameState = newState;
+  updateUI();
+});
 
-  // Atualizar apenas o que mudou
+function updateUI() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (ownPlayer) {
-    if (gameState.totalClicks !== oldState.totalClicks) {
-      clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
-    }
+    clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
+    levelDisplay.textContent = ownPlayer.level;
+    teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
+    clickPowerDisplay.textContent = ownPlayer.clickValue.toFixed(1);
     
-    if (ownPlayer.level !== oldState.players?.find(p => p.id === socket.id)?.level) {
-      levelDisplay.textContent = ownPlayer.level;
-    }
-    
-    if (gameState.teamCoins !== oldState.teamCoins) {
-      teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
-    }
-
-    const clickValue = getClickValue(ownPlayer);
-    if (clickValue !== parseFloat(clickPowerDisplay.textContent)) {
-      clickPowerDisplay.textContent = clickValue.toFixed(1);
-    }
-  }
-
-  // Atualizar barra de progresso apenas se mudou
-  if (gameState.levelProgressRemaining !== oldState.levelProgressRemaining) {
-    const teamProgress = (gameState.levelProgressRemaining / (gameState.teamLevel * 100)) * 100;
-    const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
-    requestAnimationFrame(() => {
-      teamSharedProgressBar.style.width = `${percentage}%`;
-      progressPercentage.textContent = `${percentage}%`;
-    });
-  }
-
-  // Verificar level up
-  if (gameState.teamLevel > oldState.teamLevel) {
-    if (userHasInteracted) levelUpSound.play().catch(err => console.log('[Audio Error]:', err));
+    // Add this line to update the team goal display
     teamGoalDisplay.textContent = gameState.teamLevel;
   }
 
-  // Atualizar lista de jogadores e contribuições apenas se necessário
-  const playersChanged = JSON.stringify(gameState.players) !== JSON.stringify(oldState.players);
-  if (playersChanged) {
-    renderPlayers();
-    renderContributions();
-  }
+  // Atualizar barra de progresso
+  const teamProgress = (gameState.levelProgressRemaining / (gameState.teamLevel * 100)) * 100;
+  const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
+  requestAnimationFrame(() => {
+    teamSharedProgressBar.style.width = `${percentage}%`;
+    progressPercentage.textContent = `${percentage}%`;
+  });
 
-  // Verificar outros estados específicos que precisam de atualização
-  const upgradesChanged = JSON.stringify(gameState.upgrades) !== JSON.stringify(oldState.upgrades);
-  if (upgradesChanged) {
-    renderUpgrades();
-  }
-
-  // Manter outras verificações necessárias...
-  // ...existing code for achievements, prestige, etc...
-});
+  renderPlayers();
+  renderContributions();
+  renderUpgrades();
+  renderAchievements();
+}
 
 socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
@@ -594,6 +567,15 @@ function getUpgradeEffectDescription(upgrade) {
   }
 }
 
+function buyUpgrade(upgradeId) {
+  if (!isOwnPlayer()) {
+    showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
+    return;
+  }
+  
+  socket.emit('buyUpgrade', upgradeId);
+}
+
 function renderUpgrades() {
   upgradesContainer.innerHTML = '';
   if (!gameState.upgrades || !gameState.players) return;
@@ -601,42 +583,45 @@ function renderUpgrades() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (!ownPlayer) return;
 
+  // Filtrar upgrades baseado no tier atual
   const tier1Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 1);
   const tier1Completed = tier1Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
-
-  if (tier1Completed && upgradeHistory.tier1.length === 0) {
-    upgradeHistory.tier1 = JSON.parse(JSON.stringify(tier1Upgrades));
-  }
-
-  const tier2Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 2);
-  const tier2Completed = tier2Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
-
-  if (tier2Completed && upgradeHistory.tier2.length === 0) {
-    upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
-  }
 
   const visibleUpgrades = gameState.upgrades
     .filter(upgrade => {
       if (tier1Completed) {
-        return upgrade.tier === 2 && !tier2Completed;
+        return upgrade.tier === 2;
       }
       return upgrade.tier === 1;
     })
     .sort((a, b) => {
       if (b.tier !== a.tier) return b.tier - a.tier;
-      return gameState.upgrades.indexOf(a) - gameState.upgrades.indexOf(b);
+      return calculateUpgradePrice(a) - calculateUpgradePrice(b);
     });
 
   visibleUpgrades.forEach(upgrade => {
-    let price = calculateUpgradePrice(upgrade);
+    const price = calculateUpgradePrice(upgrade);
     const canAfford = gameState.teamCoins >= price;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
     const canBuy = canAfford && !maxedOut && isOwnPlayer();
 
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${(!canBuy) ? 'disabled' : ''}`;
+    
+    // Adicionar verificação de requisitos para upgrades tier 2
+    let isLocked = false;
+    if (upgrade.tier === 2) {
+      const requiredUpgrade = gameState.upgrades.find(u => u.id === upgrade.requires);
+      isLocked = !requiredUpgrade || requiredUpgrade.level < requiredUpgrade.maxLevel;
+    }
+
+    if (isLocked) {
+      upgradeElement.classList.add('locked');
+    }
+
     const tooltipText = getUpgradeEffectDescription(upgrade);
     upgradeElement.setAttribute('data-tooltip', tooltipText);
+    
     upgradeElement.innerHTML = `
       <div class="upgrade-info">
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
@@ -646,20 +631,10 @@ function renderUpgrades() {
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
-    buyButton.addEventListener('click', () => {
-      if (!isOwnPlayer()) {
-        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
-        return;
-      }
-      socket.emit('buyUpgrade', upgrade.id);
-    });
+    buyButton.addEventListener('click', () => buyUpgrade(upgrade.id));
     buyButton.addEventListener('touchstart', (event) => {
       event.preventDefault();
-      if (!isOwnPlayer()) {
-        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
-        return;
-      }
-      socket.emit('buyUpgrade', upgrade.id);
+      buyUpgrade(upgrade.id);
     });
 
     upgradeElement.addEventListener('mousemove', (event) => {

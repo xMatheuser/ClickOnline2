@@ -203,17 +203,29 @@ io.on('connection', (socket) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
       const clickValue = calculateClickValue(player);
-      player.clicks += clickValue;
-      player.contribution += clickValue;
-      gameState.clicks += clickValue;
-      gameState.totalClicks += clickValue;
-      gameState.levelProgressRemaining -= clickValue;
+      
+      // Aplicar validações de limites
+      const maxClicksPerSecond = 20; // Limite razoável de cliques por segundo
+      const now = Date.now();
+      if (!player.lastClick || (now - player.lastClick) >= (1000 / maxClicksPerSecond)) {
+        player.lastClick = now;
+        player.clicks += clickValue;
+        player.contribution += clickValue;
+        gameState.clicks += clickValue;
+        gameState.totalClicks += clickValue;
+        gameState.levelProgressRemaining -= clickValue;
 
-      if (gameState.levelProgressRemaining <= 0) {
-        levelUpTeam();
+        if (gameState.levelProgressRemaining <= 0) {
+          levelUpTeam();
+        }
+        
+        // Enviar atualização apenas se houver mudanças significativas
+        if (now - lastUpdate >= UPDATE_THROTTLE) {
+          broadcastGameState();
+          checkAchievements();
+          lastUpdate = now;
+        }
       }
-      broadcastGameState();
-      checkAchievements();
     }
   });
 
@@ -224,25 +236,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
-    if (!upgrade) {
-      socket.emit('notification', 'Upgrade não encontrado!');
-      return;
-    }
-
-    let price = getUpgradePrice(upgrade);
-    if (gameState.teamCoins >= price && upgrade.level < upgrade.maxLevel) {
-      gameState.teamCoins -= price;
-      upgrade.level++;
-      const sharedRewardBonus = getUpgradeEffect('shared-rewards');
-      if (sharedRewardBonus > 0) {
-        const sharedCoins = Math.round(price * sharedRewardBonus);
-        gameState.teamCoins += sharedCoins;
-      }
+    if (processUpgradePurchase(socket, upgradeId)) {
       broadcastGameState();
       checkAchievements();
-    } else {
-      socket.emit('notification', gameState.teamCoins < price ? `Moedas insuficientes!` : `${upgrade.name} já está no nível máximo!`);
     }
   });
 
@@ -498,3 +494,57 @@ const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
   console.log(`[Inicialização] Servidor rodando na porta ${port}`);
 });
+
+function isValidUpgradePurchase(upgrade, gameState) {
+  if (!upgrade) return false;
+  if (upgrade.level >= upgrade.maxLevel) return false;
+  
+  const price = calculateUpgradePrice(upgrade);
+  if (gameState.teamCoins < price) return false;
+
+  // Se for upgrade tier 2, verificar se o requisito foi completado
+  if (upgrade.tier === 2) {
+    const requiredUpgrade = gameState.upgrades.find(u => u.id === upgrade.requires);
+    if (!requiredUpgrade || requiredUpgrade.level < requiredUpgrade.maxLevel) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function calculateUpgradePrice(upgrade) {
+  return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
+}
+
+function processUpgradePurchase(socket, upgradeId) {
+  const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+  const player = gameState.players.find(p => p.id === socket.id);
+
+  if (!player) {
+    socket.emit('notification', 'Erro: Jogador não encontrado');
+    return false;
+  }
+
+  if (!isValidUpgradePurchase(upgrade, gameState)) {
+    socket.emit('notification', 'Erro: Compra inválida');
+    return false;
+  }
+
+  const price = calculateUpgradePrice(upgrade);
+  gameState.teamCoins -= price;
+  upgrade.level++;
+
+  // Aplicar bônus de recompensas compartilhadas
+  const sharedRewardBonus = getUpgradeEffect('shared-rewards');
+  if (sharedRewardBonus > 0) {
+    const sharedCoins = Math.round(price * sharedRewardBonus);
+    gameState.teamCoins += sharedCoins;
+  }
+
+  return true;
+}
+
+// Adicionar constantes de controle
+const UPDATE_THROTTLE = 50; // ms
+let lastUpdate = Date.now();
