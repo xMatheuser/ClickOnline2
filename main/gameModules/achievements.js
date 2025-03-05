@@ -11,26 +11,22 @@ const achievements = [
       { 
         requirement: (gameState) => gameState.totalClicks >= 1000,
         description: 'Alcance 1.000 cliques totais',
-        boost: { type: 'clickMultiplier', value: 0.02 }, // +2%
-        reward: 5
+        boost: { type: 'clickMultiplier', value: 0.02 } // +2%
       },
       { 
         requirement: (gameState) => gameState.totalClicks >= 10000,
         description: 'Alcance 10.000 cliques totais',
-        boost: { type: 'clickMultiplier', value: 0.05 }, // +5%
-        reward: 20
+        boost: { type: 'clickMultiplier', value: 0.05 } // +5%
       },
       { 
         requirement: (gameState) => gameState.totalClicks >= 100000,
         description: 'Alcance 100.000 cliques totais',
-        boost: { type: 'clickMultiplier', value: 0.10 }, // +10%
-        reward: 50
+        boost: { type: 'clickMultiplier', value: 0.10 } // +10%
       },
       { 
         requirement: (gameState) => gameState.totalClicks >= 1000000,
         description: 'Alcance 1.000.000 cliques totais',
-        boost: { type: 'clickMultiplier', value: 0.15 }, // +15%
-        reward: 150
+        boost: { type: 'clickMultiplier', value: 0.15 } // +15%
       }
     ]
   },
@@ -46,20 +42,17 @@ const achievements = [
       { 
         requirement: (gameState) => getAutoClicks(gameState) >= 5000,
         description: '5.000 cliques automáticos',
-        boost: { type: 'autoMultiplier', value: 0.05 }, // +5%
-        reward: 10
+        boost: { type: 'autoMultiplier', value: 0.05 } // +5%
       },
       { 
         requirement: (gameState) => getAutoClicks(gameState) >= 50000,
         description: '50.000 cliques automáticos',
-        boost: { type: 'autoMultiplier', value: 0.10 }, // +10%
-        reward: 30
+        boost: { type: 'autoMultiplier', value: 0.10 } // +10%
       },
       { 
         requirement: (gameState) => getAutoClicks(gameState) >= 500000,
         description: '500.000 cliques automáticos',
-        boost: { type: 'autoMultiplier', value: 0.20 }, // +20%
-        reward: 100
+        boost: { type: 'autoMultiplier', value: 0.20 } // +20%
       }
     ]
   },
@@ -75,20 +68,17 @@ const achievements = [
       { 
         requirement: (gameState) => gameState.players.some(p => p.prestige >= 1),
         description: 'Faça seu primeiro prestígio',
-        boost: { type: 'prestigeCostReduction', value: 0.02 }, // -2%
-        reward: 25
+        boost: { type: 'prestigeCostReduction', value: 0.02 } // -2%
       },
       { 
         requirement: (gameState) => gameState.players.some(p => p.prestige >= 5),
         description: 'Alcance 5 prestígios',
-        boost: { type: 'prestigeCostReduction', value: 0.10 }, // -10%
-        reward: 75
+        boost: { type: 'prestigeCostReduction', value: 0.10 } // -10%
       },
       { 
         requirement: (gameState) => gameState.players.some(p => p.prestige >= 10),
         description: 'Alcance 10 prestígios',
-        boost: { type: 'prestigeCostReduction', value: 0.15 }, // -15%
-        reward: 200
+        boost: { type: 'prestigeCostReduction', value: 0.15 } // -15%
       }
     ]
   },
@@ -104,20 +94,17 @@ const achievements = [
       { 
         requirement: (gameState) => gameState.powerUpUses >= 10,
         description: 'Use 10 power-ups',
-        boost: { type: 'powerUpDuration', value: 0.10 }, // +10%
-        reward: 15
+        boost: { type: 'powerUpDuration', value: 0.10 } // +10%
       },
       { 
         requirement: (gameState) => gameState.powerUpUses >= 50,
         description: 'Use 50 power-ups',
-        boost: { type: 'powerUpDuration', value: 0.20 }, // +20%
-        reward: 50
+        boost: { type: 'powerUpDuration', value: 0.20 } // +20%
       },
       { 
         requirement: (gameState) => gameState.powerUpUses >= 100,
         description: 'Use 100 power-ups',
-        boost: { type: 'powerUpDuration', value: 0.50 }, // +50%
-        reward: 150
+        boost: { type: 'powerUpDuration', value: 0.50 } // +50%
       }
     ]
   },
@@ -133,20 +120,17 @@ const achievements = [
       { 
         requirement: (gameState) => gameState.upgrades.filter(u => u.level > 0).length >= 3,
         description: 'Desbloqueie 3 upgrades',
-        boost: { type: 'upgradeEffect', value: 0.03 }, // +3%
-        reward: 20
+        boost: { type: 'upgradeEffect', value: 0.03 } // +3%
       },
       { 
         requirement: (gameState) => gameState.upgrades.filter(u => u.level > 0).length >= 10,
         description: 'Desbloqueie 10 upgrades',
-        boost: { type: 'upgradeEffect', value: 0.10 }, // +10%
-        reward: 60
+        boost: { type: 'upgradeEffect', value: 0.10 } // +10%
       },
       { 
         requirement: (gameState) => gameState.upgrades.filter(u => u.level > 0).length >= 20,
         description: 'Desbloqueie 20 upgrades',
-        boost: { type: 'upgradeEffect', value: 0.15 }, // +15%
-        reward: 200
+        boost: { type: 'upgradeEffect', value: 0.15 } // +15%
       }
     ]
   }

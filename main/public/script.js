@@ -783,27 +783,36 @@ function renderAchievements() {
 }
 
 function renderAchievementsScreen() {
+  // Primeiro, limpe o conteúdo atual
+  const achievementsContent = document.getElementById('achievements-content');
   achievementsContent.innerHTML = `
     <div class="achievements-summary">
       <div id="achievements-stats"></div>
     </div>
-    <div class="achievements-grid"></div>
+    <div class="achievements-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; padding: 15px;"></div>
   `;
 
   const gridContainer = achievementsContent.querySelector('.achievements-grid');
   if (!gameState.achievements) return;
 
-  // Criar blocos individuais para cada nível de cada conquista
-  gameState.achievements.forEach(achievement => {
+  // Ordenar conquistas por categoria
+  const sortedAchievements = [...gameState.achievements].sort((a, b) => {
+    const catA = gameState.achievementCategories[a.category].name;
+    const catB = gameState.achievementCategories[b.category].name;
+    return catA.localeCompare(catB);
+  });
+
+  // Criar blocos para cada nível de cada conquista
+  sortedAchievements.forEach(achievement => {
     achievement.levels.forEach((level, levelIndex) => {
       const categoryInfo = gameState.achievementCategories[achievement.category];
       const isUnlocked = achievement.unlockedLevels.includes(levelIndex);
       const isNew = !viewedAchievements.has(`${achievement.id}_${levelIndex}`) && isUnlocked;
 
-      const achievementBlock = document.createElement('div');
-      achievementBlock.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
+      const block = document.createElement('div');
+      block.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
       
-      achievementBlock.innerHTML = `
+      block.innerHTML = `
         <div class="achievement-icon">${categoryInfo.icon}</div>
         <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
         ${isNew ? '<div class="achievement-new-badge">NOVO!</div>' : ''}
@@ -816,21 +825,17 @@ function renderAchievementsScreen() {
               ${level.boost.type}
             </p>
             <p class="achievement-complete">✓ Completo</p>
-          ` : `
-            <p class="achievement-reward">
-              Recompensa: ${level.reward} moedas
-            </p>
-          `}
+          ` : ''}
         </div>
         <div class="achievement-progress-bar">
           <div class="achievement-progress-fill" style="width: ${isUnlocked ? '100%' : '0%'}"></div>
         </div>
       `;
 
-      achievementBlock.addEventListener('mouseenter', () => {
+      block.addEventListener('mouseenter', () => {
         if (isNew) {
           viewedAchievements.add(`${achievement.id}_${levelIndex}`);
-          const badge = achievementBlock.querySelector('.achievement-new-badge');
+          const badge = block.querySelector('.achievement-new-badge');
           if (badge) {
             badge.style.opacity = '0';
             setTimeout(() => badge.remove(), 300);
@@ -838,7 +843,7 @@ function renderAchievementsScreen() {
         }
       });
 
-      gridContainer.appendChild(achievementBlock);
+      gridContainer.appendChild(block);
     });
   });
 

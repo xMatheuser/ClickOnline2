@@ -74,9 +74,8 @@ function checkAchievements() {
     achievement.levels.forEach((level, index) => {
       if (!achievement.unlockedLevels.includes(index) && level.requirement(gameState)) {
         achievement.unlockedLevels.push(index);
-        gameState.teamCoins += level.reward;
         applyAchievementBoost(level.boost);
-        console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada. Recompensa: ${level.reward} moedas`);
+        console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada`);
         newUnlocks = true;
       }
     });
