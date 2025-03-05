@@ -1011,11 +1011,12 @@ function renderUpgradeHistory() {
 }
 
 socket.on('prestige', () => {
+  teamGoalDisplay.textContent = '1';
+  viewedAchievements.clear();
   upgradeHistory = {
     tier1: [],
     tier2: []
   };
-  viewedAchievements.clear(); // Limpar todos os níveis visualizados
 });
 
 socket.on('achievementUnlocked', (achievement) => {

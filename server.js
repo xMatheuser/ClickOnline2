@@ -258,18 +258,26 @@ io.on('connection', (socket) => {
       const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
       const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier * gameState.achievementBoosts.prestigeCostReduction);
       
+      // Reset player stats
       player.prestige = (player.prestige || 0) + 1;
       player.prestigeMultiplier = 1 + player.prestige * 0.1;
       player.clicks = 0;
       player.level = 1;
       player.contribution = 0;
+
+      // Reset team stats
       gameState.teamCoins = 0;
-      gameState.teamLevel = 1;
+      gameState.teamLevel = 1; // Garante que o nível do time seja 1
       gameState.levelProgressRemaining = 100;
+      // Reset upgrades
       gameState.upgrades.forEach(u => u.level = 0);
       gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
       
+      // Emitir notificação
       io.to(player.id).emit('notification', `Prestígio ativado!\nMultiplicador: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
+      
+      // Força uma atualização imediata do estado do jogo
+      io.emit('prestige');
       broadcastGameState();
       checkAchievements();
     } else {
