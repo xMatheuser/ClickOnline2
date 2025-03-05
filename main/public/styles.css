@@ -1516,15 +1516,17 @@ body.dark-mode .stat-item {
 
 .achievement-new-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #ff4444;
+  top: 2%;
+  left: 5%; /* Mudado de right para left */
+  background-color: #ff4444;
   color: white;
-  padding: 3px 6px;
+  padding: 3px 8px;
   border-radius: 10px;
   font-size: 0.7rem;
   font-weight: bold;
   animation: pulse 1.5s infinite;
+  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes pulse {
