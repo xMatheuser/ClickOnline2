@@ -346,7 +346,7 @@ function initGame() {
     achievementsOverlay.classList.add('active');
     newAchievements = 0;
     updateAchievementBadge();
-    renderAchievements();
+    renderAchievementsScreen(); // Chame diretamente renderAchievementsScreen aqui
     updateAchievementStats();
   });
 
@@ -433,6 +433,8 @@ function updateAchievementStats() {
     </div>
   `;
 }
+
+let viewedAchievements = new Set();
 
 socket.on('gameStateUpdate', (newState) => {
   const wasPowerUpsUnlocked = arePowerUpsUnlocked();
@@ -527,7 +529,7 @@ socket.on('gameStateUpdate', (newState) => {
 
   // Update achievements UI if overlay is open
   if (achievementsOverlay.classList.contains('active')) {
-    renderAchievements();
+    renderAchievementsScreen(); // Use renderAchievementsScreen ao invés de renderAchievements
     updateAchievementStats();
   }
 
@@ -714,6 +716,13 @@ function renderUpgrades() {
 }
 
 function renderAchievements() {
+  // Se estivermos no overlay de conquistas, use o novo layout em blocos
+  if (achievementsOverlay.classList.contains('active')) {
+    renderAchievementsScreen();
+    return;
+  }
+
+  // Caso contrário, use o layout antigo para a visualização em lista
   const container = document.getElementById('achievements-container');
   if (!container || !gameState.achievements) return;
 
@@ -774,27 +783,66 @@ function renderAchievements() {
 }
 
 function renderAchievementsScreen() {
-  achievementsContent.innerHTML = '<h2>Conquistas</h2>';
+  achievementsContent.innerHTML = `
+    <div class="achievements-summary">
+      <div id="achievements-stats"></div>
+    </div>
+    <div class="achievements-grid"></div>
+  `;
+
+  const gridContainer = achievementsContent.querySelector('.achievements-grid');
   if (!gameState.achievements) return;
 
+  // Criar blocos individuais para cada nível de cada conquista
   gameState.achievements.forEach(achievement => {
-    const achievementElement = document.createElement('div');
-    achievementElement.className = 'achievement-category';
-    achievementElement.innerHTML = `<h3>${achievement.name} (${achievement.category})</h3>`;
-    
-    achievement.levels.forEach((level, index) => {
-      const isUnlocked = achievement.unlockedLevels.includes(index);
-      const levelElement = document.createElement('div');
-      levelElement.className = `achievement-level ${isUnlocked ? 'unlocked' : 'locked'}`;
-      levelElement.innerHTML = `
-        <div>Nível ${index + 1}: ${achievement.description} (+${(level.boost.value * 100).toFixed(0)}% ${level.boost.type})</div>
-        <div>${isUnlocked ? 'Concluído ✓' : `Recompensa: ${level.reward} moedas`}</div>
+    achievement.levels.forEach((level, levelIndex) => {
+      const categoryInfo = gameState.achievementCategories[achievement.category];
+      const isUnlocked = achievement.unlockedLevels.includes(levelIndex);
+      const isNew = !viewedAchievements.has(`${achievement.id}_${levelIndex}`) && isUnlocked;
+
+      const achievementBlock = document.createElement('div');
+      achievementBlock.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
+      
+      achievementBlock.innerHTML = `
+        <div class="achievement-icon">${categoryInfo.icon}</div>
+        <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
+        ${isNew ? '<div class="achievement-new-badge">NOVO!</div>' : ''}
+        <div class="achievement-info-overlay">
+          <h4>${achievement.name} - Nível ${levelIndex + 1}</h4>
+          <p>${level.description}</p>
+          ${isUnlocked ? `
+            <p class="achievement-boost">
+              +${(level.boost.value * 100).toFixed(0)}% 
+              ${level.boost.type}
+            </p>
+            <p class="achievement-complete">✓ Completo</p>
+          ` : `
+            <p class="achievement-reward">
+              Recompensa: ${level.reward} moedas
+            </p>
+          `}
+        </div>
+        <div class="achievement-progress-bar">
+          <div class="achievement-progress-fill" style="width: ${isUnlocked ? '100%' : '0%'}"></div>
+        </div>
       `;
-      achievementElement.appendChild(levelElement);
+
+      achievementBlock.addEventListener('mouseenter', () => {
+        if (isNew) {
+          viewedAchievements.add(`${achievement.id}_${levelIndex}`);
+          const badge = achievementBlock.querySelector('.achievement-new-badge');
+          if (badge) {
+            badge.style.opacity = '0';
+            setTimeout(() => badge.remove(), 300);
+          }
+        }
+      });
+
+      gridContainer.appendChild(achievementBlock);
     });
-    
-    achievementsContent.appendChild(achievementElement);
   });
+
+  updateAchievementStats();
 }
 
 function showNotification(message) {
@@ -1008,4 +1056,5 @@ socket.on('prestige', () => {
     tier1: [],
     tier2: []
   };
+  viewedAchievements.clear(); // Limpar todos os níveis visualizados
 });
