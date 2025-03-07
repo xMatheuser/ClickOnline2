@@ -47,6 +47,7 @@ let gameState = {
 let lastTotalCPS = 0;
 
 function prepareGameStateForBroadcast(state) {
+  // Adicionar flag para diferenciar tipos de atualizações
   const preparedState = JSON.parse(JSON.stringify(state, (key, value) => {
     if (typeof value === 'function') {
       return undefined;
@@ -56,16 +57,33 @@ function prepareGameStateForBroadcast(state) {
   return preparedState;
 }
 
-function broadcastGameState() {
+function broadcastGameState(type = 'full') {
   gameState.players.forEach(player => {
     player.clickValue = calculateClickValue(player);
   });
   gameState.players.sort((a, b) => b.contribution - a.contribution);
   const preparedState = prepareGameStateForBroadcast(gameState);
-  io.emit('gameStateUpdate', preparedState);
-
-  const totalClicks = gameState.players.reduce((sum, p) => sum + p.clicks, 0);
-  lastTotalCPS = totalClicks / 60;
+  
+  // Enviar apenas dados essenciais para atualizações de clique
+  if (type === 'autoclick') {
+    const essentialData = {
+      type: 'autoclick',
+      teamCoins: gameState.teamCoins,
+      levelProgressRemaining: gameState.levelProgressRemaining,
+      players: gameState.players.map(p => ({
+        id: p.id,
+        clicks: p.clicks,
+        contribution: p.contribution,
+        clickValue: p.clickValue
+      })),
+      totalClicks: gameState.totalClicks,
+      clicks: gameState.clicks
+    };
+    io.emit('gameStateUpdate', essentialData);
+  } else {
+    preparedState.type = 'full';
+    io.emit('gameStateUpdate', preparedState);
+  }
 }
 
 function checkAchievements() {
@@ -406,6 +424,7 @@ function getUpgradeEffect(upgradeId) {
   return upgrade.effect(upgrade.level, gameState) * gameState.achievementBoosts.upgradeEffect;
 }
 
+// Modificar o setInterval do auto-clicker para usar o novo tipo
 setInterval(() => {
   const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
   if (autoClickerUpgrade && autoClickerUpgrade.level > 0) {
@@ -420,8 +439,7 @@ setInterval(() => {
         levelUpTeam();
       }
     });
-    broadcastGameState();
-    checkAchievements();
+    broadcastGameState('autoclick');
   }
 }, 1000);
 

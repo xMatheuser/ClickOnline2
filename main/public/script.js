@@ -437,10 +437,32 @@ function updateAchievementStats() {
 let viewedAchievements = new Set();
 
 socket.on('gameStateUpdate', (newState) => {
-  const wasPowerUpsUnlocked = arePowerUpsUnlocked();
+  // Se for atualização de clique automático, atualizar apenas os valores necessários
+  if (newState.type === 'autoclick') {
+    gameState.teamCoins = newState.teamCoins;
+    gameState.levelProgressRemaining = newState.levelProgressRemaining;
+    gameState.totalClicks = newState.totalClicks;
+    gameState.clicks = newState.clicks;
+    gameState.players = gameState.players.map(player => {
+      const updatedPlayer = newState.players.find(p => p.id === player.id);
+      if (updatedPlayer) {
+        player.clicks = updatedPlayer.clicks;
+        player.contribution = updatedPlayer.contribution;
+        player.clickValue = updatedPlayer.clickValue;
+      }
+      return player;
+    });
 
+    // Atualizar apenas elementos essenciais da UI
+    updateEssentialUI();
+    return;
+  }
+
+  // Para atualizações completas, continuar com o comportamento atual
+  const wasPowerUpsUnlocked = arePowerUpsUnlocked();
   const oldUpgradesState = lastUpgradesState;
   const oldAchievements = gameState.achievements || [];
+  
   gameState = newState;
   lastUpgradesState = gameState.upgrades.map(u => ({ id: u.id, level: u.level }));
 
@@ -545,6 +567,27 @@ socket.on('gameStateUpdate', (newState) => {
     updatePrestigeUI();
   }
 });
+
+// Adicionar nova função para atualizar apenas elementos essenciais
+function updateEssentialUI() {
+  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+  if (ownPlayer) {
+    clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
+    teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
+    clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
+  }
+
+  // Atualizar barra de progresso
+  const teamProgress = (gameState.levelProgressRemaining / (gameState.teamLevel * 100)) * 100;
+  const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
+  teamSharedProgressBar.style.width = `${percentage}%`;
+  progressPercentage.textContent = `${percentage}%`;
+
+  // Atualizar contribuições apenas se necessário
+  if (document.activeElement?.closest('.contribution-container')) {
+    renderContributions();
+  }
+}
 
 socket.on('powerUpActivated', (powerUpInfo) => {
   showPowerupNotification(powerUpInfo);
@@ -715,7 +758,12 @@ function renderUpgrades() {
   });
 }
 
+// Modificar renderAchievements para preservar tooltips
 function renderAchievements() {
+  if (document.querySelector('.tooltip:hover')) {
+    return; // Não atualizar se houver um tooltip ativo
+  }
+
   // Se estivermos no overlay de conquistas, use o novo layout em blocos
   if (achievementsOverlay.classList.contains('active')) {
     renderAchievementsScreen();
