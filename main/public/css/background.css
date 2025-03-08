@@ -1,0 +1,63 @@
+.animated-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: #202020;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+.animated-background::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: pixels 2s linear infinite;
+  background-image: 
+    linear-gradient(45deg, #92cc41 25%, transparent 25%),
+    linear-gradient(-45deg, #92cc41 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #92cc41 75%),
+    linear-gradient(-45deg, transparent 75%, #92cc41 75%);
+  background-size: 4px 4px;
+  opacity: 0.1;
+}
+
+.animated-background::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: particles 20s linear infinite reverse;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.2;
+}
+
+@keyframes particles {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-50px, -50px); }
+}
+
+@keyframes pixels {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(4px, 4px); }
+}
+
+/* Dark mode support */
+body.dark-mode .animated-background {
+  background: #000;
+}
+
+body.dark-mode .animated-background::before {
+  opacity: 0.05;
+}
+
+body.dark-mode .animated-background::after {
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}

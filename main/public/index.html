@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coop</title>
+  <!-- Add NES.css -->
+  <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+  <!-- Add Press Start 2P font -->
+  <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
   <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/achievements.css">
@@ -11,15 +15,17 @@
   <link rel="stylesheet" href="css/upgrades.css">
   <link rel="stylesheet" href="css/powerUps.css">
   <link rel="stylesheet" href="css/bonusStats.css">
+  <link rel="stylesheet" href="css/background.css">
 </head>
-<body>
+<body class="nes-container">
+  <div class="animated-background"></div>
   <div class="top-bar">
     <div class="top-bar-content">
       <div class="title-section">
         <h1 class="top-bar-title">Coop 
-          <button class="prestige-link" id="open-prestige">⚡ Prestígio</button>
-          <button class="nav-link" id="open-achievements">🏆 Conquistas</button>
-          <button class="nav-link" id="open-bonus-stats">📊 Bônus</button>
+          <button class="prestige-link nes-btn" id="open-prestige">⚡ Prestígio</button>
+          <button class="nav-link nes-btn" id="open-achievements">🏆 Conquistas</button>
+          <button class="nav-link nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
         </h1>
       </div>
       <div class="top-bar-buttons">
@@ -122,7 +128,7 @@
           <h2>Contribuição dos Jogadores</h2>
           <div id="contribution-container"></div>
         </div>
-        <div class="click-area" id="click-area">
+        <div class="click-area nes-container is-rounded" id="click-area">
           Clique aqui ou pressione "P"!
         </div>
       </div>
