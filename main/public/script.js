@@ -930,18 +930,9 @@ let lastNotification = '';  // Adicionar variável para rastrear última notific
 
 // Substitua a função showNotification existente
 function showNotification(message) {
-  // Evitar duplicatas consecutivas
-  if (message === lastNotification) {
-    return;
-  }
-  
+  console.log('[ShowNotification]', message); // Debug log
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
-  lastNotification = message;
-  
-  // Adicionar à fila apenas se não existir mensagem idêntica
-  if (!notificationQueue.includes(message)) {
-    notificationQueue.push(message);
-  }
+  notificationQueue.push(message);
   
   if (!isNotificationShowing) {
     showNextNotification();
@@ -951,22 +942,35 @@ function showNotification(message) {
 function showNextNotification() {
   if (notificationQueue.length === 0) {
     isNotificationShowing = false;
-    lastNotification = ''; // Resetar última notificação quando a fila estiver vazia
     return;
   }
 
   isNotificationShowing = true;
   const message = notificationQueue.shift();
+  
+  // Forçar remoção da classe antes de adicionar
+  notification.classList.remove('show');
   notification.innerHTML = message.replace(/\n/g, '<br>');
+  
+  // Forçar reflow do DOM
+  void notification.offsetWidth;
+  
+  // Adicionar classe show
   notification.classList.add('show');
 
   setTimeout(() => {
     notification.classList.remove('show');
     setTimeout(() => {
+      isNotificationShowing = false;
       showNextNotification();
     }, 300);
   }, 5000);
 }
+
+socket.on('notification', (message) => {
+  console.log('[Notification]', message); // Debug log
+  showNotification(message);
+});
 
 initStartScreen();
 
