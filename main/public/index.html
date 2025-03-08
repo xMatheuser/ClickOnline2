@@ -23,17 +23,17 @@
     <div class="top-bar-content">
       <div class="title-section">
         <h1 class="top-bar-title">Coop 
-          <button class="prestige-link nes-btn" id="open-prestige">⚡ Prestígio</button>
-          <button class="nav-link nes-btn" id="open-achievements">🏆 Conquistas</button>
-          <button class="nav-link nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
+          <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
+          <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
+          <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
         </h1>
       </div>
       <div class="top-bar-buttons">
-        <button class="theme-toggle" id="theme-toggle">Modo Noturno</button>
-        <button class="fullscreen-toggle" id="fullscreen-toggle">
+        <button class="nes-btn" id="theme-toggle">Modo Noturno</button>
+        <button class="nes-btn" id="fullscreen-toggle">
           <span class="fullscreen-icon">⛶</span>
         </button>
-        <button class="mute-toggle" id="mute-toggle">
+        <button class="nes-btn" id="mute-toggle">
           <span class="mute-icon">🔊</span>
         </button>
       </div>
@@ -41,10 +41,10 @@
   </div>
 
   <div class="prestige-overlay" id="prestige-overlay">
-    <div class="prestige-popup">
+    <div class="prestige-popup nes-container is-rounded">
       <div class="prestige-header">
         <h1 class="top-bar-title">Prestígio</h1>
-        <button class="close-prestige" id="close-prestige">×</button>
+        <button class="close-prestige nes-btn" id="close-prestige">×</button>
       </div>
       <div class="prestige-content">
         <div class="prestige-info">
@@ -52,7 +52,7 @@
           <p>Reinicie seu progresso para ganhar fragmentos mágicos!</p>
           <p>Você receberá <span id="potential-fragments">0</span> fragmentos ao prestigiar.</p>
           <p class="fragments">🔮 <span id="fragments-count">0</span> Fragmentos</p>
-          <button id="prestige-button" class="prestige-button">Prestigiar</button>
+          <button id="prestige-button" class="nes-btn is-primary">Prestigiar</button>
         </div>
         <div class="prestige-upgrades">
           <h2>Upgrades de Prestígio</h2>
@@ -63,7 +63,7 @@
   </div>
 
   <div class="achievements-overlay" id="achievements-overlay">
-    <div class="achievements-popup">
+    <div class="achievements-popup nes-container is-rounded">
       <div class="achievements-header">
         <h2>Conquistas</h2>
         <button class="close-achievements" id="close-achievements">×</button>
@@ -82,31 +82,29 @@
       <h1>Bem-vindo ao  Coop!</h1>
       <p>Digite seu nome para começar:</p>
       <input type="text" id="start-player-name" placeholder="Seu nome" class="player-input">
-      <button id="start-game-button" class="buy-button">Iniciar Jogo</button>
+      <button id="start-game-button" class="nes-btn is-primary">Iniciar Jogo</button>
       <div id="start-error" class="error-message"></div>
     </div>
   </div>
 
   <div class="game-container" id="game-container" style="display: none; opacity: 0;">
     <div class="main-layout">
-      <div class="left-column">
-        <div class="section">
-          <div class="section-header">
-            <h2>Upgrades</h2>
-            <button id="show-history" class="history-button" title="Ver Histórico de Upgrades">
-              📜
-            </button>
-          </div>
+      <div class="left-column nes-container is-rounded">
+        <section class="nes-container with-title">
+          <h2 class="title">Upgrades</h2>
+          <button id="show-history" class="nes-btn" title="Ver Histórico de Upgrades">
+            <i class="nes-icon trophy is-small"></i>
+          </button>
           <div id="upgrades-container"></div>
-        </div>
+        </section>
       </div>
-      <div class="center-column">
-        <div class="player-setup">
-          <h2>Jogadores</h2>
+      <div class="center-column nes-container is-rounded">
+        <section class="nes-container with-title">
+          <h2 class="title">Jogadores</h2>
           <div class="player-list" id="player-list"></div>
-        </div>
-        <div class="team-goal-section">
-          <h2>Level: <span id="team-goal">1</span></h2>
+        </section>
+        <section class="nes-container with-title">
+          <h2 class="title">Level: <span id="team-goal">1</span></h2>
           <div class="progress-container">
             <div class="team-shared-progress-bar" id="team-shared-progress-bar">
               <span class="progress-percentage" id="progress-percentage">100%</span>
@@ -115,26 +113,28 @@
           <div class="bonus-message" id="team-bonus-message">
             Trabalhem juntos para ganhar bônus para toda a equipe!
           </div>
-        </div>
-        <div class="stats">
-          <div class="stat-box"><h3>Jogador</h3><div id="active-player">-</div></div>
-          <div class="stat-box"><h3>Nível</h3><div id="level">1</div></div>
-          <div class="stat-box"><h3>Cliques Totais (Toda História)</h3><div id="clicks">0</div></div>
-          <div class="stat-box"><h3>Cliques/s</h3><div id="target">0</div></div>
-          <div class="stat-box"><h3>Moedas do Time</h3><div><span id="team-coins">0</span><span class="coin-icon"></span></div></div>
-          <div class="stat-box"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
-        </div>
-        <div class="section">
-          <h2>Contribuição dos Jogadores</h2>
+        </section>
+        <section class="nes-container with-title is-dark">
+          <h2 class="title">Estatísticas</h2>
+          <div class="stats">
+            <div class="stat-box nes-container is-rounded"><h3>Jogador</h3><div id="active-player">-</div></div>
+            <div class="stat-box nes-container is-rounded"><h3>Nível</h3><div id="level">1</div></div>
+            <div class="stat-box nes-container is-rounded"><h3>Cliques Totais (Toda História)</h3><div id="clicks">0</div></div>
+            <div class="stat-box nes-container is-rounded"><h3>Cliques/s</h3><div id="target">0</div></div>
+            <div class="stat-box nes-container is-rounded"><h3>Moedas do Time</h3><div><span id="team-coins">0</span><span class="coin-icon"></span></div></div>
+            <div class="stat-box nes-container is-rounded"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
+          </div>
+        </section>
+        <section class="nes-container with-title">
+          <h2 class="title">Contribuição dos Jogadores</h2>
           <div id="contribution-container"></div>
-        </div>
-        <div class="click-area nes-container is-rounded" id="click-area">
+        </section>
+        <section class="click-area nes-container is-rounded" id="click-area">
           Clique aqui ou pressione "P"!
-        </div>
+        </section>
       </div>
-      <!-- Removed right-column -->
     </div>
-    <button class="floating-powerup" id="activate-click-frenzy">Power Up!</button>
+    <button class="nes-btn is-warning floating-powerup" id="activate-click-frenzy">Power Up!</button>
   </div>
   <div class="notification" id="notification"></div>
   <div class="powerup-notification" id="powerup-notification"></div>
@@ -142,7 +142,7 @@
 
   <!-- Add Bonus Stats Overlay -->
   <div class="bonus-stats-overlay" id="bonus-stats-overlay">
-    <div class="bonus-stats-popup">
+    <div class="bonus-stats-popup nes-container is-rounded">
       <div class="bonus-stats-header">
         <h2>Estatísticas de Bônus</h2>
         <button class="close-bonus-stats" id="close-bonus-stats">×</button>
@@ -154,7 +154,7 @@
 
   <!-- Add History Overlay -->
   <div class="history-overlay" id="history-overlay">
-    <div class="history-popup">
+    <div class="history-popup nes-container is-rounded">
       <div class="history-header">
         <h2>Histórico de Upgrades</h2>
         <button class="close-history" id="close-history">×</button>

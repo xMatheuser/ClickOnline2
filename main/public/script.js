@@ -756,7 +756,7 @@ function renderUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)}<span class="coin-icon"></span>`}</button>
+      <button class="nes-btn is-primary buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(price)}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
@@ -948,18 +948,16 @@ function showNextNotification() {
   isNotificationShowing = true;
   const message = notificationQueue.shift();
   
-  // Forçar remoção da classe antes de adicionar
   notification.classList.remove('show');
   notification.innerHTML = message.replace(/\n/g, '<br>');
   
-  // Forçar reflow do DOM
+  // Dispara um reflow para garantir que a animação funcione
   void notification.offsetWidth;
   
-  // Adicionar classe show
-  notification.classList.add('show');
+  notification.classList.add('show', 'nes-balloon', 'from-right');
 
   setTimeout(() => {
-    notification.classList.remove('show');
+    notification.classList.remove('show', 'nes-balloon', 'from-right');
     setTimeout(() => {
       isNotificationShowing = false;
       showNextNotification();
@@ -1018,7 +1016,7 @@ function renderPrestigeUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)} 🔮`}</button>
+      <button class="nes-btn is-primary buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)} 🔮`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.buy-button');
