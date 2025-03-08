@@ -24,17 +24,28 @@ let gameState = {
   teamLevel: 1,
   levelProgressRemaining: 100,
   clicks: 0,
-  teamCoins: 100000,
+  teamCoins: 0,
   upgrades: upgrades,
   achievements: achievements, // This is now the array
   achievementCategories: achievementCategories, // Add categories to gameState
   powerUps: powerUps,
-  fragments: 10000,
+  fragments: 0,
   prestigeUpgrades: prestigeUpgrades,
   totalClicks: 0,
   lastAutoClickerLevel: 0,
   powerUpUses: 0, // Novo campo para rastrear usos de power-ups
   lastActiveTime: Date.now(),
+  bonusStats: {
+    clickPower: 0,
+    autoClicker: 0, 
+    coinMultiplier: 0,
+    progressBoost: 0,
+    teamSynergy: 0,
+    sharedRewards: 0,
+    achievementBonus: 0,
+    prestigeMultiplier: 0,
+    powerUpBonus: 0
+  },
   achievementBoosts: { // Boosts cumulativos
     clickMultiplier: 1,
     autoMultiplier: 1,

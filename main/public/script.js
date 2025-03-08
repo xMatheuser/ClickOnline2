@@ -61,6 +61,12 @@ const closeAchievementsBtn = document.getElementById('close-achievements');
 const achievementsContent = document.getElementById('achievements-content');
 const openAchievementsBtn = document.getElementById('open-achievements');
 
+// Adicione após as outras declarações de constantes
+const bonusStatsOverlay = document.getElementById('bonus-stats-overlay');
+const openBonusStatsBtn = document.getElementById('open-bonus-stats');
+const closeBonusStatsBtn = document.getElementById('close-bonus-stats');
+const bonusStatsContent = document.getElementById('bonus-stats-content');
+
 const levelUpSound = new Audio('/assets/sounds/levelUp.mp3');
 const tickSound = new Audio('/assets/sounds/tick.mp3');
 const achievementSound = new Audio('/assets/sounds/achievement.mp3');
@@ -359,6 +365,23 @@ function initGame() {
       achievementsOverlay.classList.remove('active');
     }
   });
+
+  // Adicione após os outros event listeners em initGame()
+  openBonusStatsBtn.addEventListener('click', () => {
+    userHasInteracted = true;
+    bonusStatsOverlay.classList.add('active');
+    updateBonusStats();
+  });
+
+  closeBonusStatsBtn.addEventListener('click', () => {
+    bonusStatsOverlay.classList.remove('active');
+  });
+
+  bonusStatsOverlay.addEventListener('click', (e) => {
+    if (e.target === bonusStatsOverlay) {
+      bonusStatsOverlay.classList.remove('active');
+    }
+  });
 }
 
 function toggleFullscreen() {
@@ -565,6 +588,10 @@ socket.on('gameStateUpdate', (newState) => {
 
   if (prestigeOverlay.classList.contains('active')) {
     updatePrestigeUI();
+  }
+
+  if (bonusStatsOverlay.classList.contains('active')) {
+    updateBonusStats();
   }
 });
 
@@ -1147,3 +1174,98 @@ socket.on('prestige', () => {
   };
   viewedAchievements.clear(); // Limpar todos os níveis visualizados
 });
+
+function updateBonusStats() {
+  if (!bonusStatsContent || !gameState.players) return;
+
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return;
+
+  const prestigeBonus = ((player.prestigeMultiplier || 1) - 1) * 100;
+  const clickPowerBonus = (getUpgradeEffect('click-power') - 1) * 100;
+  const autoClickerBonus = getUpgradeEffect('auto-clicker') * gameState.achievementBoosts.autoMultiplier;
+  const coinBoostBonus = (getUpgradeEffect('coin-boost') - 1) * 100;
+  const teamSynergyBonus = getUpgradeEffect('team-synergy') * 100;
+  const sharedRewardsBonus = getUpgradeEffect('shared-rewards') * 100;
+
+  const bonusCategories = {
+    basic: {
+      title: "Bônus Básicos",
+      items: [
+        { name: "Poder de Clique", value: clickPowerBonus.toFixed(1) + "%" },
+        { name: "Cliques Automáticos/s", value: autoClickerBonus.toFixed(1) },
+        { name: "Multiplicador de Moedas", value: coinBoostBonus.toFixed(1) + "%" }
+      ]
+    },
+    team: {
+      title: "Bônus de Equipe",
+      items: [
+        { name: "Sinergia de Equipe", value: teamSynergyBonus.toFixed(1) + "%" },
+        { name: "Recompensas Compartilhadas", value: sharedRewardsBonus.toFixed(1) + "%" }
+      ]
+    },
+    achievements: {
+      title: "Bônus de Conquistas",
+      items: [
+        { name: "Multiplicador de Clique", value: ((gameState.achievementBoosts.clickMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Multiplicador Automático", value: ((gameState.achievementBoosts.autoMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Redução Custo Prestígio", value: ((1 - gameState.achievementBoosts.prestigeCostReduction) * 100).toFixed(1) + "%" },
+        { name: "Duração Power-Ups", value: ((gameState.achievementBoosts.powerUpDuration - 1) * 100).toFixed(1) + "%" },
+        { name: "Efeito de Upgrades", value: ((gameState.achievementBoosts.upgradeEffect - 1) * 100).toFixed(1) + "%" }
+      ]
+    },
+    prestige: {
+      title: "Bônus de Prestígio",
+      items: [
+        { name: "Multiplicador de Prestígio", value: prestigeBonus.toFixed(1) + "%" }
+      ]
+    }
+  };
+
+  bonusStatsContent.innerHTML = Object.values(bonusCategories).map(category => `
+    <div class="bonus-category">
+      <h3>${category.title}</h3>
+      ${category.items.map(item => `
+        <div class="bonus-item">
+          <span class="bonus-name">${item.name}</span>
+          <span class="bonus-value">${item.value}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function getUpgradeEffectValue(upgrade) {
+  if (!upgrade) return 0;
+  
+  switch (upgrade.id) {
+    case 'click-power':
+    case 'click-power-2':
+      return upgrade.level + 1;
+    case 'auto-clicker':
+    case 'auto-clicker-2':
+      return upgrade.level * (upgrade.tier === 1 ? 1 : 2);
+    case 'coin-boost':
+    case 'coin-boost-2':
+      return 1 + upgrade.level * (upgrade.tier === 1 ? 0.2 : 0.4);
+    case 'progress-boost':
+    case 'progress-boost-2':
+      return 1.25 - (upgrade.level * (upgrade.tier === 1 ? 0.05 : 0.08));
+    case 'team-synergy':
+    case 'team-synergy-2':
+      const playerCount = gameState?.players?.length || 0;
+      return upgrade.level * (playerCount * (upgrade.tier === 1 ? 0.1 : 0.2));
+    case 'shared-rewards':
+    case 'shared-rewards-2':
+      return upgrade.level * (upgrade.tier === 1 ? 0.15 : 0.3);
+    default:
+      return 0;
+  }
+}
+
+function getUpgradeEffect(upgradeId) {
+  const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return 0;
+  const effectValue = getUpgradeEffectValue(upgrade);
+  return effectValue * (gameState.achievementBoosts?.upgradeEffect || 1);
+}
