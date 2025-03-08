@@ -1,0 +1,207 @@
+.upgrade-item {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.upgrade-item:hover {
+  background-color: #f0f0f0;
+}
+
+.upgrade-item.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.buy-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+}
+
+.buy-button:hover {
+  background-color: #45a049;
+}
+
+.buy-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.history-button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+.history-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.history-overlay.active {
+  display: flex;
+}
+
+.history-popup {
+  background: white;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.close-history {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.history-content {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+.history-tier {
+  margin-bottom: 20px;
+}
+
+.history-tier-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #eee;
+}
+
+.history-upgrade-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Dark mode */
+body.dark-mode .upgrade-item {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+body.dark-mode .upgrade-item:hover {
+  background-color: #444;
+}
+
+body.dark-mode .upgrade-item.disabled {
+  opacity: 0.5;
+}
+
+body.dark-mode .history-popup {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+body.dark-mode .history-header {
+  border-bottom-color: #444;
+}
+
+body.dark-mode .history-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .close-history {
+  color: #999;
+}
+
+body.dark-mode .history-tier-title {
+  border-bottom-color: #444;
+}
+
+.buff-info-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+  margin-left: 10px;
+}
+
+.buff-info-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.buff-tooltip {
+  position: absolute;
+  background-color: #333;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  max-width: 300px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 2002;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.buff-tooltip.visible {
+  opacity: 1;
+}
+
+/* Dark mode styles */
+body.dark-mode .buff-info-button {
+  color: #999;
+}
+
+body.dark-mode .buff-info-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .buff-tooltip {
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+}

@@ -1,0 +1,72 @@
+/* Floating Power-Up Button */
+.floating-powerup {
+  position: fixed;
+  background-color: #ff4500;
+  color: white;
+  border: none;
+  padding: 15px 25px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1010;
+  animation: float 3s ease-in-out infinite;
+}
+
+.floating-powerup:hover {
+  transform: scale(1.1);
+}
+
+.floating-powerup.locked {
+  background-color: #666;
+  cursor: not-allowed;
+  animation: none;
+  opacity: 0.5;
+}
+
+.floating-powerup.locked:hover {
+  transform: none;
+}
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0); }
+}
+
+.powerup-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.3s, background-color 0.3s;
+  font-size: 1rem;
+  max-width: 300px;
+  z-index: 1000;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.powerup-notification.show {
+  opacity: 1;
+}
+
+/* Dark Mode */
+body.dark-mode .floating-powerup {
+  background-color: #ff4500;
+}
+
+body.dark-mode .floating-powerup:hover {
+  background-color: #ff6347;
+}
+
+body.dark-mode .powerup-notification {
+  background-color: #76c776;
+  color: #1a1a1a;
+}
