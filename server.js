@@ -271,18 +271,29 @@ io.on('connection', (socket) => {
       const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
       const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier * gameState.achievementBoosts.prestigeCostReduction);
       
-      player.prestige = (player.prestige || 0) + 1;
-      player.prestigeMultiplier = 1 + player.prestige * 0.1;
-      player.clicks = 0;
-      player.level = 1;
-      player.contribution = 0;
+      // Aplicar prestígio para todos os jogadores
+      gameState.players.forEach(p => {
+        p.prestige = (p.prestige || 0) + 1;
+        p.prestigeMultiplier = 1 + p.prestige * 0.1;
+        p.clicks = 0;
+        p.level = 1;
+        p.contribution = 0;
+      });
+
+      // Resetar estado global do jogo
       gameState.teamCoins = 0;
       gameState.teamLevel = 1;
       gameState.levelProgressRemaining = 100;
       gameState.upgrades.forEach(u => u.level = 0);
       gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
       
-      io.to(player.id).emit('notification', `Prestígio ativado!\nMultiplicador: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
+      // Emitir evento de prestígio para todos os clientes antes do gameStateUpdate
+      io.emit('prestige');
+      
+      // Enviar notificação para todos os jogadores
+      io.emit('notification', `${player.name} ativou o prestígio!\nMultiplicador Global: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
+      
+      // Atualizar estado do jogo depois
       broadcastGameState();
       checkAchievements();
     } else {
