@@ -896,11 +896,49 @@ function renderAchievementsScreen() {
   updateAchievementStats();
 }
 
+// Adicione estas variáveis após as outras declarações de variáveis no início do arquivo
+let notificationQueue = [];
+let isNotificationShowing = false;
+let lastNotification = '';  // Adicionar variável para rastrear última notificação
+
+// Substitua a função showNotification existente
 function showNotification(message) {
+  // Evitar duplicatas consecutivas
+  if (message === lastNotification) {
+    return;
+  }
+  
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
+  lastNotification = message;
+  
+  // Adicionar à fila apenas se não existir mensagem idêntica
+  if (!notificationQueue.includes(message)) {
+    notificationQueue.push(message);
+  }
+  
+  if (!isNotificationShowing) {
+    showNextNotification();
+  }
+}
+
+function showNextNotification() {
+  if (notificationQueue.length === 0) {
+    isNotificationShowing = false;
+    lastNotification = ''; // Resetar última notificação quando a fila estiver vazia
+    return;
+  }
+
+  isNotificationShowing = true;
+  const message = notificationQueue.shift();
   notification.innerHTML = message.replace(/\n/g, '<br>');
   notification.classList.add('show');
-  setTimeout(() => notification.classList.remove('show'), 10000);
+
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => {
+      showNextNotification();
+    }, 300);
+  }, 5000);
 }
 
 initStartScreen();
