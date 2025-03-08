@@ -22,7 +22,9 @@
   <div class="top-bar">
     <div class="top-bar-content">
       <div class="title-section">
-        <h1 class="top-bar-title">Coop 
+        <h1 class="top-bar-title">
+          <i class="nes-octocat animate"></i>
+          Coop 
           <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
           <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
           <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
@@ -91,10 +93,12 @@
     <div class="main-layout">
       <div class="left-column nes-container is-rounded">
         <section class="nes-container with-title">
-          <h2 class="title">Upgrades</h2>
-          <button id="show-history" class="nes-btn" title="Ver Histórico de Upgrades">
-            <i class="nes-icon trophy is-small"></i>
-          </button>
+          <div class="section-header">
+            <h2 class="title">Upgrades</h2>
+            <button id="show-history" class="nes-btn is-error" title="Ver Histórico de Upgrades">
+              <i class="nes-icon trophy is-small"></i>
+            </button>
+          </div>
           <div id="upgrades-container"></div>
         </section>
       </div>

@@ -532,7 +532,13 @@ h3 {
   color: #333; /* Cor do texto para contraste com fundo branco */
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px; /* Increased from 6px to better space the octocat */
+}
+
+/* Add style for the octocat */
+.top-bar-title .nes-octocat {
+  transform: scale(0.45); /* Make octocat a bit smaller */
+  margin-right: -8px; /* Adjust spacing */
 }
 
 /* Top Bar Buttons Group */
@@ -929,6 +935,15 @@ body.dark-mode .top-bar-title {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  padding: 0 10px;
+}
+
+.section-header .title {
+  margin: 0;
+}
+
+.section-header #show-history {
+  transform: scale(0.8); /* Make button slightly smaller */
 }
 
 /* Ajustar transparência dos elementos */
