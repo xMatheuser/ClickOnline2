@@ -1,0 +1,60 @@
+.time-trial-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 40, 40, 0.95);
+  padding: 20px;
+  border: 4px solid #fff;
+  border-radius: 4px;
+  color: white;
+  text-align: center;
+  z-index: 1000;
+  min-width: 300px;
+  display: none;
+  image-rendering: pixelated;
+}
+
+.time-trial-overlay.active {
+  display: block;
+  animation: slideDown 0.5s ease-out;
+}
+
+.time-trial-header {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.time-trial-timer {
+  font-size: 2rem;
+  margin: 10px 0;
+}
+
+.time-trial-clicks {
+  font-size: 1.5rem;
+  margin: 10px 0;
+}
+
+.time-trial-message {
+  font-size: 1rem;
+  margin: 10px 0;
+}
+
+.time-trial-timer.urgent {
+  animation: pulse 1s infinite;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -200%);
+  }
+  to {
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Dark mode support */
+body.dark-mode .time-trial-overlay {
+  background: rgba(180, 20, 20, 0.95);
+  border-color: #444;
+}

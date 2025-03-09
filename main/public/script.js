@@ -9,7 +9,8 @@ let lastUpgradesState = [];
 let userHasInteracted = false;
 let upgradeHistory = {
   tier1: [],
-  tier2: []
+  tier2: [],
+  tier3: []
 };
 
 const prestigeUpgradesTemplate = {
@@ -522,6 +523,12 @@ socket.on('gameStateUpdate', (newState) => {
   teamSharedProgressBar.style.width = `${percentage}%`;
   progressPercentage.textContent = `${percentage}%`;
 
+  const currentHP = gameState.levelProgressRemaining;
+  const maxHP = gameState.teamLevel * 100;
+  const hpPercentage = (currentHP / maxHP * 100).toFixed(0);
+  teamSharedProgressBar.style.width = `${hpPercentage}%`;
+  progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+
   if (gameState.teamLevel > lastTeamLevel) {
     if (userHasInteracted) levelUpSound.play().catch(err => console.log('[Audio Error] Não foi possível tocar levelUpSound:', err));
     lastTeamLevel = gameState.teamLevel;
@@ -604,13 +611,12 @@ function updateEssentialUI() {
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
   }
 
-  // Atualizar barra de progresso
-  const teamProgress = (gameState.levelProgressRemaining / (gameState.teamLevel * 100)) * 100;
-  const percentage = Math.max(0, Math.min(100, teamProgress)).toFixed(0);
+  const currentHP = gameState.levelProgressRemaining;
+  const maxHP = gameState.teamLevel * 100;
+  const percentage = (currentHP / maxHP * 100).toFixed(0);
   teamSharedProgressBar.style.width = `${percentage}%`;
-  progressPercentage.textContent = `${percentage}%`;
+  progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
 
-  // Atualizar contribuições apenas se necessário
   if (document.activeElement?.closest('.contribution-container')) {
     renderContributions();
   }
@@ -729,17 +735,24 @@ function renderUpgrades() {
     upgradeHistory.tier2 = JSON.parse(JSON.stringify(tier2Upgrades));
   }
 
+  const tier3Upgrades = gameState.upgrades.filter(upgrade => upgrade.tier === 3);
+  const tier3Completed = tier3Upgrades.every(upgrade => upgrade.level >= upgrade.maxLevel);
+
+  if (tier3Completed && upgradeHistory.tier3.length === 0) {
+    upgradeHistory.tier3 = JSON.parse(JSON.stringify(tier3Upgrades));
+  }
+
   const visibleUpgrades = gameState.upgrades
     .filter(upgrade => {
+      if (tier2Completed) {
+        return upgrade.tier === 3 && !tier3Completed;
+      }
       if (tier1Completed) {
         return upgrade.tier === 2 && !tier2Completed;
       }
       return upgrade.tier === 1;
     })
-    .sort((a, b) => {
-      if (b.tier !== a.tier) return b.tier - a.tier;
-      return gameState.upgrades.indexOf(a) - gameState.upgrades.indexOf(b);
-    });
+    .sort((a, b) => gameState.upgrades.indexOf(a) - gameState.upgrades.indexOf(b));
 
   visibleUpgrades.forEach(upgrade => {
     let price = calculateUpgradePrice(upgrade);
@@ -767,14 +780,6 @@ function renderUpgrades() {
       }
       socket.emit('buyUpgrade', upgrade.id);
     });
-    buyButton.addEventListener('touchstart', (event) => {
-      event.preventDefault();
-      if (!isOwnPlayer()) {
-        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
-        return;
-      }
-      socket.emit('buyUpgrade', upgrade.id);
-    });
 
     upgradeElement.addEventListener('mousemove', (event) => {
       showTooltip(event, tooltipText);
@@ -793,7 +798,7 @@ function renderAchievements() {
 
   // Se estivermos no overlay de conquistas, use o novo layout em blocos
   if (achievementsOverlay.classList.contains('active')) {
-    renderAchievementsScreen();
+    renderAchievementsScreen(); // Não atualizar se houver um tooltip ativo
     return;
   }
 
@@ -828,7 +833,6 @@ function renderAchievements() {
       
       const achievementElement = document.createElement('div');
       achievementElement.className = `achievement-item ${unlockedCount === maxLevel ? 'completed' : unlockedCount > 0 ? 'unlocked' : 'locked'}`;
-      
       achievementElement.innerHTML = `
         <div class="achievement-info">
           <div class="achievement-header">
@@ -884,7 +888,6 @@ function renderAchievementsScreen() {
 
       const block = document.createElement('div');
       block.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
-      
       block.innerHTML = `
         <div class="achievement-icon">${categoryInfo.icon}</div>
         <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
@@ -893,7 +896,7 @@ function renderAchievementsScreen() {
           <h4>${achievement.name} - Nível ${levelIndex + 1}</h4>
           ${isUnlocked ? `
             <p class="achievement-boost">
-              +${(level.boost.value * 100).toFixed(0)}% 
+              +${(level.boost.value * 100).toFixed(0)}%
               ${level.boost.type}
             </p>
           ` : `
@@ -933,7 +936,7 @@ function showNotification(message) {
   console.log('[ShowNotification]', message); // Debug log
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notificationQueue.push(message);
-  
+
   if (!isNotificationShowing) {
     showNextNotification();
   }
@@ -1065,8 +1068,8 @@ function getUpgradeBuffDescription(upgrade) {
       return `Reduz a dificuldade de progresso em ${progressBonus}%`;
     case 'team-synergy':
     case 'team-synergy-2':
-      const synergyBonus = upgrade.tier === 1 ? upgrade.level * 10 : upgrade.level * 20;
-      return `Aumenta o poder de clique em ${synergyBonus}% por jogador`;
+      const playerCount = gameState?.players?.length || 0;
+      return upgrade.level * (playerCount * (upgrade.tier === 1 ? 0.1 : 0.2));
     case 'shared-rewards':
     case 'shared-rewards-2':
       const rewardBonus = upgrade.tier === 1 ? upgrade.level * 15 : upgrade.level * 30;
@@ -1088,7 +1091,6 @@ function showBuffTooltip(event, text) {
   tooltip.style.top = `${rect.top - 10}px`;
   
   requestAnimationFrame(() => tooltip.classList.add('visible'));
-  
   return tooltip;
 }
 
@@ -1141,6 +1143,26 @@ function renderUpgradeHistory() {
     container.appendChild(tier2Section);
   }
 
+  if (upgradeHistory.tier3.length > 0) {
+    const tier3Section = document.createElement('div');
+    tier3Section.className = 'history-tier';
+    tier3Section.innerHTML = `
+      <div class="history-tier-title">Tier 3 (Completado)</div>
+      ${upgradeHistory.tier3.map(upgrade => `
+        <div class="upgrade-item">
+          <div class="history-upgrade-info">
+            <div class="upgrade-info">
+              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div>${upgrade.description}</div>
+            </div>
+            <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="3">ℹ️</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    container.appendChild(tier3Section);
+  }
+
   const buffButtons = container.querySelectorAll('.buff-info-button');
   buffButtons.forEach(button => {
     let activeTooltip = null;
@@ -1149,8 +1171,9 @@ function renderUpgradeHistory() {
       e.stopPropagation();
       const upgradeId = button.dataset.upgradeId;
       const tier = parseInt(button.dataset.tier);
-      const upgrade = tier === 1 ? upgradeHistory.tier1.find(u => u.id === upgradeId) : upgradeHistory.tier2.find(u => u.id === upgradeId);
-
+      const upgrade = tier === 1 ? upgradeHistory.tier1.find(u => u.id === upgradeId) :
+                     tier === 2 ? upgradeHistory.tier2.find(u => u.id === upgradeId) :
+                                 upgradeHistory.tier3.find(u => u.id === upgradeId);
       if (activeTooltip) {
         hideBuffTooltip(activeTooltip);
         activeTooltip = null;
@@ -1172,7 +1195,8 @@ function renderUpgradeHistory() {
 socket.on('prestige', () => {
   upgradeHistory = {
     tier1: [],
-    tier2: []
+    tier2: [],
+    tier3: []
   };
   viewedAchievements.clear(); // Limpar todos os níveis visualizados
 });
@@ -1219,7 +1243,7 @@ function updateBonusStats() {
     prestige: {
       title: "Bônus de Prestígio",
       items: [
-        { name: "Multiplicador de Prestígio", value: prestigeBonus.toFixed(1) + "%" }
+        { name: "Multiplicador de Prestígio", value: prestigeBonus.toFixed(1) + "%" },
       ]
     }
   };

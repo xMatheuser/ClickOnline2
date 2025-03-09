@@ -139,6 +139,80 @@ const upgrades = [
     priceIncrease: 2.4,
     tier: 2,
     requires: 'shared-rewards'
+  },
+
+  // Tier 3 Upgrades (Versões Supremas)
+  {
+    id: 'click-power-3',
+    name: 'Poder de Clique Supremo',
+    description: 'Versão definitiva do poder de clique',
+    basePrice: 5000,
+    level: 0,
+    maxLevel: 10,
+    effect: level => (level + 1) * 4,
+    priceIncrease: 2.0,
+    tier: 3,
+    requires: 'click-power-2'
+  },
+  {
+    id: 'auto-clicker-3',
+    name: 'Auto Clicker Supremo',
+    description: 'Clica quatro vezes por segundo',
+    basePrice: 8000,
+    level: 0,
+    maxLevel: 5,
+    effect: level => level * 4,
+    priceIncrease: 2.8,
+    tier: 3,
+    requires: 'auto-clicker-2'
+  },
+  {
+    id: 'coin-boost-3',
+    name: 'Boost de Moedas Supremo',
+    description: 'Multiplicador máximo de moedas',
+    basePrice: 6000,
+    level: 0,
+    maxLevel: 5,
+    effect: level => 1 + level * 0.8,
+    priceIncrease: 2.5,
+    tier: 3,
+    requires: 'coin-boost-2'
+  },
+  {
+    id: 'progress-boost-3',
+    name: 'Boost de Progresso Supremo',
+    description: 'Redução suprema da dificuldade',
+    basePrice: 15000,
+    level: 0,
+    maxLevel: 3,
+    effect: level => 1.25 - (level * 0.15),
+    priceIncrease: 3.2,
+    tier: 3,
+    requires: 'progress-boost-2'
+  },
+  {
+    id: 'team-synergy-3',
+    name: 'Sinergia de Equipe Suprema',
+    description: 'Sinergia de equipe definitiva',
+    basePrice: 10000,
+    level: 0,
+    maxLevel: 5,
+    effect: (level, gameState) => level * (gameState?.players?.length * 0.4 || 0),
+    priceIncrease: 2.4,
+    tier: 3,
+    requires: 'team-synergy-2'
+  },
+  {
+    id: 'shared-rewards-3',
+    name: 'Recompensas Compartilhadas Supremas',
+    description: 'Sistema definitivo de recompensas',
+    basePrice: 12000,
+    level: 0,
+    maxLevel: 3,
+    effect: level => level * 0.5,
+    priceIncrease: 3.0,
+    tier: 3,
+    requires: 'shared-rewards-2'
   }
 ];
 
