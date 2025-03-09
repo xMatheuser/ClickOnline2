@@ -1,8 +1,7 @@
 .upgrade-item {
-  background: rgba(61, 32, 23, 0.95);
-  border: 2px solid #8b4513;
-  color: #ffe4b5;
-  background-color: #f9f9f9;
+  background: #f8f9fa;
+  border: 2px solid #4CAF50;
+  color: #333;
   border-radius: 8px;
   padding: 8px;
   margin: 8px 0;
@@ -11,12 +10,12 @@
   align-items: center;
   transition: background-color 0.2s;
   font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .upgrade-item:hover {
-  background: rgba(77, 40, 29, 0.95);
-  border-color: #deb887;
-  background-color: #f0f0f0;
+  background: #E8F5E9;
+  border-color: #66BB6A;
 }
 
 .upgrade-item.disabled {
@@ -98,10 +97,9 @@
 }
 
 .history-popup {
-  background: rgba(48, 25, 18, 0.98);
-  border: 3px solid #8b4513;
-  color: #ffe4b5;
-  background: white;
+  background: #fff;
+  border: 2px solid #4CAF50;
+  color: #333;
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
@@ -116,7 +114,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #4CAF50;
 }
 
 .close-history {
@@ -203,12 +201,10 @@ body.dark-mode .history-tier-title {
 }
 
 .buff-tooltip {
-  background: rgba(48, 25, 18, 0.98);
-  border: 2px solid #8b4513;
-  color: #ffe4b5;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #4CAF50;
+  color: #333;
   position: absolute;
-  background-color: #333;
-  color: #fff;
   padding: 10px 15px;
   border-radius: 5px;
   font-size: 0.9rem;
@@ -255,17 +251,17 @@ body.dark-mode .buy-button:disabled {
 }
 
 .rpgui-button.golden {
-  background: linear-gradient(to bottom, #8b4513, #654321);
-  border: 2px solid #deb887;
-  color: #ffe4b5;
+  background: linear-gradient(to bottom, #4CAF50, #388E3C);
+  border: 2px solid #81C784;
+  color: white;
   padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2),
-              0 2px 4px rgba(0,0,0,0.2);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),
+              0 2px 4px rgba(0,0,0,0.1);
   touch-action: manipulation;
   margin: 4px !important;
   font-size: 0.75rem !important;
@@ -275,11 +271,9 @@ body.dark-mode .buy-button:disabled {
 }
 
 .rpgui-button.golden:hover {
-  background: linear-gradient(to bottom, #9b5523, #755331);
-  border-color: #f4a460;
+  background: linear-gradient(to bottom, #66BB6A, #43A047);
+  border-color: #A5D6A7;
   transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2),
-              0 4px 8px rgba(0,0,0,0.3);
 }
 
 .rpgui-button.golden:active {

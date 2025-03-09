@@ -16,7 +16,7 @@
 }
 
 .bonus-stats-popup {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
@@ -24,6 +24,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  border: 2px solid #4CAF50;
+  color: #333;
 }
 
 .bonus-stats-header {
@@ -55,16 +57,18 @@
   align-items: center;
   padding: 10px;
   margin: 5px 0;
-  background: #f5f5f5;
+  background: #f8f9fa;
   border-radius: 5px;
+  color: #333;
 }
 
 .bonus-name {
   font-weight: bold;
+  color: #2E7D32;
 }
 
 .bonus-value {
-  color: #4CAF50;
+  color: #43A047;
 }
 
 /* Dark Mode Support */
