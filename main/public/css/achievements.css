@@ -106,9 +106,15 @@
 }
 
 .achievement-name {
-    font-size: 0.9rem;
+    font-size: 0.5rem;
     text-align: center;
     font-weight: bold;
+    line-height: 1.2;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    padding: 0 5px;
+    margin-top: 5px;
 }
 
 .achievement-info-overlay {
