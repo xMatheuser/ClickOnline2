@@ -614,6 +614,17 @@ function updateEssentialUI() {
   const currentHP = gameState.levelProgressRemaining;
   const maxHP = gameState.teamLevel * 100;
   const percentage = (currentHP / maxHP * 100).toFixed(0);
+  
+  // If there was auto-click damage
+  if (lastProgress && lastProgress > currentHP) {
+    const damage = lastProgress - currentHP;
+    const x = Math.random() * 80 + 10;
+    const y = Math.random() * 60 + 20;
+    showDamageNumber(damage, x, y);
+  }
+  
+  lastProgress = currentHP;
+  
   teamSharedProgressBar.style.width = `${percentage}%`;
   progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
 
@@ -1295,3 +1306,43 @@ function getUpgradeEffect(upgradeId) {
   const effectValue = getUpgradeEffectValue(upgrade);
   return effectValue * (gameState.achievementBoosts?.upgradeEffect || 1);
 }
+
+function showDamageNumber(damage, x, y) {
+  const damageContainer = document.getElementById('damage-container');
+  const damageElement = document.createElement('div');
+  damageElement.className = 'damage-number';
+  damageElement.textContent = `+${Math.ceil(damage)}`;
+  
+  // Position the damage number randomly within the progress bar
+  damageElement.style.left = `${x}%`;
+  damageElement.style.top = `${y}%`;
+
+  damageContainer.appendChild(damageElement);
+
+  // Start animation in next frame for smooth transition
+  requestAnimationFrame(() => {
+    damageElement.classList.add('animate');
+  });
+
+  // Remove element after animation
+  damageElement.addEventListener('animationend', () => {
+    damageElement.remove();
+  });
+}
+
+// Modify socket.on('click') to show damage numbers
+socket.on('click', () => {
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (player) {
+    const clickValue = calculateClickValue(player);
+    
+    // Calculate random position within the progress bar
+    const x = Math.random() * 80 + 10; // Keep numbers between 10% and 90%
+    const y = Math.random() * 60 + 20; // Keep numbers between 20% and 80%
+    
+    showDamageNumber(clickValue, x, y);
+  }
+});
+
+// Add variable to track last progress
+let lastProgress = null;

@@ -1294,3 +1294,58 @@ body.dark-mode .nes-container.with-title > .title {
     margin: -2.2rem 0 1rem;
   }
 }
+
+/* Damage Effect Styles */
+.damage-container {
+  position: absolute;
+  top: -20px; /* Move acima da barra de progresso */
+  left: 0;
+  width: 100%;
+  height: calc(100% + 40px); /* Aumenta a área para números flutuantes */
+  pointer-events: none;
+  overflow: visible; /* Permite que os números flutuem para fora */
+  z-index: 1002; /* Garante que fique acima da barra */
+}
+
+.damage-number {
+  position: absolute;
+  color: #ff4444;
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-shadow: 
+    2px 2px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000;
+  opacity: 0;
+  transform: translateY(0);
+  pointer-events: none;
+  z-index: 1003; /* Garante que fique acima de tudo */
+}
+
+.damage-number.animate {
+  animation: damage-popup 1s ease-out forwards;
+}
+
+@keyframes damage-popup {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+}
+
+/* Dark mode support */
+body.dark-mode .damage-number {
+  color: #ff6666;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
