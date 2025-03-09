@@ -140,6 +140,36 @@ body {
   padding: 12px;
   min-width: 120px;
   font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.stat-box h3 {
+  font-size: 0.7rem;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.stat-box div {
+  font-size: 0.65rem;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+/* Remove os seletores anteriores de nth-child e substitua por classes mais específicas */
+.stat-box.total-clicks h3,
+.stat-box.clicks-per-second h3,
+.stat-box.team-coins h3 {
+  font-size: 0.65rem;
+}
+
+.stat-box.total-clicks div,
+.stat-box.clicks-per-second div,
+.stat-box.team-coins div {
+  font-size: 0.6rem;
 }
 
 .click-area {
