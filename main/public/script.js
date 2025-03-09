@@ -769,10 +769,10 @@ function renderUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="nes-btn is-primary buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(price)}</button>
+      <button class="rpgui-button golden" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(price)}</button>
     `;
 
-    const buyButton = upgradeElement.querySelector('.buy-button');
+    const buyButton = upgradeElement.querySelector('.rpgui-button.golden');
     buyButton.addEventListener('click', () => {
       if (!isOwnPlayer()) {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
@@ -1019,10 +1019,10 @@ function renderPrestigeUpgrades() {
         <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="nes-btn is-primary buy-button" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)} 🔮`}</button>
+      <button class="rpgui-button golden" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)} 🔮`}</button>
     `;
 
-    const buyButton = upgradeElement.querySelector('.buy-button');
+    const buyButton = upgradeElement.querySelector('.rpgui-button.golden');
     buyButton.addEventListener('click', () => {
       if (!isOwnPlayer()) {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
