@@ -54,6 +54,15 @@ body {
   padding: 15px;
 }
 
+/* Ajustar espaçamento entre seções */
+.center-column .nes-container {
+  margin-bottom: 25px;
+}
+
+.center-column .nes-container:last-child {
+  margin-bottom: 15px;
+}
+
 .game-container {
   width: 90%;
   max-width: 1200px;
@@ -122,6 +131,11 @@ body {
   gap: 5px;
   gap: 10px;
   margin: 15px 0;
+}
+
+.stats {
+  margin: 20px 0;
+  gap: 15px;
 }
 
 .stat-box {
@@ -293,6 +307,13 @@ h3 {
   margin: 10px 0;
 }
 
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 15px 0;
+}
+
 .player-tag {
   background-color: #e0e0e0;
   padding: 5px 8px;
@@ -374,6 +395,10 @@ h3 {
   justify-content: space-between;
   margin: 5px 0;
   font-size: 0.9rem;
+}
+
+.player-contribution {
+  margin: 12px 0;
 }
 
 .theme-toggle {
@@ -1129,4 +1154,8 @@ body.dark-mode .nes-container.with-title .title {
     padding: 3px 6px !important;
     height: 24px;
   }
+}
+
+.contribution-container {
+  margin: 15px 0;
 }
