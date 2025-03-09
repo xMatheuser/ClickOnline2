@@ -766,7 +766,7 @@ function renderUpgrades() {
     upgradeElement.setAttribute('data-tooltip', tooltipText);
     upgradeElement.innerHTML = `
       <div class="upgrade-info">
-        <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
+        <div><strong>${upgrade.icon} ${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
       <button class="rpgui-button golden" ${(!canBuy) ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(price)}</button>
@@ -1112,7 +1112,7 @@ function renderUpgradeHistory() {
         <div class="upgrade-item">
           <div class="history-upgrade-info">
             <div class="upgrade-info">
-              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div><strong>${upgrade.icon} ${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
               <div>${upgrade.description}</div>
             </div>
             <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="1">ℹ️</button>
@@ -1132,7 +1132,7 @@ function renderUpgradeHistory() {
         <div class="upgrade-item">
           <div class="history-upgrade-info">
             <div class="upgrade-info">
-              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div><strong>${upgrade.icon} ${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
               <div>${upgrade.description}</div>
             </div>
             <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="2">ℹ️</button>
@@ -1152,7 +1152,7 @@ function renderUpgradeHistory() {
         <div class="upgrade-item">
           <div class="history-upgrade-info">
             <div class="upgrade-info">
-              <div><strong>${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
+              <div><strong>${upgrade.icon} ${upgrade.name}</strong> (Nível ${upgrade.level}/${upgrade.maxLevel})</div>
               <div>${upgrade.description}</div>
             </div>
             <button class="buff-info-button" data-upgrade-id="${upgrade.id}" data-tier="3">ℹ️</button>

@@ -306,3 +306,25 @@ body.dark-mode .rpgui-button.golden:disabled {
   background: linear-gradient(to bottom, #404040, #2a2a2a);
   border-color: #505050;
 }
+
+.upgrade-info strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upgrade-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.upgrade-info strong i {
+  font-size: 1.2rem;
+  margin-right: 8px;
+  color: #4CAF50;
+}
+
+body.dark-mode .upgrade-info strong i {
+  color: #76c776;
+}
