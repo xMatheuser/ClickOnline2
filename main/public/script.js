@@ -665,7 +665,7 @@ function renderContributions() {
     return;
   }
   const sortedPlayers = [...gameState.players].sort((a, b) => b.contribution - a.contribution);
-  const totalContribution = sortedPlayers.reduce((sum, p) => sum + p.contribution, 1) || 1;
+  const totalContribution = sortedPlayers.reduce((sum, p) => sum + p.contribution, 0) || 0;
   sortedPlayers.forEach((player, index) => {
     const percentage = (player.contribution / totalContribution * 100) || 0;
     const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
