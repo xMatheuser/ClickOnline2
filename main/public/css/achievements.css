@@ -129,7 +129,13 @@
     text-align: center;
     font-size: 0.8rem;
     box-sizing: border-box;
-    overflow: auto;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.achievement-info-overlay::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
 }
 
 .achievement-block:hover .achievement-info-overlay {
@@ -323,6 +329,12 @@ body.dark-mode .stat-item {
 .achievements-content {
   padding: 20px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.achievements-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 /* Dark Mode Support para o Popup */
