@@ -6,6 +6,7 @@ const upgrades = require('./main/gameModules/upgrades');
 const { achievements, achievementCategories } = require('./main/gameModules/achievements'); // Fix import
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
+const bosses = require('./main/gameModules/bossFights');
 
 const app = express();
 const server = http.createServer(app);
@@ -52,14 +53,22 @@ let gameState = {
     prestigeCostReduction: 1,
     powerUpDuration: 1,
     upgradeEffect: 1
-  }
+  },
+  activeBoss: null,
+  nextBossLevel: 5, // Primeiro boss aparece no nível 5
+  bossSpawnInterval: 10, // Intervalo de níveis entre cada boss
+  isInBossFight: false // Add flag for boss fight state
 };
 
 let lastTotalCPS = 0;
 
 function prepareGameStateForBroadcast(state) {
-  // Adicionar flag para diferenciar tipos de atualizações
+  // Criar uma cópia sem o timer e outras propriedades circulares
   const preparedState = JSON.parse(JSON.stringify(state, (key, value) => {
+    // Ignorar propriedades que podem causar circularidade
+    if (key === 'timer' || key === '_idleNext' || key === '_idlePrev') {
+      return undefined;
+    }
     if (typeof value === 'function') {
       return undefined;
     }
@@ -227,17 +236,74 @@ io.on('connection', (socket) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
       const clickValue = calculateClickValue(player);
-      player.clicks += clickValue;
-      player.contribution += clickValue;
-      gameState.clicks += clickValue;
-      gameState.totalClicks += clickValue;
-      gameState.levelProgressRemaining -= clickValue;
+      
+      if (gameState.isInBossFight) {
+        // Only apply damage to boss during boss fight
+        if (gameState.activeBoss) {
+          const oldHealth = gameState.activeBoss.health;
+          gameState.activeBoss.health -= clickValue;
+          
+          io.emit('bossUpdate', {
+            health: gameState.activeBoss.health,
+            maxHealth: gameState.activeBoss.maxHealth,
+            damage: clickValue,
+            playerId: socket.id,
+            playerName: player.name
+          });
 
-      if (gameState.levelProgressRemaining <= 0) {
-        levelUpTeam();
+          if (gameState.activeBoss.health <= 0 && oldHealth > 0) {
+            const boss = gameState.activeBoss;
+            if (boss.timerId) {
+              clearTimeout(boss.timerId);
+            }
+            gameState.teamCoins += boss.rewards.coins;
+            gameState.isInBossFight = false; // Reset flag when boss is defeated
+            
+            // Limpar o timer usando o ID armazenado
+            if (boss.timerId) {
+              clearTimeout(boss.timerId);
+            }
+
+            gameState.teamCoins += boss.rewards.coins;
+            
+            // Aplicar buff temporário de poder de clique para todos
+            gameState.players.forEach(p => {
+              p.temporaryMultipliers = p.temporaryMultipliers || [];
+              p.temporaryMultipliers.push({
+                type: 'clickPower',
+                value: boss.rewards.clickPowerMultiplier,
+                duration: boss.rewards.clickPowerDuration,
+                expiresAt: Date.now() + boss.rewards.clickPowerDuration
+              });
+            });
+
+            io.emit('bossResult', { 
+              victory: true,
+              coins: boss.rewards.coins,
+              multiplier: boss.rewards.clickPowerMultiplier,
+              duration: boss.rewards.clickPowerDuration,
+              killedBy: player.name
+            });
+            
+            gameState.activeBoss = null;
+            broadcastGameState();
+            return;
+          }
+        }
+      } else {
+        // Normal game progression when not in boss fight
+        player.clicks += clickValue;
+        player.contribution += clickValue;
+        gameState.clicks += clickValue;
+        gameState.totalClicks += clickValue;
+        gameState.levelProgressRemaining -= clickValue;
+
+        if (gameState.levelProgressRemaining <= 0) {
+          levelUpTeam();
+        }
+        broadcastGameState();
+        checkAchievements();
       }
-      broadcastGameState();
-      checkAchievements();
     }
   });
 
@@ -400,6 +466,16 @@ io.on('connection', (socket) => {
 
 function calculateClickValue(player) {
   let clickPower = 1 * (player.prestigeMultiplier || 1) * gameState.achievementBoosts.clickMultiplier;
+  
+  // Adicionar bônus temporários
+  if (player.temporaryMultipliers) {
+    player.temporaryMultipliers.forEach(buff => {
+      if (buff.type === 'clickPower' && buff.expiresAt > Date.now()) {
+        clickPower *= buff.value;
+      }
+    });
+  }
+
   const clickPowerUpgrade = gameState.upgrades.find(u => u.id === 'click-power');
   if (clickPowerUpgrade) {
     clickPower += (clickPowerUpgrade.effect(clickPowerUpgrade.level) - 1) * gameState.achievementBoosts.upgradeEffect;
@@ -420,6 +496,11 @@ function calculateClickValue(player) {
 function levelUpTeam() {
   gameState.teamLevel++;
   
+  // Checar se deve spawnar um boss
+  if (gameState.teamLevel >= gameState.nextBossLevel) {
+    spawnBoss();
+  }
+  
   gameState.players.forEach(player => {
     player.level++;
     const coinsAwarded = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost');
@@ -436,6 +517,50 @@ function levelUpTeam() {
   checkAchievements();
 }
 
+// Adicionar nova função para gerenciar o spawn do boss
+function spawnBoss() {
+  if (gameState.activeBoss) return; // Não spawnar se já houver um boss ativo
+
+  const boss = { ...bosses.iceTitan }; // Deep copy do template do boss
+  boss.health = boss.baseHealth * Math.pow(boss.healthMultiplier, gameState.teamLevel / 5);
+  boss.maxHealth = boss.health;
+  boss.startTime = Date.now();
+  boss.timeLimit = 60000; // 60 segundos para derrotar o boss
+  
+  // Criar o boss primeiro
+  gameState.activeBoss = boss;
+  gameState.nextBossLevel += gameState.bossSpawnInterval;
+  gameState.isInBossFight = true; // Add flag for boss fight state
+
+  // Enviar para todos os jogadores
+  io.emit('bossSpawn', {
+    name: boss.name,
+    health: boss.health,
+    maxHealth: boss.maxHealth,
+    image: boss.image,
+    particles: boss.particles,
+    timeLimit: boss.timeLimit
+  });
+
+  // Armazenar o timer separadamente do objeto boss
+  const bossTimer = setTimeout(() => {
+    if (gameState.activeBoss) {
+      const penalty = Math.floor(gameState.teamCoins * boss.penalty.coinLossPercentage);
+      gameState.teamCoins -= penalty;
+      gameState.isInBossFight = false; // Reset flag when boss fight ends
+      io.emit('bossResult', { 
+        victory: false,
+        penalty: penalty
+      });
+      gameState.activeBoss = null;
+      broadcastGameState();
+    }
+  }, boss.timeLimit);
+
+  // Armazenar apenas o ID do timer
+  boss.timerId = bossTimer[Symbol.toPrimitive]();
+}
+
 function getUpgradePrice(upgrade) {
   return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
 }
@@ -449,7 +574,7 @@ function getUpgradeEffect(upgradeId) {
 // Modificar o setInterval do auto-clicker para usar o novo tipo
 setInterval(() => {
   const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
-  if (autoClickerUpgrade && autoClickerUpgrade.level > 0) {
+  if (autoClickerUpgrade && autoClickerUpgrade.level > 0 && !gameState.isInBossFight) {
     gameState.players.forEach(player => {
       const clickValue = calculateClickValue(player) * autoClickerUpgrade.effect(autoClickerUpgrade.level) * gameState.achievementBoosts.autoMultiplier;
       player.clicks += clickValue;
@@ -466,6 +591,26 @@ setInterval(() => {
 }, 1000);
 
 setInterval(checkAchievements, 2000);
+
+// Adicionar lógica para remover buffs expirados
+setInterval(() => {
+  const now = Date.now();
+  let buffRemoved = false;
+  
+  gameState.players.forEach(player => {
+    if (player.temporaryMultipliers) {
+      player.temporaryMultipliers = player.temporaryMultipliers.filter(buff => {
+        const active = buff.expiresAt > now;
+        if (!active) buffRemoved = true;
+        return active;
+      });
+    }
+  });
+
+  if (buffRemoved) {
+    broadcastGameState();
+  }
+}, 1000);
 
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {

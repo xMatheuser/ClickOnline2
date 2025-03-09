@@ -125,6 +125,8 @@ body {
   z-index: 1;
   text-align: center;
   white-space: nowrap;
+  width: 100%;
+  pointer-events: none;
 }
 
 @keyframes pulseProgress {

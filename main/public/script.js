@@ -968,10 +968,10 @@ function showNextNotification() {
   // Dispara um reflow para garantir que a animação funcione
   void notification.offsetWidth;
   
-  notification.classList.add('show', 'nes-balloon', 'from-right');
+  notification.classList.add('show');
 
   setTimeout(() => {
-    notification.classList.remove('show', 'nes-balloon', 'from-right');
+    notification.classList.remove('show');
     setTimeout(() => {
       isNotificationShowing = false;
       showNextNotification();
@@ -1346,3 +1346,128 @@ socket.on('click', () => {
 
 // Add variable to track last progress
 let lastProgress = null;
+
+// ...existing code...
+
+socket.on('bossSpawn', (bossData) => {
+  showBossFight(bossData);
+  startBossTimer(bossData.timeLimit);
+});
+
+socket.on('bossUpdate', (data) => {
+  updateBossHealth(data.health, data.maxHealth);
+  showBossDamage(data.damage, data.playerName);
+});
+
+socket.on('bossResult', (result) => {
+  if (result.victory) {
+    showNotification(`Boss derrotado por ${result.killedBy}!\nRecompensa: ${result.coins} moedas\nPoder de clique multiplicado por ${result.multiplier}x por ${result.duration/1000} segundos!`);
+  } else {
+    showNotification(`Boss não foi derrotado a tempo!\nPenalidade: ${formatNumber(result.penalty)} moedas perdidas...`);
+  }
+  hideBossFight();
+});
+
+function startBossTimer(duration) {
+  const timerDisplay = document.querySelector('.boss-timer');
+  const startTime = Date.now();
+  
+  const timerInterval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, duration - elapsed);
+    const seconds = Math.ceil(remaining / 1000);
+    
+    timerDisplay.textContent = seconds;
+    
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+    }
+  }, 100);
+}
+
+function showBossFight(bossData) {
+  const bossOverlay = document.querySelector('.boss-overlay');
+  const bossContainer = document.querySelector('.boss-container');
+  const bossImage = document.querySelector('.boss-image');
+
+  bossOverlay.classList.add('active');
+  startParticleEffect(bossData.particles);
+  updateBossHealth(bossData.health, bossData.maxHealth);
+  
+  // Carregar imagem do boss
+  bossImage.src = bossData.image;
+  bossImage.onerror = () => {
+    console.error('Erro ao carregar imagem do boss:', bossData.image);
+    bossImage.src = 'assets/bosses/default_boss.png'; // Fallback image
+  };
+
+  // Permitir cliques na área do boss
+  bossContainer.onclick = (e) => {
+    if (!isOwnPlayer()) return;
+    socket.emit('click');
+    const rect = bossContainer.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    showDamageNumber(calculateClickValue(gameState.players.find(p => p.id === socket.id)), x, y);
+  };
+}
+
+function updateBossHealth(current, max) {
+  const healthFill = document.querySelector('.boss-health-fill');
+  const percentage = (current / max * 100).toFixed(2);
+  healthFill.style.width = `${percentage}%`;
+  healthFill.innerHTML = `<span class="boss-health-text">${Math.ceil(current).toLocaleString()} / ${Math.ceil(max).toLocaleString()} HP</span>`;
+}
+
+function showBossDamage(damage, playerName) {
+  const container = document.querySelector('.boss-container');
+  const damageEl = document.createElement('div');
+  damageEl.className = 'boss-damage';
+  damageEl.textContent = `${playerName}: -${Math.ceil(damage)}`;
+  
+  // Random position around boss
+  const x = Math.random() * 200 - 100;
+  const y = Math.random() * 100 - 50;
+  
+  damageEl.style.left = `calc(50% + ${x}px)`;
+  damageEl.style.top = `calc(50% + ${y}px)`;
+  
+  container.appendChild(damageEl);
+  setTimeout(() => damageEl.remove(), 1000);
+}
+
+function startParticleEffect(config) {
+  const container = document.querySelector('.boss-container');
+  
+  setInterval(() => {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.backgroundColor = config.color;
+    particle.style.width = '4px';
+    particle.style.height = '4px';
+    
+    const startX = Math.random() * container.offsetWidth;
+    particle.style.left = `${startX}px`;
+    particle.style.top = '-4px';
+    
+    container.appendChild(particle);
+    
+    let posY = -4;
+    const interval = setInterval(() => {
+      posY += config.speed;
+      particle.style.top = `${posY}px`;
+      
+      if (posY > container.offsetHeight) {
+        clearInterval(interval);
+        particle.remove();
+      }
+    }, 16);
+  }, 100);
+}
+
+function hideBossFight() {
+  const bossOverlay = document.querySelector('.boss-overlay');
+  bossOverlay.classList.remove('active');
+}
+
+// ...existing code...
