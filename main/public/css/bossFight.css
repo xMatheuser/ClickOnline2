@@ -72,6 +72,17 @@
   pointer-events: none; /* Permitir cliques através da imagem */
   object-fit: contain; /* Garantir que a imagem seja exibida corretamente */
   image-rendering: pixelated; /* Melhorar renderização de pixel art */
+  transition: transform 0.1s ease-out;
+}
+
+.boss-container.clicked .boss-image {
+  animation: boss-hit 0.2s ease-out;
+}
+
+@keyframes boss-hit {
+  0% { transform: scale(1); filter: brightness(2) drop-shadow(0 0 15px #ff4444); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
 }
 
 @keyframes boss-hover {

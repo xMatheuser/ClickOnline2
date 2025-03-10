@@ -23,6 +23,17 @@
   cursor: not-allowed;
 }
 
+/* Purchase animation */
+.upgrade-item.purchased {
+  animation: purchase-pulse 0.5s ease-out;
+}
+
+@keyframes purchase-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); background: #E8F5E9; }
+  100% { transform: scale(1); }
+}
+
 .buy-button {
   background: linear-gradient(to bottom, #8b4513, #654321);
   border: 2px solid #deb887;

@@ -773,6 +773,7 @@ function renderUpgrades() {
 
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${(!canBuy) ? 'disabled' : ''}`;
+    upgradeElement.setAttribute('data-id', upgrade.id); // Add data-id attribute
     const tooltipText = getUpgradeEffectDescription(upgrade);
     upgradeElement.setAttribute('data-tooltip', tooltipText);
     upgradeElement.innerHTML = `
@@ -1404,6 +1405,11 @@ function showBossFight(bossData) {
   // Permitir cliques na área do boss
   bossContainer.onclick = (e) => {
     if (!isOwnPlayer()) return;
+    
+    // Add click animation
+    bossContainer.classList.add('clicked');
+    setTimeout(() => bossContainer.classList.remove('clicked'), 200);
+    
     socket.emit('click');
     const rect = bossContainer.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -1469,5 +1475,16 @@ function hideBossFight() {
   const bossOverlay = document.querySelector('.boss-overlay');
   bossOverlay.classList.remove('active');
 }
+
+// ...existing code...
+
+// Add purchase animation
+socket.on('upgradePurchased', (upgradeId) => {
+  const el = document.querySelector(`[data-id="${upgradeId}"]`);
+  if (el) {
+    el.classList.add('purchased');
+    setTimeout(() => el.classList.remove('purchased'), 500);
+  }
+});
 
 // ...existing code...

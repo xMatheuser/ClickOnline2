@@ -324,6 +324,8 @@ io.on('connection', (socket) => {
     if (gameState.teamCoins >= price && upgrade.level < upgrade.maxLevel) {
       gameState.teamCoins -= price;
       upgrade.level++;
+      // Add emit for purchase animation
+      io.emit('upgradePurchased', upgradeId);
       const sharedRewardBonus = getUpgradeEffect('shared-rewards');
       if (sharedRewardBonus > 0) {
         const sharedCoins = Math.round(price * sharedRewardBonus);
