@@ -1420,9 +1420,11 @@ function showBossFight(bossData) {
 
 function updateBossHealth(current, max) {
   const healthFill = document.querySelector('.boss-health-fill');
+  const healthText = document.querySelector('.boss-health-text');
   const percentage = (current / max * 100).toFixed(2);
+  
   healthFill.style.width = `${percentage}%`;
-  healthFill.innerHTML = `<span class="boss-health-text">${Math.ceil(current).toLocaleString()} / ${Math.ceil(max).toLocaleString()} HP</span>`;
+  healthText.textContent = `${Math.ceil(current).toLocaleString()} / ${Math.ceil(max).toLocaleString()} HP`;
 }
 
 function showBossDamage(damage, playerName) {

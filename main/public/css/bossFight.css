@@ -42,10 +42,9 @@
   background: linear-gradient(to right, #ff4444, #ff0000);
   width: 100%;
   transition: width 0.3s ease;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 
 .boss-health-text {
@@ -56,11 +55,12 @@
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   font-size: 1rem;
-  z-index: 1;
+  z-index: 2;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  mix-blend-mode: difference;
 }
 
 .boss-image {
