@@ -522,7 +522,9 @@ function spawnBoss() {
   if (gameState.activeBoss) return; // Não spawnar se já houver um boss ativo
 
   const boss = { ...bosses.iceTitan }; // Deep copy do template do boss
-  boss.health = boss.baseHealth * Math.pow(boss.healthMultiplier, gameState.teamLevel / 5);
+  // Nova fórmula: HP = 10000 + 1500 * (1 - 0.5^(N-1))
+  const N = Math.floor(gameState.teamLevel / 5); // N é o número do boss (a cada 5 níveis)
+  boss.health = boss.baseHealth + boss.bonusHealth * (1 - Math.pow(0.5, N - 1));
   boss.maxHealth = boss.health;
   boss.startTime = Date.now();
   boss.timeLimit = 60000; // 60 segundos para derrotar o boss
