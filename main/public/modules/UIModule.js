@@ -16,6 +16,14 @@ export const teamGoalDisplay = document.getElementById('team-goal');
 export const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
 export const progressPercentage = document.getElementById('progress-percentage');
 
+export const openAchievementsBtn = document.getElementById('open-achievements');
+export const closeAchievementsBtn = document.getElementById('close-achievements');
+export const achievementsOverlay = document.getElementById('achievements-overlay');
+
+export const openBonusStatsBtn = document.getElementById('open-bonus-stats');
+export const closeBonusStatsBtn = document.getElementById('close-bonus-stats');
+export const bonusStatsOverlay = document.getElementById('bonus-stats-overlay');
+
 let notificationQueue = [];
 let isNotificationShowing = false;
 
@@ -24,6 +32,38 @@ export function initUI() {
   socket.on('notification', showNotification);
   // Add immediate initial render
   renderUpgrades();
+
+  // Add achievements buttons handling
+  openAchievementsBtn.addEventListener('click', () => {
+    achievementsOverlay.classList.add('active');
+    renderAchievements();
+  });
+
+  closeAchievementsBtn.addEventListener('click', () => {
+    achievementsOverlay.classList.remove('active');
+  });
+
+  achievementsOverlay.addEventListener('click', (e) => {
+    if (e.target === achievementsOverlay) {
+      achievementsOverlay.classList.remove('active');
+    }
+  });
+
+  // Add bonus stats handling
+  openBonusStatsBtn.addEventListener('click', () => {
+    bonusStatsOverlay.classList.add('active');
+    renderBonusStats();
+  });
+
+  closeBonusStatsBtn.addEventListener('click', () => {
+    bonusStatsOverlay.classList.remove('active');
+  });
+
+  bonusStatsOverlay.addEventListener('click', (e) => {
+    if (e.target === bonusStatsOverlay) {
+      bonusStatsOverlay.classList.remove('active');
+    }
+  });
 }
 
 export function handleGameStateUpdate(newState) {
@@ -243,4 +283,76 @@ function updateStatDisplays() {
       progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
     }
   }
+}
+
+function renderAchievements() {
+  if (!achievementsContainer || !gameState?.achievements) return;
+
+  achievementsContainer.innerHTML = '';
+  const statsContainer = document.getElementById('achievements-stats');
+  
+  if (statsContainer) {
+    const totalAchievements = gameState.achievements.reduce((sum, a) => sum + a.levels.length, 0);
+    const unlockedCount = gameState.achievements.reduce((sum, a) => sum + (a.unlockedLevels?.length || 0), 0);
+    
+    statsContainer.innerHTML = `
+      <div class="achievement-stat">
+        <h3>Total Desbloqueado</h3>
+        <div>${unlockedCount}/${totalAchievements}</div>
+        <div class="progress-bar">
+          <div class="progress" style="width: ${(unlockedCount/totalAchievements*100).toFixed(1)}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  gameState.achievements.forEach(achievement => {
+    const achievementEl = document.createElement('div');
+    achievementEl.className = 'achievement-card';
+    
+    achievement.levels.forEach((level, index) => {
+      const isUnlocked = achievement.unlockedLevels?.includes(index);
+      achievementEl.innerHTML += `
+        <div class="achievement-level ${isUnlocked ? 'unlocked' : ''}">
+          <div class="achievement-icon">${isUnlocked ? '🏆' : '🔒'}</div>
+          <div class="achievement-info">
+            <div class="achievement-name">${achievement.name} ${index + 1}</div>
+            <div class="achievement-desc">${level.description}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    achievementsContainer.appendChild(achievementEl);
+  });
+}
+
+function renderBonusStats() {
+  const container = document.getElementById('bonus-stats-content');
+  if (!container || !gameState?.bonusStats) return;
+
+  const stats = [
+    { key: 'clickPower', name: 'Poder de Clique', icon: '👆' },
+    { key: 'autoClicker', name: 'Auto Clicker', icon: '🤖' },
+    { key: 'coinMultiplier', name: 'Multiplicador de Moedas', icon: '💰' },
+    { key: 'progressBoost', name: 'Boost de Progresso', icon: '🚀' },
+    { key: 'teamSynergy', name: 'Sinergia de Time', icon: '🤝' },
+    { key: 'sharedRewards', name: 'Recompensas Compartilhadas', icon: '🎁' },
+    { key: 'prestigeMultiplier', name: 'Multiplicador de Prestígio', icon: '⭐' },
+    { key: 'powerUpBonus', name: 'Bônus de Power-Up', icon: '💪' }
+  ];
+
+  container.innerHTML = `
+    <div class="bonus-stats-grid">
+      ${stats.map(stat => `
+        <div class="bonus-stat-item">
+          <div class="stat-icon">${stat.icon}</div>
+          <div class="stat-info">
+            <div class="stat-name">${stat.name}</div>
+            <div class="stat-value">+${(gameState.bonusStats[stat.key] * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
