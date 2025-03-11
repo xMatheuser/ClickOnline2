@@ -1120,7 +1120,8 @@ body.dark-mode .top-bar {
 /* Specific color for prestige, achievements and bonus stats buttons */
 #open-prestige, 
 #open-achievements,
-#open-bonus-stats {
+#open-bonus-stats,
+#open-laboratory {
   background-color: #209cee !important;
   color: #fff !important;
 }
