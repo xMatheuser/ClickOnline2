@@ -583,34 +583,48 @@ function getUpgradeEffect(upgradeId) {
 setInterval(() => {
   try {
     const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
-    if (autoClickerUpgrade && autoClickerUpgrade.level > 0 && !gameState.isInBossFight && gameState.players.length > 0) {
-      const validPlayers = gameState.players.filter(p => p && p.id); // Ensure valid players only
-      
-      validPlayers.forEach(player => {
-        if (!player || !player.id) return; // Skip invalid players
-        
-        const clickValue = calculateClickValue(player) * 
-          autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
-          gameState.achievementBoosts.autoMultiplier;
-        
-        // Update player stats
-        const playerIndex = gameState.players.findIndex(p => p.id === player.id);
-        if (playerIndex !== -1) {
-          gameState.players[playerIndex].clicks += clickValue;
-          gameState.players[playerIndex].contribution += clickValue;
-        }
-        
-        // Update game state
-        gameState.clicks += clickValue;
-        gameState.totalClicks += clickValue;
-        gameState.levelProgressRemaining -= clickValue;
-      });
+    if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
 
-      if (gameState.levelProgressRemaining <= 0) {
-        levelUpTeam();
+    // Keep track of total damage for this tick
+    let totalDamage = 0;
+    const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
+                         gameState.achievementBoosts.autoMultiplier;
+
+    // Create a snapshot of players to avoid modification issues
+    const currentPlayers = [...gameState.players];
+    
+    currentPlayers.forEach(player => {
+      if (!player?.id) return;
+      const clickValue = calculateClickValue(player) * autoClickValue;
+      
+      // Find and update player in original array
+      const playerInState = gameState.players.find(p => p.id === player.id);
+      if (playerInState) {
+        playerInState.clicks += clickValue;
+        playerInState.contribution += clickValue;
       }
       
-      broadcastGameState('autoclick');
+      totalDamage += clickValue;
+    });
+
+    // Update global stats
+    gameState.clicks += totalDamage;
+    gameState.totalClicks += totalDamage;
+    gameState.levelProgressRemaining -= totalDamage;
+
+    if (gameState.levelProgressRemaining <= 0) {
+      levelUpTeam();
+    } else {
+      const updateData = {
+        type: 'autoclick',
+        teamCoins: gameState.teamCoins,
+        levelProgressRemaining: gameState.levelProgressRemaining,
+        players: gameState.players,
+        totalClicks: gameState.totalClicks,
+        clicks: gameState.clicks,
+        upgrades: gameState.upgrades
+      };
+      io.emit('gameStateUpdate', updateData);
     }
   } catch (error) {
     console.error('[AutoClicker Error]:', error);

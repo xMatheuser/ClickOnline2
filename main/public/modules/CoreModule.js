@@ -40,9 +40,16 @@ export function initStartScreen() {
   });
 
   socket.on('gameStateUpdate', (newState) => {
+    if (!newState?.players) {
+      console.error('Invalid game state received');
+      return;
+    }
+    
     updateGameState(newState);
     import('./UIModule.js').then(module => {
       module.handleGameStateUpdate(newState);
+    }).catch(error => {
+      console.error('Error updating UI:', error);
     });
   });
 

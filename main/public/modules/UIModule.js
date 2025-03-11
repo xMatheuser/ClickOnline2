@@ -27,8 +27,24 @@ export function initUI() {
 }
 
 export function handleGameStateUpdate(newState) {
-  const ownPlayer = newState.players.find(player => player.id === socket.id);
+  if (!newState) return;
   
+  // For autoclick updates, only update necessary parts
+  if (newState.type === 'autoclick') {
+    updateGameState({
+      ...gameState,
+      teamCoins: newState.teamCoins,
+      levelProgressRemaining: newState.levelProgressRemaining,
+      players: newState.players,
+      totalClicks: newState.totalClicks,
+      clicks: newState.clicks,
+      upgrades: newState.upgrades || gameState.upgrades
+    });
+  } else {
+    updateGameState(newState);
+  }
+
+  const ownPlayer = newState.players?.find(player => player?.id === socket.id);
   if (ownPlayer) {
     clicksDisplay.textContent = formatNumber(newState.totalClicks || 0);
     levelDisplay.textContent = ownPlayer.level;
@@ -45,9 +61,15 @@ export function handleGameStateUpdate(newState) {
     progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
   }
 
-  renderPlayers();
-  renderContributions();
-  renderUpgrades();
+  // Only render UI elements that need updating
+  if (newState.type !== 'autoclick' || !gameState.players?.length) {
+    renderPlayers();
+    renderContributions();
+    renderUpgrades();
+  } else {
+    // Just update numbers for autoclick
+    updateStatDisplays();
+  }
 }
 
 function getClickValue(player) {
@@ -55,50 +77,77 @@ function getClickValue(player) {
 }
 
 export function renderPlayers() {
+  if (!playerList) return;
   playerList.innerHTML = '';
-  if (!gameState.players) return;
+  
+  if (!gameState?.players?.length) return;
+
   gameState.players.forEach(player => {
-    const playerTag = document.createElement('div');
-    playerTag.className = 'player-tag';
-    playerTag.setAttribute('data-active', player.id === socket.id ? 'true' : 'false');
-    const initials = player.name.slice(0, 2).toUpperCase();
-    playerTag.innerHTML = `
-      <div class="player-avatar" style="background-color: #007bff">${initials}</div>
-      ${player.name}
-    `;
-    playerList.appendChild(playerTag);
+    if (!player?.name) return; // Skip invalid players
+    
+    try {
+      const playerTag = document.createElement('div');
+      playerTag.className = 'player-tag';
+      playerTag.setAttribute('data-active', player.id === socket.id ? 'true' : 'false');
+      
+      // Safe string operations with null checks
+      const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
+      
+      playerTag.innerHTML = `
+        <div class="player-avatar" style="background-color: #007bff">${initials}</div>
+        ${player.name}
+      `;
+      playerList.appendChild(playerTag);
+    } catch (error) {
+      console.error('Error rendering player:', error);
+    }
   });
 }
 
 export function renderContributions() {
+  if (!contributionContainer) return;
   contributionContainer.innerHTML = '<h3>Ranking de Contribuição</h3>';
-  if (!gameState.players || gameState.players.length === 0) {
+  
+  if (!gameState?.players?.length) {
     contributionContainer.innerHTML += '<div>Adicione jogadores para ver as contribuições</div>';
     return;
   }
-  const sortedPlayers = [...gameState.players].sort((a, b) => b.contribution - a.contribution);
-  const totalContribution = sortedPlayers.reduce((sum, p) => sum + p.contribution, 0) || 0;
+
+  const validPlayers = gameState.players.filter(p => p && p.name && typeof p.contribution === 'number');
+  if (!validPlayers.length) return;
+
+  const sortedPlayers = [...validPlayers].sort((a, b) => b.contribution - a.contribution);
+  const totalContribution = sortedPlayers.reduce((sum, p) => sum + (p.contribution || 0), 0);
+
   sortedPlayers.forEach((player, index) => {
-    const percentage = (player.contribution / totalContribution * 100) || 0;
-    const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
-    const contributionElement = document.createElement('div');
-    contributionElement.className = 'player-contribution';
-    contributionElement.innerHTML = `
-      <div>
-        <div class="player-avatar" style="background-color: #007bff">${player.name.slice(0, 2).toUpperCase()}</div>
-        ${medal} ${player.name} (Nv. ${player.level})
-      </div>
-      <div>${formatNumber(player.contribution)} cliques (${percentage.toFixed(1)}%)</div>
-    `;
-    const barContainer = document.createElement('div');
-    barContainer.className = 'contribution-bar';
-    const barFill = document.createElement('div');
-    barFill.className = 'contribution-fill';
-    barFill.style.width = `${percentage}%`;
-    barFill.style.backgroundColor = '#007bff';
-    barContainer.appendChild(barFill);
-    contributionElement.appendChild(barContainer);
-    contributionContainer.appendChild(contributionElement);
+    try {
+      const percentage = totalContribution > 0 ? (player.contribution / totalContribution * 100) : 0;
+      const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
+      const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
+      
+      const contributionElement = document.createElement('div');
+      contributionElement.className = 'player-contribution';
+      contributionElement.innerHTML = `
+        <div>
+          <div class="player-avatar" style="background-color: #007bff">${initials}</div>
+          ${medal} ${player.name} (Nv. ${player.level || 1})
+        </div>
+        <div>${formatNumber(player.contribution || 0)} cliques (${percentage.toFixed(1)}%)</div>
+      `;
+
+      const barContainer = document.createElement('div');
+      barContainer.className = 'contribution-bar';
+      const barFill = document.createElement('div');
+      barFill.className = 'contribution-fill';
+      barFill.style.width = `${percentage}%`;
+      barFill.style.backgroundColor = '#007bff';
+      
+      barContainer.appendChild(barFill);
+      contributionElement.appendChild(barContainer);
+      contributionContainer.appendChild(contributionElement);
+    } catch (error) {
+      console.error('Error rendering contribution for player:', player, error);
+    }
   });
 }
 
@@ -181,4 +230,18 @@ export function updateUpgradesUI() {
   visibleUpgrades.forEach(upgrade => {
     // ...existing upgrade rendering code...
   });
+}
+
+function updateStatDisplays() {
+  const ownPlayer = gameState.players?.find(player => player?.id === socket.id);
+  if (ownPlayer) {
+    clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
+    teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
+    
+    const currentHP = gameState.levelProgressRemaining;
+    const maxHP = gameState.teamLevel * 100;
+    const percentage = (currentHP / maxHP * 100).toFixed(0);
+    teamSharedProgressBar.style.width = `${percentage}%`;
+    progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+  }
 }
