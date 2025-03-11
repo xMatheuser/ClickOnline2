@@ -330,3 +330,38 @@ body.dark-mode .store-item {
     padding: 10px;
   }
 }
+
+.close-laboratory,
+.close-prestige,
+.close-bonus-stats,
+.close-history,
+.close-achievements {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.close-laboratory:hover,
+.close-prestige:hover,
+.close-bonus-stats:hover,
+.close-history:hover,
+.close-achievements:hover {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  transform: scale(1.1);
+}
+
+body.dark-mode .close-laboratory,
+body.dark-mode .close-prestige,
+body.dark-mode .close-bonus-stats,
+body.dark-mode .close-history,
+body.dark-mode .close-achievements {
+  color: #e0e0e0;
+}
