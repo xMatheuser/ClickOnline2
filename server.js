@@ -618,11 +618,12 @@ setInterval(() => {
       const updateData = {
         type: 'autoclick',
         teamCoins: gameState.teamCoins,
-        levelProgressRemaining: gameState.levelProgressRemaining,
+        levelProgressRemaining: Math.max(0, gameState.levelProgressRemaining),
         players: gameState.players,
         totalClicks: gameState.totalClicks,
         clicks: gameState.clicks,
-        upgrades: gameState.upgrades
+        upgrades: gameState.upgrades,
+        teamLevel: gameState.teamLevel // Add team level to update data
       };
       io.emit('gameStateUpdate', updateData);
     }

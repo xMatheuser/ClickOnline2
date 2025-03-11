@@ -29,46 +29,39 @@ export function initUI() {
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
   
-  // For autoclick updates, only update necessary parts
   if (newState.type === 'autoclick') {
     updateGameState({
       ...gameState,
       teamCoins: newState.teamCoins,
-      levelProgressRemaining: newState.levelProgressRemaining,
+      levelProgressRemaining: Math.max(0, newState.levelProgressRemaining),
       players: newState.players,
       totalClicks: newState.totalClicks,
       clicks: newState.clicks,
-      upgrades: newState.upgrades || gameState.upgrades
+      upgrades: newState.upgrades || gameState.upgrades,
+      teamLevel: newState.teamLevel || gameState.teamLevel
     });
+    updateStatDisplays();
   } else {
     updateGameState(newState);
-  }
+    const ownPlayer = newState.players?.find(player => player?.id === socket.id);
+    if (ownPlayer) {
+      clicksDisplay.textContent = formatNumber(newState.totalClicks || 0);
+      levelDisplay.textContent = ownPlayer.level;
+      teamCoinsDisplay.textContent = formatNumber(newState.teamCoins);
+      clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
+      activePlayerDisplay.textContent = ownPlayer.name;
+      teamGoalDisplay.textContent = newState.teamLevel;
 
-  const ownPlayer = newState.players?.find(player => player?.id === socket.id);
-  if (ownPlayer) {
-    clicksDisplay.textContent = formatNumber(newState.totalClicks || 0);
-    levelDisplay.textContent = ownPlayer.level;
-    teamCoinsDisplay.textContent = formatNumber(newState.teamCoins);
-    clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
-    activePlayerDisplay.textContent = ownPlayer.name;
-    teamGoalDisplay.textContent = newState.teamLevel;
-
-    // Update progress bar
-    const currentHP = newState.levelProgressRemaining;
-    const maxHP = newState.teamLevel * 100;
-    const percentage = (currentHP / maxHP * 100).toFixed(0);
-    teamSharedProgressBar.style.width = `${percentage}%`;
-    progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
-  }
-
-  // Only render UI elements that need updating
-  if (newState.type !== 'autoclick' || !gameState.players?.length) {
+      // Update progress bar
+      const currentHP = newState.levelProgressRemaining;
+      const maxHP = newState.teamLevel * 100;
+      const percentage = (currentHP / maxHP * 100).toFixed(0);
+      teamSharedProgressBar.style.width = `${percentage}%`;
+      progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+    }
     renderPlayers();
     renderContributions();
     renderUpgrades();
-  } else {
-    // Just update numbers for autoclick
-    updateStatDisplays();
   }
 }
 
@@ -238,10 +231,16 @@ function updateStatDisplays() {
     clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
     teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
     
-    const currentHP = gameState.levelProgressRemaining;
-    const maxHP = gameState.teamLevel * 100;
-    const percentage = (currentHP / maxHP * 100).toFixed(0);
-    teamSharedProgressBar.style.width = `${percentage}%`;
-    progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+    // Safe update of progress bar
+    const currentHP = Math.max(0, gameState.levelProgressRemaining || 0);
+    const maxHP = (gameState.teamLevel || 1) * 100;
+    const percentage = Math.min(100, Math.max(0, (currentHP / maxHP * 100))).toFixed(0);
+    
+    if (teamSharedProgressBar) {
+      teamSharedProgressBar.style.width = `${percentage}%`;
+    }
+    if (progressPercentage) {
+      progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+    }
   }
 }
