@@ -210,25 +210,29 @@ io.on('connection', (socket) => {
   socket.emit('gameStateUpdate', preparedState);
 
   socket.on('addPlayer', (playerData) => {
-    if (gameState.players.length >= 3) {
-      socket.emit('gameStateUpdate', prepareGameStateForBroadcast(gameState));
-      socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
-      return;
-    }
+    try {
+      if (gameState.players.length >= 3) {
+        socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
+        return;
+      }
 
-    if (!gameState.players.some(p => p.name === playerData.name)) {
-      playerData.id = socket.id;
-      playerData.clicks = 0;
-      playerData.level = 1;
-      playerData.contribution = 0;
-      playerData.prestige = 0;
-      playerData.prestigeMultiplier = 1;
-      gameState.players.push(playerData);
-      console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
-      broadcastGameState();
-      checkAchievements();
-    } else {
-      socket.emit('notification', 'Este nome já está em uso!');
+      if (!gameState.players.some(p => p.name === playerData.name)) {
+        playerData.id = socket.id;
+        playerData.clicks = 0;
+        playerData.level = 1;
+        playerData.contribution = 0;
+        playerData.prestige = 0;
+        playerData.prestigeMultiplier = 1;
+        gameState.players.push(playerData);
+        console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
+        broadcastGameState();
+        checkAchievements();
+      } else {
+        socket.emit('notification', 'Este nome já está em uso!');
+      }
+    } catch (error) {
+      console.error('[Error] Failed to add player:', error);
+      socket.emit('notification', 'Erro ao adicionar jogador');
     }
   });
 
@@ -575,22 +579,41 @@ function getUpgradeEffect(upgradeId) {
   return upgrade.effect(upgrade.level, gameState) * gameState.achievementBoosts.upgradeEffect;
 }
 
-// Modificar o setInterval do auto-clicker para usar o novo tipo
+// Update the autoClicker interval
 setInterval(() => {
-  const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
-  if (autoClickerUpgrade && autoClickerUpgrade.level > 0 && !gameState.isInBossFight) {
-    gameState.players.forEach(player => {
-      const clickValue = calculateClickValue(player) * autoClickerUpgrade.effect(autoClickerUpgrade.level) * gameState.achievementBoosts.autoMultiplier;
-      player.clicks += clickValue;
-      player.contribution += clickValue;
-      gameState.clicks += clickValue;
-      gameState.totalClicks += clickValue;
-      gameState.levelProgressRemaining -= clickValue;
+  try {
+    const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+    if (autoClickerUpgrade && autoClickerUpgrade.level > 0 && !gameState.isInBossFight && gameState.players.length > 0) {
+      const validPlayers = gameState.players.filter(p => p && p.id); // Ensure valid players only
+      
+      validPlayers.forEach(player => {
+        if (!player || !player.id) return; // Skip invalid players
+        
+        const clickValue = calculateClickValue(player) * 
+          autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
+          gameState.achievementBoosts.autoMultiplier;
+        
+        // Update player stats
+        const playerIndex = gameState.players.findIndex(p => p.id === player.id);
+        if (playerIndex !== -1) {
+          gameState.players[playerIndex].clicks += clickValue;
+          gameState.players[playerIndex].contribution += clickValue;
+        }
+        
+        // Update game state
+        gameState.clicks += clickValue;
+        gameState.totalClicks += clickValue;
+        gameState.levelProgressRemaining -= clickValue;
+      });
+
       if (gameState.levelProgressRemaining <= 0) {
         levelUpTeam();
       }
-    });
-    broadcastGameState('autoclick');
+      
+      broadcastGameState('autoclick');
+    }
+  } catch (error) {
+    console.error('[AutoClicker Error]:', error);
   }
 }, 1000);
 

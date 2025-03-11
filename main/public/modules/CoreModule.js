@@ -35,6 +35,17 @@ export function initStartScreen() {
     return;
   }
 
+  socket.on('connect', () => {
+    console.log('Connected to server');
+  });
+
+  socket.on('gameStateUpdate', (newState) => {
+    updateGameState(newState);
+    import('./UIModule.js').then(module => {
+      module.handleGameStateUpdate(newState);
+    });
+  });
+
   startScreen.style.display = 'flex';
   gameContainer.style.display = 'none';
 
@@ -50,6 +61,32 @@ export function initStartScreen() {
       setUserInteraction(true);  
       startGame();
     }
+  });
+}
+
+export function initSocket() {
+  socket.on('connect', () => {
+    console.log('Connected to server');
+  });
+
+  socket.on('gameStateUpdate', (newState) => {
+    console.log('Game state updated');
+    gameState = newState;
+    import('./UIModule.js').then(module => {
+      module.handleGameStateUpdate(newState);
+    });
+  });
+
+  socket.on('notification', (message) => {
+    import('./UIModule.js').then(module => {
+      module.showNotification(message);
+    });
+  });
+
+  socket.on('prestige', () => {
+    console.log('Prestige event received');
+    gameState.upgrades.forEach(u => u.level = 0);
+    upgradeHistory = { tier1: [], tier2: [], tier3: [] };
   });
 }
 
@@ -80,10 +117,15 @@ export function startGame() {
     gameContainer.style.opacity = '1';
     document.querySelector('.top-bar').classList.add('visible');
     initGame();
+    // Add initial UI render after game initialization
+    import('./UIModule.js').then(module => {
+      module.renderUpgrades();
+    });
   }, 500);
 }
 
 export function initGame() {
+  initSocket();
   initInput();
   initUI();
   initAudio();

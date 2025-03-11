@@ -1,6 +1,6 @@
 import { socket, gameState, isOwnPlayer, updateGameState } from './CoreModule.js';
 import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
-import { playSound } from './AudioModule.js';
+import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription } from './UpgradeModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -22,18 +22,29 @@ let isNotificationShowing = false;
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
   socket.on('notification', showNotification);
+  // Add immediate initial render
+  renderUpgrades();
 }
 
-function handleGameStateUpdate(newState) {
-  updateGameState(newState);
-  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+export function handleGameStateUpdate(newState) {
+  const ownPlayer = newState.players.find(player => player.id === socket.id);
+  
   if (ownPlayer) {
-    clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
+    clicksDisplay.textContent = formatNumber(newState.totalClicks || 0);
     levelDisplay.textContent = ownPlayer.level;
-    teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
+    teamCoinsDisplay.textContent = formatNumber(newState.teamCoins);
     clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
     activePlayerDisplay.textContent = ownPlayer.name;
+    teamGoalDisplay.textContent = newState.teamLevel;
+
+    // Update progress bar
+    const currentHP = newState.levelProgressRemaining;
+    const maxHP = newState.teamLevel * 100;
+    const percentage = (currentHP / maxHP * 100).toFixed(0);
+    teamSharedProgressBar.style.width = `${percentage}%`;
+    progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
   }
+
   renderPlayers();
   renderContributions();
   renderUpgrades();
@@ -98,7 +109,9 @@ export function renderUpgrades() {
   const ownPlayer = gameState.players.find(player => player.id === socket.id);
   if (!ownPlayer) return;
 
-  gameState.upgrades.forEach(upgrade => {
+  const visibleUpgrades = getVisibleUpgrades();
+  
+  visibleUpgrades.forEach(upgrade => {
     const price = calculateUpgradePrice(upgrade);
     const canAfford = gameState.teamCoins >= price;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
@@ -133,30 +146,6 @@ export function renderUpgrades() {
   });
 }
 
-function calculateUpgradePrice(upgrade) {
-  return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
-}
-
-function getUpgradeEffectDescription(upgrade) {
-    switch (upgrade.id) {
-        case 'click-power':
-          return `${upgrade.description} (+${upgrade.level * 100}% cliques no nível atual)`;
-        case 'auto-clicker':
-          return `${upgrade.description} (+${upgrade.level * 100}% cliques automáticos por segundo)`;
-        case 'coin-boost':
-          return `${upgrade.description} (+${(upgrade.level * 20).toFixed(0)}% moedas por nível)`;
-        case 'progress-boost':
-          return `${upgrade.description} (-${(upgrade.level * 5).toFixed(0)}% dificuldade de meta)`;
-        case 'team-synergy':
-          const playerCount = gameState.players.length;
-          return `${upgrade.description} (+${(upgrade.level * playerCount * 10).toFixed(0)}% poder de clique)`;
-        case 'shared-rewards':
-          return `${upgrade.description} (+${(upgrade.level * 15).toFixed(0)}% moedas compartilhadas)`;
-        default:
-          return upgrade.description;
-      }
-}
-
 export function showNotification(message) {
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notificationQueue.push(message);
@@ -181,4 +170,15 @@ function showNextNotification() {
       showNextNotification();
     }, 300);
   }, 5000);
+}
+
+export function updateUpgradesUI() {
+  const upgradesContainer = document.getElementById('upgrades-container');
+  if (!upgradesContainer) return;
+  
+  const visibleUpgrades = renderUpgrades(upgradesContainer);
+  // Render visible upgrades
+  visibleUpgrades.forEach(upgrade => {
+    // ...existing upgrade rendering code...
+  });
 }
