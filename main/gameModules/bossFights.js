@@ -1,7 +1,7 @@
 const bosses = {
   iceTitan: {
     name: 'Ice Titan',
-    level: 5,
+    level: 50,
     baseHealth: 5000, // Alterado para 10000 conforme nova fórmula
     bonusHealth: 1500, // Novo parâmetro para o bônus de HP
     healthMultiplier: 2.5,

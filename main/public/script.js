@@ -61,6 +61,7 @@ const achievementsOverlay = document.getElementById('achievements-overlay');
 const closeAchievementsBtn = document.getElementById('close-achievements');
 const achievementsContent = document.getElementById('achievements-content');
 const openAchievementsBtn = document.getElementById('open-achievements');
+const laboratoryOverlay = document.getElementById('laboratory-overlay'); // Add this line
 
 // Adicione após as outras declarações de constantes
 const bonusStatsOverlay = document.getElementById('bonus-stats-overlay');
@@ -224,7 +225,52 @@ function initStartScreen() {
   });
 }
 
+// Adicionar após as variáveis globais
+let laboratoryData = {
+  researchPoints: 0,
+  pointsPerSecond: 0,
+  upgrades: [
+    {
+      id: 'automation',
+      name: 'Automação Básica',
+      description: 'Gera 1 ponto de pesquisa por segundo',
+      baseCost: 10,
+      level: 0,
+      costMultiplier: 1.5,
+      effect: 1
+    },
+    {
+      id: 'efficiency',
+      name: 'Eficiência de Pesquisa',
+      description: 'Aumenta a geração de pontos em 50%',
+      baseCost: 50,
+      level: 0,
+      costMultiplier: 2,
+      effect: 0.5
+    }
+  ],
+  garden: {
+    selectedSeed: 'sunflower',
+    unlockedSlots: 1,
+    crystalUnlocked: false,
+    resources: {
+      sunflower: 0,
+      tulip: 0,
+      mushroom: 0,
+      crystal: 0
+    },
+    plants: {}
+  },
+  seedData: {
+    sunflower: { icon: '🌻', time: 30, yield: 2, name: 'Girassol' },
+    tulip: { icon: '🌷', time: 60, yield: 5, name: 'Tulipa' },
+    mushroom: { icon: '🍄', time: 90, yield: 8, name: 'Cogumelo' },
+    crystal: { icon: '💎', time: 120, yield: 12, name: 'Cristal' }
+  }
+};
+
 function initGame() {
+  loadLaboratoryData(); // Carregar dados salvos
   clickArea.addEventListener('click', () => {
     userHasInteracted = true;
     socket.emit('click');
@@ -383,6 +429,29 @@ function initGame() {
       bonusStatsOverlay.classList.remove('active');
     }
   });
+
+  const openLabButton = document.getElementById('open-laboratory');
+  const closeLabButton = document.getElementById('close-laboratory');
+  const laboratoryOverlay = document.getElementById('laboratory-overlay');
+
+  openLabButton.addEventListener('click', () => {
+    laboratoryOverlay.classList.add('active');
+    updateLaboratoryUI();
+  });
+
+  closeLabButton.addEventListener('click', () => {
+    laboratoryOverlay.classList.remove('active');
+  });
+
+  laboratoryOverlay.addEventListener('click', (e) => {
+    if (e.target === laboratoryOverlay) {
+      laboratoryOverlay.classList.remove('active');
+    }
+  });
+
+  // Iniciar o loop do laboratório
+  setInterval(updateLaboratory, 1000);
+  initLaboratoryGarden();
 }
 
 function toggleFullscreen() {
@@ -1490,3 +1559,352 @@ socket.on('upgradePurchased', (upgradeId) => {
 });
 
 // ...existing code...
+
+function updateLaboratory() {
+  laboratoryData.researchPoints += laboratoryData.pointsPerSecond;
+  if (laboratoryOverlay.classList.contains('active')) {
+    updateLaboratoryUI();
+  }
+  saveLaboratoryData(); // Salvar após cada atualização
+}
+
+function updateLaboratoryUI() {
+  const researchPoints = document.getElementById('research-points');
+  const researchPerSecond = document.getElementById('research-per-second');
+  const upgradesContainer = document.getElementById('laboratory-upgrades');
+  
+  researchPoints.textContent = Math.floor(laboratoryData.researchPoints);
+  researchPerSecond.textContent = laboratoryData.pointsPerSecond.toFixed(1);
+  
+  upgradesContainer.innerHTML = laboratoryData.upgrades.map(upgrade => {
+    const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
+    return `
+      <div class="laboratory-upgrade" onclick="buyLabUpgrade('${upgrade.id}')">
+        <h3>${upgrade.name} (Nível ${upgrade.level})</h3>
+        <p>${upgrade.description}</p>
+        <p>Custo: ${cost} pontos</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function buyLabUpgrade(upgradeId) {
+  const upgrade = laboratoryData.upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return;
+  
+  const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
+  
+  if (laboratoryData.researchPoints >= cost) {
+    laboratoryData.researchPoints -= cost;
+    upgrade.level++;
+    
+    // Atualizar pontos por segundo
+    if (upgradeId === 'automation') {
+      laboratoryData.pointsPerSecond += upgrade.effect;
+    } else if (upgradeId === 'efficiency') {
+      laboratoryData.pointsPerSecond *= (1 + upgrade.effect);
+    }
+    
+    updateLaboratoryUI();
+  }
+}
+
+// Adicionar após a definição do laboratoryData
+function saveLaboratoryData() {
+  localStorage.setItem('laboratoryData', JSON.stringify(laboratoryData));
+}
+
+function loadLaboratoryData() {
+  const saved = localStorage.getItem('laboratoryData');
+  if (saved) {
+    laboratoryData = JSON.parse(saved);
+  }
+}
+
+function initLaboratoryGarden() {
+  const gardenGrid = document.getElementById('laboratory-garden');
+  const seedOptions = document.querySelectorAll('.seed-option');
+  
+  // Inicializar slots
+  updateGardenSlots();
+  
+  // Event listeners para as sementes
+  seedOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      if (option.classList.contains('locked')) return;
+      seedOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+      laboratoryData.garden.selectedSeed = option.dataset.seed;
+    });
+  });
+  
+  // Event listeners para os botões da loja
+  document.getElementById('buy-lab-slot').addEventListener('click', buyLabSlot);
+  document.getElementById('buy-lab-crystal').addEventListener('click', buyLabCrystal);
+  
+  // Iniciar loop de verificação
+  setInterval(checkGardenProgress, 1000);
+}
+
+function updateGardenSlots() {
+  const gardenGrid = document.getElementById('laboratory-garden');
+  gardenGrid.innerHTML = '';
+  
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement('div');
+    slot.className = `garden-slot ${i >= laboratoryData.garden.unlockedSlots ? 'locked' : ''}`;
+    slot.dataset.slot = i;
+    
+    if (i < laboratoryData.garden.unlockedSlots) {
+      slot.innerHTML = `
+        <div class="plant-placeholder">Clique para plantar</div>
+        <div class="progress-bar"></div>
+        <div class="ready-indicator">Pronto!</div>
+      `;
+      setupGardenSlot(slot);
+    }
+    
+    gardenGrid.appendChild(slot);
+  }
+}
+
+function setupGardenSlot(slot) {
+  slot.addEventListener('click', () => {
+    const slotId = slot.dataset.slot;
+    const garden = laboratoryData.garden;
+    
+    if (garden.plants[slotId]?.ready) {
+      harvestPlant(slotId);
+    } else if (!garden.plants[slotId]) {
+      plantSeed(slotId);
+    }
+  });
+}
+
+function plantSeed(slotId) {
+  const garden = laboratoryData.garden;
+  const seedType = garden.selectedSeed;
+  const seed = laboratoryData.seedData[seedType];
+  
+  if (seedType === 'crystal' && !garden.crystalUnlocked) {
+    showNotification('Desbloqueie a semente de cristal primeiro!');
+    return;
+  }
+  
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  const growthTime = seed.time * 1000;
+  
+  slot.innerHTML = `
+    <div class="plant">${seed.icon}</div>
+    <div class="progress-bar"></div>
+    <div class="ready-indicator">Pronto!</div>
+  `;
+  
+  garden.plants[slotId] = {
+    type: seedType,
+    plantedAt: Date.now(),
+    growthTime,
+    ready: false
+  };
+  
+  const progressBar = slot.querySelector('.progress-bar');
+  setTimeout(() => progressBar.style.width = '100%', 10);
+  
+  setTimeout(() => {
+    garden.plants[slotId].ready = true;
+    slot.querySelector('.ready-indicator').style.display = 'block';
+    showNotification(`${seed.name} está pronto para colheita!`);
+  }, growthTime);
+}
+
+function harvestPlant(slotId) {
+  const garden = laboratoryData.garden;
+  const plant = garden.plants[slotId];
+  const seed = laboratoryData.seedData[plant.type];
+  
+  garden.resources[plant.type] += seed.yield;
+  delete garden.plants[slotId];
+  
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  slot.innerHTML = `
+    <div class="plant-placeholder">Clique para plantar</div>
+    <div class="progress-bar"></div>
+    <div class="ready-indicator">Pronto!</div>
+  `;
+  
+  updateLabResources();
+  showNotification(`Colheu ${seed.yield} ${seed.name}!`);
+}
+
+function checkGardenProgress() {
+  const garden = laboratoryData.garden;
+  
+  for (const slotId in garden.plants) {
+    const plant = garden.plants[slotId];
+    if (!plant.ready) {
+      const progress = (Date.now() - plant.plantedAt) / plant.growthTime;
+      if (progress >= 1) {
+        plant.ready = true;
+        const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+        slot.querySelector('.ready-indicator').style.display = 'block';
+      }
+    }
+  }
+}
+
+function updateLabResources() {
+  const resources = laboratoryData.garden.resources;
+  Object.keys(resources).forEach(type => {
+    const element = document.getElementById(`lab-${type}-count`);
+    if (element) element.textContent = resources[type];
+  });
+}
+
+function buyLabSlot() {
+  const garden = laboratoryData.garden;
+  
+  if (garden.unlockedSlots >= 4) {
+    showNotification('Todos os slots já estão desbloqueados!');
+    return;
+  }
+  
+  if (garden.resources.sunflower >= 5 && garden.resources.tulip >= 3) {
+    garden.resources.sunflower -= 5;
+    garden.resources.tulip -= 3;
+    garden.unlockedSlots++;
+    updateGardenSlots();
+    updateLabResources();
+    showNotification('Novo slot de plantio desbloqueado!');
+  } else {
+    showNotification('Recursos insuficientes!');
+  }
+}
+
+function buyLabCrystal() {
+  const garden = laboratoryData.garden;
+  
+  if (garden.crystalUnlocked) {
+    showNotification('Semente de Cristal já desbloqueada!');
+    return;
+  }
+  
+  if (garden.resources.sunflower >= 8 && garden.resources.tulip >= 5 && garden.resources.mushroom >= 3) {
+    garden.resources.sunflower -= 8;
+    garden.resources.tulip -= 5;
+    garden.resources.mushroom -= 3;
+    garden.crystalUnlocked = true;
+    
+    const crystalSeed = document.querySelector('.seed-option[data-seed="crystal"]');
+    crystalSeed.classList.remove('locked');
+    updateLabResources();
+    showNotification('Semente de Cristal desbloqueada!');
+  } else {
+    showNotification('Recursos insuficientes!');
+  }
+}
+
+// ...existing code...
+
+// Adicionar bem no fim do arquivo, após a última função buyLabCrystal()
+
+// Power-up activation logic
+let lastPowerUpSpawn = 0;
+
+function showPowerupTimer() {
+  const now = Date.now();
+  const timeSinceLastSpawn = now - lastPowerUpSpawn;
+  const nextSpawnTime = Math.max(0, (lastPowerUpSpawn + powerUpInterval) - now);
+  const seconds = Math.ceil(nextSpawnTime / 1000);
+  
+  if (seconds > 0) {
+    powerupTimerDisplay.textContent = `Próximo em ${seconds}s`;
+    powerupTimerDisplay.style.display = 'block';
+  } else {
+    powerupTimerDisplay.style.display = 'none';
+  }
+}
+
+function handlePowerUpActivation() {
+  const now = Date.now();
+  
+  // Don't spawn if recently spawned
+  if (now - lastPowerUpSpawn < powerUpInterval) return;
+  
+  lastPowerUpSpawn = now;
+  spawnFloatingPowerUp();
+}
+
+// Handle boss fight particles cleanup
+function cleanupBossParticles() {
+  const container = document.querySelector('.boss-container');
+  if (!container) return;
+  
+  const particles = container.querySelectorAll('.particle');
+  particles.forEach(particle => particle.remove());
+}
+
+// Save data handling
+function saveGameState() {
+  try {
+    localStorage.setItem('laboratoryData', JSON.stringify(laboratoryData));
+    localStorage.setItem('lastSaveTime', Date.now().toString());
+  } catch (e) {
+    console.error('Error saving game state:', e);
+  }
+}
+
+function loadGameState() {
+  try {
+    const savedLaboratoryData = localStorage.getItem('laboratoryData');
+    if (savedLaboratoryData) {
+      laboratoryData = JSON.parse(savedLaboratoryData);
+    }
+    
+    const lastSaveTime = parseInt(localStorage.getItem('lastSaveTime') || '0');
+    const now = Date.now();
+    const timeDiff = now - lastSaveTime;
+    
+    if (timeDiff > 0) {
+      processOfflineProgress(timeDiff);
+    }
+  } catch (e) {
+    console.error('Error loading game state:', e);
+  }
+}
+
+function processOfflineProgress(timeDiff) {
+  const seconds = Math.floor(timeDiff / 1000);
+  
+  // Process laboratory progress
+  const pointsGained = laboratoryData.pointsPerSecond * seconds;
+  laboratoryData.researchPoints += pointsGained;
+  
+  // Process garden growth
+  Object.entries(laboratoryData.garden.plants).forEach(([slotId, plant]) => {
+    if (!plant.ready) {
+      const elapsedTime = Date.now() - plant.plantedAt;
+      if (elapsedTime >= plant.growthTime) {
+        plant.ready = true;
+      }
+    }
+  });
+  
+  if (pointsGained > 0) {
+    showNotification(`Progresso Offline:\n+${Math.floor(pointsGained)} pontos de pesquisa\nPlantações atualizadas!`);
+  }
+}
+
+// Auto-save every minute
+setInterval(saveGameState, 60000);
+
+// Clean up on window unload
+window.addEventListener('beforeunload', () => {
+  saveGameState();
+  cleanupBossParticles();
+});
+
+// Initialize game state on load
+window.addEventListener('load', () => {
+  loadGameState();
+  initStartScreen();
+});

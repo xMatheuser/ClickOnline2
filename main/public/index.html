@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/bonusStats.css">
   <link rel="stylesheet" href="css/background.css">
   <link rel="stylesheet" href="css/bossFight.css">
+  <link rel="stylesheet" href="css/laboratory.css">
 </head>
 <body class="nes-container">
   <div class="animated-background"></div>
@@ -31,6 +32,7 @@
           <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
           <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
           <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
+          <button class="nes-btn" id="open-laboratory">🌻 Jardim</button>
         </h1>
       </div>
       <div class="top-bar-buttons">
@@ -186,6 +188,86 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ad33b6dabe12e7',t:'MTc0MTA0NzU2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <div class="laboratory-overlay" id="laboratory-overlay">
+    <div class="laboratory-popup nes-container is-rounded">
+      <div class="laboratory-header">
+        <h2>🌻 Jardim</h2>
+        <button class="close-laboratory" id="close-laboratory">×</button>
+      </div>
+      <div class="laboratory-content">
+        <div class="laboratory-resources">
+          <div class="resources-display">
+            <div class="resource-item">
+              <span class="resource-icon">🌻</span>
+              <span class="resource-count" id="lab-sunflower-count">0</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-icon">🌷</span>
+              <span class="resource-count" id="lab-tulip-count">0</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-icon">🍄</span>
+              <span class="resource-count" id="lab-mushroom-count">0</span>
+            </div>
+            <div class="resource-item">
+              <span class="resource-icon">💎</span>
+              <span class="resource-count" id="lab-crystal-count">0</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="seed-selector">
+          <div class="seed-option selected" data-seed="sunflower">
+            <span class="seed-icon">🌻</span>
+            <div>
+              <div>Girassol</div>
+              <div class="time-info">30s • ⭐⭐</div>
+            </div>
+          </div>
+          <div class="seed-option" data-seed="tulip">
+            <span class="seed-icon">🌷</span>
+            <div>
+              <div>Tulipa</div>
+              <div class="time-info">60s • ⭐⭐⭐</div>
+            </div>
+          </div>
+          <div class="seed-option" data-seed="mushroom">
+            <span class="seed-icon">🍄</span>
+            <div>
+              <div>Cogumelo</div>
+              <div class="time-info">90s • ⭐⭐⭐⭐</div>
+            </div>
+          </div>
+          <div class="seed-option locked" data-seed="crystal">
+            <span class="seed-icon">💎</span>
+            <div>
+              <div>Cristal</div>
+              <div class="time-info">🔒 Bloqueado</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="garden-grid" id="laboratory-garden">
+          <!-- Slots serão adicionados dinamicamente -->
+        </div>
+
+        <div class="store-grid">
+          <div class="store-item" data-item="slot">
+            <div class="store-item-title">Novo Espaço</div>
+            <div class="store-item-desc">Desbloqueie um novo slot para plantar mais recursos.</div>
+            <div class="store-item-cost">Custo: 5 🌻, 3 🌷</div>
+            <button class="buy-button" id="buy-lab-slot">Comprar</button>
+          </div>
+          <div class="store-item" data-item="crystal-seed">
+            <div class="store-item-title">Semente de Cristal</div>
+            <div class="store-item-desc">Desbloqueie a rara semente de cristal.</div>
+            <div class="store-item-cost">Custo: 8 🌻, 5 🌷, 3 🍄</div>
+            <button class="buy-button" id="buy-lab-crystal">Comprar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</html></body>  <script src="script.js"></script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ad33b6dabe12e7',t:'MTc0MTA0NzU2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
