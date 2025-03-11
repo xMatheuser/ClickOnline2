@@ -10,6 +10,7 @@ export function initPrestige() {
   openPrestigeBtn.addEventListener('click', () => {
     prestigeOverlay.classList.add('active');
     updatePrestigeUI();
+    renderPrestigeUpgrades(); // Add this line to render upgrades
   });
 
   closePrestigeBtn.addEventListener('click', () => prestigeOverlay.classList.remove('active'));
@@ -29,6 +30,14 @@ export function initPrestige() {
       return;
     }
     socket.emit('prestige');
+  });
+
+  // Move socket listener inside init
+  socket.on('gameStateUpdate', () => {
+    if (prestigeOverlay.classList.contains('active')) {
+      updatePrestigeUI();
+      renderPrestigeUpgrades();
+    }
   });
 }
 
@@ -74,8 +83,11 @@ function renderPrestigeUpgrades() {
 
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
-    const effectValue = upgrade.effect(upgrade.level + 1);
-    const tooltipText = `${upgrade.description} (Efeito: x${effectValue.toFixed(1)} no próximo nível)`;
+    
+    const currentEffect = upgrade.effect ? upgrade.effect(upgrade.level) : 0;
+    const nextEffect = upgrade.effect ? upgrade.effect(upgrade.level + 1) : 0;
+    const tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\nPróximo: x${nextEffect.toFixed(1)}`;
+    
     upgradeElement.setAttribute('data-tooltip', tooltipText);
     upgradeElement.innerHTML = `
       <div class="upgrade-info">
