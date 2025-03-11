@@ -1646,6 +1646,7 @@ function initLaboratoryGarden() {
   setInterval(checkGardenProgress, 1000);
 }
 
+// ...existing code...
 function updateGardenSlots() {
   const gardenGrid = document.getElementById('laboratory-garden');
   gardenGrid.innerHTML = '';
@@ -1662,11 +1663,17 @@ function updateGardenSlots() {
         <div class="ready-indicator">Pronto!</div>
       `;
       setupGardenSlot(slot);
+    } else {
+      slot.innerHTML = `
+        <div class="lock-icon">🔒</div>
+        <div class="plant-placeholder">Slot Bloqueado</div>
+      `;
     }
     
     gardenGrid.appendChild(slot);
   }
 }
+// ...existing code...
 
 function setupGardenSlot(slot) {
   slot.addEventListener('click', () => {
@@ -1681,6 +1688,7 @@ function setupGardenSlot(slot) {
   });
 }
 
+// ...existing code...
 function plantSeed(slotId) {
   const garden = laboratoryData.garden;
   const seedType = garden.selectedSeed;
@@ -1706,16 +1714,35 @@ function plantSeed(slotId) {
     growthTime,
     ready: false
   };
-  
+
+  // Inicia o progresso em 0
   const progressBar = slot.querySelector('.progress-bar');
-  setTimeout(() => progressBar.style.width = '100%', 10);
-  
-  setTimeout(() => {
-    garden.plants[slotId].ready = true;
-    slot.querySelector('.ready-indicator').style.display = 'block';
-    showNotification(`${seed.name} está pronto para colheita!`);
-  }, growthTime);
+  progressBar.style.width = '0%';
+
+  // Atualiza o progresso a cada 100ms
+  const updateProgress = () => {
+    const plant = garden.plants[slotId];
+    if (!plant || plant.ready) return;
+
+    const now = Date.now();
+    const elapsed = now - plant.plantedAt;
+    const progress = (elapsed / plant.growthTime) * 100;
+    
+    if (progress >= 100) {
+      progressBar.style.width = '100%';
+      plant.ready = true;
+      slot.querySelector('.ready-indicator').style.display = 'block';
+      showNotification(`${seed.name} está pronto para colheita!`);
+    } else {
+      progressBar.style.width = `${progress}%`;
+      requestAnimationFrame(updateProgress);
+    }
+  };
+
+  // Inicia a atualização do progresso
+  requestAnimationFrame(updateProgress);
 }
+// ...existing code...
 
 function harvestPlant(slotId) {
   const garden = laboratoryData.garden;

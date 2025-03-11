@@ -182,7 +182,7 @@
   height: 4px;
   background-color: #4CAF50;
   width: 0%;
-  transition: width 0.3s linear;
+  transition: width 0.1s linear;
 }
 
 .ready-indicator {
@@ -262,4 +262,21 @@ body.dark-mode .garden-slot {
 
 body.dark-mode .store-item {
   background-color: #2a2a2a;
+}
+
+.lock-icon {
+  font-size: 2em;
+  margin-bottom: 10px;
+  opacity: 0.5;
+  animation: lock-float 2s ease-in-out infinite;
+}
+
+@keyframes lock-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.garden-slot.locked .plant-placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8em;
 }
