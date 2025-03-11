@@ -33,18 +33,32 @@ export function initPrestige() {
 }
 
 function updatePrestigeUI() {
-  document.getElementById('fragments-count').textContent = gameState?.fragments || 0;
-  document.getElementById('potential-fragments').textContent = calculatePrestigeReward();
-  renderPrestigeUpgrades();
+  const ownPlayer = gameState.players?.find(player => player.id === socket.id);
+  if (!ownPlayer) return;
+
+  const fragmentsCount = document.getElementById('fragments-count');
+  const potentialFragments = document.getElementById('potential-fragments');
+  
+  if (fragmentsCount) {
+    fragmentsCount.textContent = formatNumber(gameState.fragments || 0);
+  }
+  
+  if (potentialFragments) {
+    const reward = calculatePrestigeReward(ownPlayer.level || 1);
+    potentialFragments.textContent = formatNumber(reward);
+  }
 }
 
-function calculatePrestigeReward() {
-  const player = gameState.players.find(p => p.id === socket.id);
-  if (!player) return 0;
-  const fragmentMultiplierUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier');
-  const fragmentMultiplier = fragmentMultiplierUpgrade?.effect(fragmentMultiplierUpgrade.level) || 1;
-  const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
-  return Math.floor(baseFragments * fragmentMultiplier);
+function calculatePrestigeReward(playerLevel) {
+  if (playerLevel < 2) return 0;
+  
+  const fragmentMultiplierUpgrade = gameState.prestigeUpgrades?.find(u => u.id === 'fragment-multiplier');
+  const multiplier = fragmentMultiplierUpgrade 
+    ? fragmentMultiplierUpgrade.effect(fragmentMultiplierUpgrade.level || 0)
+    : 1;
+
+  const baseFragments = Math.floor(Math.sqrt(playerLevel) * 2);
+  return Math.floor(baseFragments * multiplier * (gameState.achievementBoosts?.prestigeCostReduction || 1));
 }
 
 function renderPrestigeUpgrades() {

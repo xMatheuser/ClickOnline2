@@ -453,6 +453,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('surrenderBoss', () => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !gameState.activeBoss) return;
+  
+    const penalty = Math.floor(gameState.teamCoins * gameState.activeBoss.penalty.coinLossPercentage);
+    gameState.teamCoins = Math.max(0, gameState.teamCoins - penalty);
+    gameState.isInBossFight = false;
+  
+    if (gameState.activeBoss.timerId) {
+      clearTimeout(gameState.activeBoss.timerId);
+    }
+  
+    io.emit('bossResult', { 
+      victory: false,
+      penalty: penalty,
+      surrendered: true,
+      surrenderedBy: player.name
+    });
+    
+    gameState.activeBoss = null;
+    broadcastGameState();
+  });
+
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {

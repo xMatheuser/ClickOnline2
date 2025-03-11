@@ -2,9 +2,22 @@ import { socket, gameState } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
 
 export function initBoss() {
+  const surrenderButton = document.getElementById('surrender-boss');
+  
+  surrenderButton.addEventListener('click', () => {
+    if (confirm('Tem certeza que deseja desistir? Você perderá moedas!')) {
+      socket.emit('surrenderBoss');
+    }
+  });
+
   socket.on('bossSpawn', showBossFight);
   socket.on('bossUpdate', updateBoss);
-  socket.on('bossResult', handleBossResult);
+  socket.on('bossResult', (result) => {
+    if (result.surrendered) {
+      showNotification(`${result.surrenderedBy} desistiu da luta! Penalidade: ${result.penalty} moedas`);
+    }
+    handleBossResult(result);
+  });
 }
 
 function showBossFight(bossData) {

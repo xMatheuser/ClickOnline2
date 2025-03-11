@@ -134,3 +134,23 @@
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+.surrender-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.surrender-button:hover {
+  background: #c82333;
+}
+
+.surrender-button:active {
+  transform: scale(0.98);
+}
