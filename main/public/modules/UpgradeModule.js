@@ -42,5 +42,59 @@ export function calculateUpgradePrice(upgrade) {
 }
 
 export function getUpgradeEffectDescription(upgrade) {
-  // ...existing effect description code...
+  if (!upgrade) return '';
+  
+  switch (upgrade.id) {
+    case 'click-power':
+    case 'click-power-2':
+    case 'click-power-3':
+      const clickBonus = upgrade.tier === 1 ? upgrade.level * 100 : 
+                        upgrade.tier === 2 ? upgrade.level * 200 :
+                        upgrade.level * 400;
+      return `${upgrade.description}\n\nBônus Atual: +${clickBonus}% poder de clique`;
+      
+    case 'auto-clicker':
+    case 'auto-clicker-2':
+    case 'auto-clicker-3':
+      const autoClicks = upgrade.tier === 1 ? upgrade.level :
+                        upgrade.tier === 2 ? upgrade.level * 2 :
+                        upgrade.level * 4;
+      return `${upgrade.description}\n\nGera ${autoClicks} cliques automáticos por segundo`;
+      
+    case 'coin-boost':
+    case 'coin-boost-2':
+    case 'coin-boost-3':
+      const coinBonus = (upgrade.tier === 1 ? upgrade.level * 20 :
+                        upgrade.tier === 2 ? upgrade.level * 40 :
+                        upgrade.level * 80);
+      return `${upgrade.description}\n\nBônus Atual: +${coinBonus}% moedas`;
+      
+    case 'progress-boost':
+    case 'progress-boost-2':
+    case 'progress-boost-3':
+      const progressReduction = (upgrade.tier === 1 ? upgrade.level * 5 :
+                               upgrade.tier === 2 ? upgrade.level * 8 :
+                               upgrade.level * 15);
+      return `${upgrade.description}\n\nRedução Atual: -${progressReduction}% dificuldade`;
+      
+    case 'team-synergy':
+    case 'team-synergy-2':
+    case 'team-synergy-3':
+      const playerCount = gameState?.players?.length || 0;
+      const synergyBonus = upgrade.tier === 1 ? upgrade.level * playerCount * 10 :
+                          upgrade.tier === 2 ? upgrade.level * playerCount * 20 :
+                          upgrade.level * playerCount * 40;
+      return `${upgrade.description}\n\nBônus Atual: +${synergyBonus}% (${playerCount} jogadores)`;
+      
+    case 'shared-rewards':
+    case 'shared-rewards-2':
+    case 'shared-rewards-3':
+      const rewardBonus = upgrade.tier === 1 ? upgrade.level * 15 :
+                         upgrade.tier === 2 ? upgrade.level * 30 :
+                         upgrade.level * 50;
+      return `${upgrade.description}\n\nRetorno Atual: +${rewardBonus}% moedas`;
+      
+    default:
+      return upgrade.description;
+  }
 }

@@ -356,3 +356,26 @@ body.dark-mode .upgrade-info strong i {
   font-weight: bold;
   animation: pulse 1s infinite;
 }
+
+#tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 300px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  white-space: pre-line;
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  line-height: 1.4;
+}
+
+body.dark-mode #tooltip {
+  background: rgba(40, 40, 40, 0.95);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

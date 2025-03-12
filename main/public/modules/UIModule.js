@@ -216,7 +216,7 @@ export function renderUpgrades() {
     upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
     upgradeElement.setAttribute('data-id', upgrade.id);
     const tooltipText = getUpgradeEffectDescription(upgrade);
-    upgradeElement.setAttribute('data-tooltip', tooltipText);
+
     upgradeElement.innerHTML = `
       <div class="upgrade-info">
         <div><strong>${upgrade.icon} ${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
@@ -234,8 +234,22 @@ export function renderUpgrades() {
       socket.emit('buyUpgrade', upgrade.id);
     });
 
-    upgradeElement.addEventListener('mousemove', (event) => showTooltip(event, tooltipText));
-    upgradeElement.addEventListener('mouseleave', hideTooltip);
+    // Adicionar eventos para o tooltip
+    upgradeElement.addEventListener('mouseenter', (event) => {
+      showTooltip(event, tooltipText);
+    });
+
+    upgradeElement.addEventListener('mouseleave', () => {
+      hideTooltip();
+    });
+
+    upgradeElement.addEventListener('mousemove', (event) => {
+      const tooltip = document.getElementById('tooltip');
+      if (tooltip.style.display === 'block') {
+        tooltip.style.left = `${event.pageX + 10}px`;
+        tooltip.style.top = `${event.pageY + 10}px`;
+      }
+    });
 
     upgradesContainer.appendChild(upgradeElement);
   });
