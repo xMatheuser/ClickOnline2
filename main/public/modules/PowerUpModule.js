@@ -1,9 +1,19 @@
 import { socket, gameState, isOwnPlayer } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
 
-const activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
+let activateClickFrenzyButton;
+let hasInitializedSpawning = false;
 
 export function initPowerUps() {
+  activateClickFrenzyButton = document.getElementById('activate-click-frenzy');
+  
+  if (!activateClickFrenzyButton) {
+    console.error('[PowerUp] Button element not found');
+    return;
+  }
+
+  activateClickFrenzyButton.style.display = 'none';
+
   activateClickFrenzyButton.addEventListener('click', () => {
     if (!isOwnPlayer()) {
       showNotification('Você só pode ativar power-ups quando for o jogador ativo!');
@@ -15,22 +25,22 @@ export function initPowerUps() {
   });
 
   socket.on('powerUpActivated', showPowerupNotification);
-  scheduleFirstPowerUp();
+  
+  // Listen for game state updates to start spawning when unlocked
+  socket.on('gameStateUpdate', checkAndStartSpawning);
+}
+
+function checkAndStartSpawning() {
+  if (!hasInitializedSpawning && arePowerUpsUnlocked()) {
+    console.log('[PowerUp] Sistema desbloqueado - Iniciando spawns');
+    hasInitializedSpawning = true;
+    scheduleNextSpawn();
+  }
 }
 
 function arePowerUpsUnlocked() {
   const powerupsUpgrade = gameState?.prestigeUpgrades?.find(u => u.id === 'powerups-unlock');
   return powerupsUpgrade?.level > 0;
-}
-
-function scheduleFirstPowerUp() {
-  if (!arePowerUpsUnlocked()) {
-    console.log('[PowerUp] Sistema bloqueado - Compre o upgrade de prestígio');
-    return;
-  }
-  const randomDelay = 15000; // 15 segundos fixos
-  console.log(`[PowerUp] Próximo power-up em ${(randomDelay / 1000).toFixed(0)} segundos`);
-  setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
 function spawnFloatingPowerUp() {

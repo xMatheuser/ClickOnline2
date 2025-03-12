@@ -11,7 +11,7 @@ export let laboratoryData = {
     selectedSeed: 'sunflower',
     unlockedSlots: 1,
     crystalUnlocked: false,
-    resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
+    resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
     plants: {}
   }
 };
