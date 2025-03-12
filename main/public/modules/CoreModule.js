@@ -24,6 +24,9 @@ const gameContainer = document.getElementById('game-container');
 
 export function initStartScreen() {
   console.log('Initializing start screen...');
+  // Inicializa o tema antes de tudo
+  initTheme();
+  
   const startScreen = document.getElementById('start-screen');
   const startGameButton = document.getElementById('start-game-button');
   const startPlayerNameInput = document.getElementById('start-player-name');
