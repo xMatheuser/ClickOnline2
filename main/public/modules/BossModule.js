@@ -1,6 +1,9 @@
 import { socket, gameState } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
 
+let bossTimer;
+let startTime;
+
 export function initBoss() {
   const surrenderButton = document.getElementById('surrender-boss');
   
@@ -10,7 +13,11 @@ export function initBoss() {
     }
   });
 
-  socket.on('bossSpawn', showBossFight);
+  socket.on('bossSpawn', (data) => {
+    startTime = Date.now();
+    showBossFight(data);
+    startBossTimer(data.timeLimit);
+  });
   socket.on('bossUpdate', updateBoss);
   socket.on('bossResult', (result) => {
     if (result.surrendered) {
@@ -38,6 +45,29 @@ function showBossFight(bossData) {
   bossContainer.onclick = (e) => {
     socket.emit('click');
   };
+}
+
+function startBossTimer(duration) {
+  const timerElement = document.querySelector('.boss-timer');
+  if (!timerElement) return;
+
+  clearInterval(bossTimer);
+  
+  bossTimer = setInterval(() => {
+    const now = Date.now();
+    const timeLeft = Math.max(0, Math.ceil((startTime + duration - now) / 1000));
+    
+    timerElement.textContent = timeLeft;
+    
+    // Adiciona classe danger quando faltar 10 segundos
+    if (timeLeft <= 10) {
+      timerElement.classList.add('danger');
+    }
+    
+    if (timeLeft <= 0) {
+      clearInterval(bossTimer);
+    }
+  }, 100); // Atualiza a cada 100ms para maior precisão
 }
 
 function updateBoss({ health, maxHealth, damage, playerName }) {
@@ -100,6 +130,8 @@ function startParticleEffect(config) {
 }
 
 function hideBossFight() {
+  clearInterval(bossTimer);
   const bossOverlay = document.querySelector('.boss-overlay');
   bossOverlay.classList.remove('active');
+  document.querySelector('.boss-timer')?.classList.remove('danger');
 }

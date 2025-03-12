@@ -584,7 +584,8 @@ function spawnBoss() {
     maxHealth: boss.maxHealth,
     image: boss.image,
     particles: boss.particles,
-    timeLimit: boss.timeLimit
+    timeLimit: boss.timeLimit,
+    startTime: boss.startTime // Adicionar startTime
   });
 
   // Armazenar o timer separadamente do objeto boss
