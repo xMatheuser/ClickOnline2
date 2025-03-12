@@ -95,6 +95,12 @@ export function initUI() {
 
   // Add history initialization
   initHistory();
+
+  // Adicionar intervalo de atualização da interface
+  setInterval(() => {
+    updateClicksPerSecond();
+    updateStatDisplays();
+  }, 1000);
 }
 
 export function handleGameStateUpdate(newState) {
@@ -653,10 +659,15 @@ if (clickArea) {
   });
 }
 
+// ...existing code...
 function updateClicksPerSecond() {
   if (!clicksPerSecondDisplay || !gameState?.upgrades) return;
   
-  // Calcula cliques automáticos
+  // Get current player
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return;
+
+  // Calculate auto clicks
   const autoClicker = gameState.upgrades.find(u => u.id === 'auto-clicker');
   const autoClicker2 = gameState.upgrades.find(u => u.id === 'auto-clicker-2');
   const autoClicker3 = gameState.upgrades.find(u => u.id === 'auto-clicker-3');
@@ -666,10 +677,15 @@ function updateClicksPerSecond() {
     ((autoClicker2?.level || 0) * 2) +
     ((autoClicker3?.level || 0) * 4);
   
-  // Calcula média de cliques manuais por segundo
-  const now = Date.now();
+  // Get manual clicks
   const manualClicksPerSecond = clicksLastSecond;
   
-  const totalClicksPerSecond = autoClicksPerSecond + manualClicksPerSecond;
-  clicksPerSecondDisplay.textContent = totalClicksPerSecond.toFixed(1);
+  // Calculate click power
+  const clickValue = getClickValue(player);
+  
+  // Calculate total damage per second
+  const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
+  
+  clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
 }
+// ...existing code...
