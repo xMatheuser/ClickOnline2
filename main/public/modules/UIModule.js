@@ -68,6 +68,11 @@ export function initUI() {
 
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
+
+  // Update achievement stats if overlay is open
+  if (achievementsOverlay.classList.contains('active')) {
+    updateAchievementStats();
+  }
   
   if (newState.type === 'autoclick') {
     updateGameState({
@@ -285,45 +290,65 @@ function updateStatDisplays() {
   }
 }
 
+function updateAchievementStats() {
+  const statsContainer = document.getElementById('achievements-stats');
+  if (!statsContainer || !gameState.achievements) return;
+
+  const totalAchievements = gameState.achievements.reduce((sum, a) => sum + a.levels.length, 0);
+  const unlockedAchievements = gameState.achievements.reduce((sum, a) => sum + (a.unlockedLevels?.length || 0), 0);
+  const percentage = ((unlockedAchievements / totalAchievements) * 100).toFixed(1);
+
+  statsContainer.innerHTML = `
+    <div class="achievements-stats">
+      <div class="stat-item">
+        <div class="stat-value">${unlockedAchievements}/${totalAchievements}</div>
+        <div class="stat-label">Conquistas Desbloqueadas</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">${percentage}%</div>
+        <div class="stat-label">Completado</div>
+      </div>
+    </div>
+  `;
+}
+
 function renderAchievements() {
   if (!achievementsContainer || !gameState?.achievements) return;
-
   achievementsContainer.innerHTML = '';
-  const statsContainer = document.getElementById('achievements-stats');
-  
-  if (statsContainer) {
-    const totalAchievements = gameState.achievements.reduce((sum, a) => sum + a.levels.length, 0);
-    const unlockedCount = gameState.achievements.reduce((sum, a) => sum + (a.unlockedLevels?.length || 0), 0);
-    
-    statsContainer.innerHTML = `
-      <div class="achievement-stat">
-        <h3>Total Desbloqueado</h3>
-        <div>${unlockedCount}/${totalAchievements}</div>
-        <div class="progress-bar">
-          <div class="progress" style="width: ${(unlockedCount/totalAchievements*100).toFixed(1)}%"></div>
-        </div>
-      </div>
-    `;
-  }
 
+  // Update achievement stats first
+  updateAchievementStats();
+
+  // Group achievements by category
+  const categories = {};
   gameState.achievements.forEach(achievement => {
-    const achievementEl = document.createElement('div');
-    achievementEl.className = 'achievement-card';
-    
-    achievement.levels.forEach((level, index) => {
-      const isUnlocked = achievement.unlockedLevels?.includes(index);
-      achievementEl.innerHTML += `
-        <div class="achievement-level ${isUnlocked ? 'unlocked' : ''}">
-          <div class="achievement-icon">${isUnlocked ? '🏆' : '🔒'}</div>
-          <div class="achievement-info">
-            <div class="achievement-name">${achievement.name} ${index + 1}</div>
-            <div class="achievement-desc">${level.description}</div>
+    const category = achievement.category || 'Geral';
+    if (!categories[category]) categories[category] = [];
+    categories[category].push(achievement);
+  });
+
+  // Render achievements by category
+  Object.entries(categories).forEach(([category, achievements]) => {
+    const categoryEl = document.createElement('div');
+    categoryEl.className = 'achievement-category';
+    categoryEl.innerHTML = `<h3>${category}</h3>`;
+
+    achievements.forEach(achievement => {
+      achievement.levels.forEach((level, index) => {
+        const isUnlocked = achievement.unlockedLevels?.includes(index);
+        categoryEl.innerHTML += `
+          <div class="achievement-level ${isUnlocked ? 'unlocked' : ''}">
+            <div class="achievement-icon">${isUnlocked ? '🏆' : '🔒'}</div>
+            <div class="achievement-info">
+              <div class="achievement-name">${achievement.name} ${index + 1}</div>
+              <div class="achievement-desc">${level.description}</div>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      });
     });
 
-    achievementsContainer.appendChild(achievementEl);
+    achievementsContainer.appendChild(categoryEl);
   });
 }
 
