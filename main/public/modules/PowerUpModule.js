@@ -28,18 +28,21 @@ function scheduleFirstPowerUp() {
     console.log('[PowerUp] Sistema bloqueado - Compre o upgrade de prestígio');
     return;
   }
-  const randomDelay = Math.floor(Math.random() * (180000 - 60000)) + 60000;
+  const randomDelay = 15000; // 15 segundos fixos
   console.log(`[PowerUp] Próximo power-up em ${(randomDelay / 1000).toFixed(0)} segundos`);
   setTimeout(spawnFloatingPowerUp, randomDelay);
 }
 
 function spawnFloatingPowerUp() {
   if (!arePowerUpsUnlocked()) return;
+  
+  // Posiciona o botão aleatoriamente na tela
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const buttonWidth = activateClickFrenzyButton.offsetWidth;
   const buttonHeight = activateClickFrenzyButton.offsetHeight;
   const topBarHeight = document.querySelector('.top-bar').offsetHeight || 60;
+  
   const randomX = Math.floor(Math.random() * (viewportWidth - buttonWidth - 20)) + 10;
   const randomY = Math.floor(Math.random() * (viewportHeight - buttonHeight - 20 - topBarHeight)) + topBarHeight + 10;
 
@@ -47,20 +50,22 @@ function spawnFloatingPowerUp() {
   activateClickFrenzyButton.style.top = `${randomY}px`;
   activateClickFrenzyButton.style.display = 'block';
 
+  // Escolhe uma cor aleatória dos power-ups disponíveis
   const availableColors = Object.values(gameState.powerUps).map(p => p.color);
   const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
   activateClickFrenzyButton.style.backgroundColor = randomColor;
 
+  // Remove o botão após 60 segundos se não for clicado
   setTimeout(() => {
     if (activateClickFrenzyButton.style.display === 'block') {
       activateClickFrenzyButton.style.display = 'none';
       scheduleNextSpawn();
     }
-  }, 5000);
+  }, 60000); // 60 segundos
 }
 
 function scheduleNextSpawn() {
-  const randomDelay = Math.floor(Math.random() * (180000 - 60000)) + 60000;
+  const randomDelay = 15000; // 15 segundos fixos
   console.log(`[PowerUp] Próximo power-up em ${(randomDelay / 1000).toFixed(0)} segundos`);
   setTimeout(spawnFloatingPowerUp, randomDelay);
 }
