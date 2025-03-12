@@ -48,19 +48,27 @@ function updateLaboratoryUI() {
   const researchPerSecond = document.getElementById('research-per-second');
   const upgradesContainer = document.getElementById('laboratory-upgrades');
   
-  researchPoints.textContent = Math.floor(laboratoryData.researchPoints);
-  researchPerSecond.textContent = laboratoryData.pointsPerSecond.toFixed(1);
+  // Guard against null elements
+  if (researchPoints) {
+    researchPoints.textContent = Math.floor(laboratoryData.researchPoints);
+  }
   
-  upgradesContainer.innerHTML = laboratoryData.upgrades.map(upgrade => {
-    const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
-    return `
-      <div class="laboratory-upgrade" onclick="buyLabUpgrade('${upgrade.id}')">
-        <h3>${upgrade.name} (Nível ${upgrade.level})</h3>
-        <p>${upgrade.description}</p>
-        <p>Custo: ${cost} pontos</p>
-      </div>
-    `;
-  }).join('');
+  if (researchPerSecond) {
+    researchPerSecond.textContent = laboratoryData.pointsPerSecond.toFixed(1);
+  }
+  
+  if (upgradesContainer) {
+    upgradesContainer.innerHTML = laboratoryData.upgrades.map(upgrade => {
+      const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
+      return `
+        <div class="laboratory-upgrade" onclick="buyLabUpgrade('${upgrade.id}')">
+          <h3>${upgrade.name} (Nível ${upgrade.level})</h3>
+          <p>${upgrade.description}</p>
+          <p>Custo: ${cost} pontos</p>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 export function buyLabUpgrade(upgradeId) {
