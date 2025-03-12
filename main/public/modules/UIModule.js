@@ -27,6 +27,10 @@ export const openBonusStatsBtn = document.getElementById('open-bonus-stats');
 export const closeBonusStatsBtn = document.getElementById('close-bonus-stats');
 export const bonusStatsOverlay = document.getElementById('bonus-stats-overlay');
 
+export const clicksPerSecondDisplay = document.getElementById('target');
+let lastClickTime = Date.now();
+let clicksLastSecond = 0;
+
 let notificationQueue = [];
 let isNotificationShowing = false;
 let newAchievements = 0;
@@ -138,6 +142,7 @@ export function handleGameStateUpdate(newState) {
     renderContributions();
     renderUpgrades();
   }
+  updateClicksPerSecond();
 }
 
 function getClickValue(player) {
@@ -643,5 +648,28 @@ if (clickArea) {
     const clickValue = getClickValue(player);
     
     showDamageNumber(x, y, clickValue);
+    clicksLastSecond++;
+    setTimeout(() => clicksLastSecond--, 1000);
   });
+}
+
+function updateClicksPerSecond() {
+  if (!clicksPerSecondDisplay || !gameState?.upgrades) return;
+  
+  // Calcula cliques automáticos
+  const autoClicker = gameState.upgrades.find(u => u.id === 'auto-clicker');
+  const autoClicker2 = gameState.upgrades.find(u => u.id === 'auto-clicker-2');
+  const autoClicker3 = gameState.upgrades.find(u => u.id === 'auto-clicker-3');
+  
+  const autoClicksPerSecond = 
+    (autoClicker?.level || 0) + 
+    ((autoClicker2?.level || 0) * 2) +
+    ((autoClicker3?.level || 0) * 4);
+  
+  // Calcula média de cliques manuais por segundo
+  const now = Date.now();
+  const manualClicksPerSecond = clicksLastSecond;
+  
+  const totalClicksPerSecond = autoClicksPerSecond + manualClicksPerSecond;
+  clicksPerSecondDisplay.textContent = totalClicksPerSecond.toFixed(1);
 }
