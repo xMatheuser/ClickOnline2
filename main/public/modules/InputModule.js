@@ -7,6 +7,12 @@ export let clickCountThisSecond = 0;
 const clickArea = document.getElementById('click-area');
 const fullscreenButton = document.getElementById('fullscreen-toggle');
 
+let clicksLastSecond = 0;
+
+export function getClicksPerSecond() {
+  return clicksLastSecond;
+}
+
 export function initInput() {
   clickArea.addEventListener('click', () => {
     handleClick();
@@ -44,16 +50,11 @@ export function initInput() {
 function handleClick() {
   setUserInteraction(true);
   socket.emit('click');
-  clickCountThisSecond++;
+  clicksLastSecond++;
+  setTimeout(() => clicksLastSecond--, 1000);
 
   const rect = clickArea.getBoundingClientRect();
   const player = gameState.players.find(p => p.id === socket.id);
-  
-  if (player && player.clickValue) {
-    const x = Math.random() * rect.width;
-    const y = Math.random() * rect.height;
-    showDamageNumber(x, y, player.clickValue);
-  }
 }
 
 function toggleFullscreen() {

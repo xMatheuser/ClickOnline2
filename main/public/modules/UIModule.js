@@ -3,6 +3,7 @@ import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
 import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription } from './UpgradeModule.js';
 import { initHistory } from './HistoryModule.js';
 import { playSound, levelUpSound, tickSound, achievementSound } from './AudioModule.js';
+import { getClicksPerSecond } from './InputModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -101,6 +102,12 @@ export function initUI() {
     updateClicksPerSecond();
     updateStatDisplays();
   }, 1000);
+
+  // Remover este listener
+  /*socket.on('click', () => {
+    clicksLastSecond++;
+    setTimeout(() => clicksLastSecond--, 1000);
+  });*/
 }
 
 export function handleGameStateUpdate(newState) {
@@ -637,37 +644,45 @@ export function showDamageNumber(x, y, amount) {
   setTimeout(() => damageNumber.remove(), 1000);
 }
 
+// Adicionar função para centralizar a lógica de clique
+function handleClick(x, y) {
+  if (!isOwnPlayer()) return;
+  
+  playSound(tickSound);
+  
+  const player = gameState.players.find(p => p.id === socket.id);
+  const clickValue = getClickValue(player);
+  
+  showDamageNumber(x, y, clickValue);
+}
+
 // Modifique o evento de clique do clickArea
 if (clickArea) {
   clickArea.addEventListener('click', (e) => {
-    if (!isOwnPlayer()) return;
-    
-    socket.emit('click');
-    playSound(tickSound);
-    
     const rect = clickArea.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
-    // Usar getClickValue em vez de calculateClickPower
-    const player = gameState.players.find(p => p.id === socket.id);
-    const clickValue = getClickValue(player);
-    
-    showDamageNumber(x, y, clickValue);
-    clicksLastSecond++;
-    setTimeout(() => clicksLastSecond--, 1000);
+    handleClick(x, y);
   });
 }
+
+// Modifique o evento de tecla P
+document.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'p' && isOwnPlayer()) {
+    const rect = clickArea.getBoundingClientRect();
+    const x = Math.random() * rect.width;
+    const y = Math.random() * rect.height;
+    handleClick(x, y);
+  }
+});
 
 // ...existing code...
 function updateClicksPerSecond() {
   if (!clicksPerSecondDisplay || !gameState?.upgrades) return;
   
-  // Get current player
   const player = gameState.players.find(p => p.id === socket.id);
   if (!player) return;
 
-  // Calculate auto clicks
   const autoClicker = gameState.upgrades.find(u => u.id === 'auto-clicker');
   const autoClicker2 = gameState.upgrades.find(u => u.id === 'auto-clicker-2');
   const autoClicker3 = gameState.upgrades.find(u => u.id === 'auto-clicker-3');
@@ -677,13 +692,10 @@ function updateClicksPerSecond() {
     ((autoClicker2?.level || 0) * 2) +
     ((autoClicker3?.level || 0) * 4);
   
-  // Get manual clicks
-  const manualClicksPerSecond = clicksLastSecond;
+  // Usar função do InputModule
+  const manualClicksPerSecond = getClicksPerSecond();
   
-  // Calculate click power
   const clickValue = getClickValue(player);
-  
-  // Calculate total damage per second
   const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
