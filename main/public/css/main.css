@@ -1304,29 +1304,28 @@ body.dark-mode .nes-container.with-title > .title {
 /* Damage Effect Styles */
 .damage-container {
   position: absolute;
-  top: -20px; /* Move acima da barra de progresso */
+  top: 0;
   left: 0;
   width: 100%;
-  height: calc(100% + 40px); /* Aumenta a área para números flutuantes */
+  height: 100%;
   pointer-events: none;
-  overflow: visible; /* Permite que os números flutuem para fora */
-  z-index: 1002; /* Garante que fique acima da barra */
+  overflow: visible;
+  z-index: 1000;
 }
 
 .damage-number {
   position: absolute;
   color: #ff4444;
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   text-shadow: 
     2px 2px 0 #000,
     -1px -1px 0 #000,
     1px -1px 0 #000,
     -1px 1px 0 #000;
   opacity: 0;
-  transform: translateY(0);
   pointer-events: none;
-  z-index: 1003; /* Garante que fique acima de tudo */
+  z-index: 1001;
 }
 
 .damage-number.animate {
@@ -1339,9 +1338,6 @@ body.dark-mode .nes-container.with-title > .title {
     transform: translateY(0);
   }
   20% {
-    opacity: 1;
-  }
-  80% {
     opacity: 1;
   }
   100% {

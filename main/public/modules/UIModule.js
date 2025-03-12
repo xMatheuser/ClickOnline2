@@ -43,6 +43,15 @@ export function initUI() {
     newAchievements++; // Incrementar contador de novas conquistas
     updateAchievementBadge(); // Atualizar badge
   });
+  socket.on('autoClickDamage', (amount) => {
+    if (!clickArea) return;
+    
+    const rect = clickArea.getBoundingClientRect();
+    const x = Math.random() * rect.width; // Posição aleatória
+    const y = Math.random() * rect.height;
+    
+    showDamageNumber(x, y, amount);
+  });
   // Add immediate initial render
   renderUpgrades();
 
@@ -595,7 +604,7 @@ function getUpgradeEffect(upgradeId) {
   return effectValue * (gameState.achievementBoosts?.upgradeEffect || 1);
 }
 
-function showDamageNumber(x, y, amount) {
+export function showDamageNumber(x, y, amount) {
   const damageContainer = document.querySelector('.damage-container');
   if (!damageContainer) return;
 
@@ -629,10 +638,10 @@ if (clickArea) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Calcula o valor do dano baseado no poder de clique atual
+    // Usar getClickValue em vez de calculateClickPower
     const player = gameState.players.find(p => p.id === socket.id);
-    const clickPower = calculateClickPower(player);
+    const clickValue = getClickValue(player);
     
-    showDamageNumber(x, y, clickPower);
+    showDamageNumber(x, y, clickValue);
   });
 }

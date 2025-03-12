@@ -1,5 +1,5 @@
-import { socket, setUserInteraction } from './CoreModule.js';
-import { showNotification } from './UIModule.js';
+import { socket, setUserInteraction, gameState } from './CoreModule.js';
+import { showNotification, showDamageNumber } from './UIModule.js';
 
 export let isSpacePressed = false;
 export let clickCountThisSecond = 0;
@@ -9,16 +9,12 @@ const fullscreenButton = document.getElementById('fullscreen-toggle');
 
 export function initInput() {
   clickArea.addEventListener('click', () => {
-    setUserInteraction(true);
-    socket.emit('click');
-    clickCountThisSecond++;
+    handleClick();
   });
 
   clickArea.addEventListener('touchstart', (event) => {
-    setUserInteraction(true);
     event.preventDefault();
-    socket.emit('click');
-    clickCountThisSecond++;
+    handleClick();
     clickArea.classList.add('active');
   });
 
@@ -28,11 +24,9 @@ export function initInput() {
 
   document.addEventListener('keydown', (event) => {
     if (event.code === 'KeyP' && !isSpacePressed) {
-      setUserInteraction(true);
       event.preventDefault();
       isSpacePressed = true;
-      socket.emit('click');
-      clickCountThisSecond++;
+      handleClick();
       clickArea.classList.add('active');
     }
   });
@@ -45,6 +39,21 @@ export function initInput() {
   });
 
   fullscreenButton.addEventListener('click', toggleFullscreen);
+}
+
+function handleClick() {
+  setUserInteraction(true);
+  socket.emit('click');
+  clickCountThisSecond++;
+
+  const rect = clickArea.getBoundingClientRect();
+  const player = gameState.players.find(p => p.id === socket.id);
+  
+  if (player && player.clickValue) {
+    const x = Math.random() * rect.width;
+    const y = Math.random() * rect.height;
+    showDamageNumber(x, y, player.clickValue);
+  }
 }
 
 function toggleFullscreen() {

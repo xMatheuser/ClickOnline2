@@ -635,6 +635,9 @@ setInterval(() => {
       if (playerInState) {
         playerInState.clicks += clickValue;
         playerInState.contribution += clickValue;
+        
+        // Emitir evento de dano automático para o cliente
+        io.to(player.id).emit('autoClickDamage', clickValue);
       }
       
       totalDamage += clickValue;
