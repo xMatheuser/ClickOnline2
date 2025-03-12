@@ -202,7 +202,9 @@
   height: 4px;
   background-color: #4CAF50;
   width: 0%;
-  transition: width 0.1s linear;
+  transition: width 0.5s linear;
+  border-radius: 2px;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
 }
 
 .ready-indicator {

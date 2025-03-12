@@ -158,22 +158,56 @@ function plantSeed(slotId) {
 
 function harvestPlant(slotId) {
   const garden = laboratoryData.garden;
+  const plant = garden.plants[slotId];
   const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  
+  // Adiciona recursos baseado no tipo da planta
+  if (plant.ready) {
+    // Incrementa o recurso apropriado
+    garden.resources[plant.type]++;
+    
+    // Atualiza o display de recursos
+    const resourceCount = document.getElementById(`lab-${plant.type}-count`);
+    if (resourceCount) {
+      resourceCount.textContent = garden.resources[plant.type];
+    }
+    
+    // Mostra notificação
+    showNotification(`+1 ${plant.type === 'sunflower' ? '🌻' : 
+                           plant.type === 'tulip' ? '🌷' : 
+                           plant.type === 'mushroom' ? '🍄' : '💎'}`);
+  }
+  
+  // Limpa o slot
   delete garden.plants[slotId];
   slot.innerHTML = `
     <div class="plant-placeholder">Clique para plantar</div>
     <div class="progress-bar"></div>
     <div class="ready-indicator">Pronto!</div>
   `;
+  
+  // Atualiza os recursos mostrados
+  updateLabResources();
 }
 
 function checkGardenProgress() {
   const garden = laboratoryData.garden;
   for (const slotId in garden.plants) {
     const plant = garden.plants[slotId];
-    if (!plant.ready && Date.now() - plant.plantedAt >= plant.growthTime) {
-      plant.ready = true;
-      document.querySelector(`.garden-slot[data-slot="${slotId}"] .ready-indicator`).style.display = 'block';
+    if (!plant.ready) {
+      const elapsed = Date.now() - plant.plantedAt;
+      const progress = Math.min(100, (elapsed / plant.growthTime) * 100);
+      
+      // Atualiza a barra de progresso
+      const progressBar = document.querySelector(`.garden-slot[data-slot="${slotId}"] .progress-bar`);
+      if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+      }
+
+      if (elapsed >= plant.growthTime) {
+        plant.ready = true;
+        document.querySelector(`.garden-slot[data-slot="${slotId}"] .ready-indicator`).style.display = 'block';
+      }
     }
   }
 }
@@ -220,3 +254,16 @@ function buyLabSlot() {
       showNotification('Recursos insuficientes!');
     }
   }
+
+// Adicione esta função se ainda não existir
+function updateLabResources() {
+  const garden = laboratoryData.garden;
+  
+  // Atualiza cada contador de recurso
+  Object.entries(garden.resources).forEach(([type, amount]) => {
+    const counter = document.getElementById(`lab-${type}-count`);
+    if (counter) {
+      counter.textContent = amount;
+    }
+  });
+}
