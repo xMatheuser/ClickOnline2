@@ -26,6 +26,8 @@ export const bonusStatsOverlay = document.getElementById('bonus-stats-overlay');
 
 let notificationQueue = [];
 let isNotificationShowing = false;
+let newAchievements = 0;
+let viewedAchievements = new Set(); // Add at the top with other state variables
 
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
@@ -36,7 +38,9 @@ export function initUI() {
   // Add achievements buttons handling
   openAchievementsBtn.addEventListener('click', () => {
     achievementsOverlay.classList.add('active');
-    renderAchievements();
+    renderAchievementsScreen(); // Change to use new render method
+    newAchievements = 0;
+    updateAchievementBadge();
   });
 
   closeAchievementsBtn.addEventListener('click', () => {
@@ -312,43 +316,88 @@ function updateAchievementStats() {
   `;
 }
 
-function renderAchievements() {
-  if (!achievementsContainer || !gameState?.achievements) return;
-  achievementsContainer.innerHTML = '';
+function updateAchievementBadge() {
+  const existingBadge = openAchievementsBtn.querySelector('.achievement-badge');
+  if (newAchievements > 0) {
+    if (existingBadge) {
+      existingBadge.textContent = newAchievements;
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'achievement-badge';
+      badge.textContent = newAchievements;
+      openAchievementsBtn.appendChild(badge);
+    }
+  } else if (existingBadge) {
+    existingBadge.remove();
+  }
+}
+
+// Remove or comment out old renderAchievements function
+// function renderAchievements() { ... }
+
+function renderAchievementsScreen() {
+  // First, clear current content
+  const achievementsContent = document.getElementById('achievements-content');
+  achievementsContent.innerHTML = `
+    <div class="achievements-summary">
+      <div id="achievements-stats"></div>
+    </div>
+    <div class="achievements-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; padding: 15px;"></div>
+  `;
 
   // Update achievement stats first
   updateAchievementStats();
 
-  // Group achievements by category
-  const categories = {};
-  gameState.achievements.forEach(achievement => {
-    const category = achievement.category || 'Geral';
-    if (!categories[category]) categories[category] = [];
-    categories[category].push(achievement);
+  const gridContainer = achievementsContent.querySelector('.achievements-grid');
+  if (!gameState.achievements) return;
+
+  const sortedAchievements = [...gameState.achievements].sort((a, b) => {
+    const catA = gameState.achievementCategories[a.category].name;
+    const catB = gameState.achievementCategories[b.category].name;
+    return catA.localeCompare(catB);
   });
 
-  // Render achievements by category
-  Object.entries(categories).forEach(([category, achievements]) => {
-    const categoryEl = document.createElement('div');
-    categoryEl.className = 'achievement-category';
-    categoryEl.innerHTML = `<h3>${category}</h3>`;
+  sortedAchievements.forEach(achievement => {
+    achievement.levels.forEach((level, levelIndex) => {
+      const categoryInfo = gameState.achievementCategories[achievement.category];
+      const isUnlocked = achievement.unlockedLevels.includes(levelIndex);
+      const isNew = !viewedAchievements.has(`${achievement.id}_${levelIndex}`) && isUnlocked;
 
-    achievements.forEach(achievement => {
-      achievement.levels.forEach((level, index) => {
-        const isUnlocked = achievement.unlockedLevels?.includes(index);
-        categoryEl.innerHTML += `
-          <div class="achievement-level ${isUnlocked ? 'unlocked' : ''}">
-            <div class="achievement-icon">${isUnlocked ? '🏆' : '🔒'}</div>
-            <div class="achievement-info">
-              <div class="achievement-name">${achievement.name} ${index + 1}</div>
-              <div class="achievement-desc">${level.description}</div>
-            </div>
-          </div>
-        `;
+      const block = document.createElement('div');
+      block.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
+      block.innerHTML = `
+        <div class="achievement-icon">${categoryInfo.icon}</div>
+        <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
+        ${isNew ? '<div class="achievement-new-badge">NOVO!</div>' : ''}
+        <div class="achievement-info-overlay">
+          <h4>${achievement.name} - Nível ${levelIndex + 1}</h4>
+          ${isUnlocked ? `
+            <p class="achievement-boost">
+              +${(level.boost.value * 100).toFixed(0)}%
+              ${level.boost.type}
+            </p>
+          ` : `
+            <p class="achievement-requirement">${level.description}</p>
+          `}
+        </div>
+        <div class="achievement-progress-bar">
+          <div class="achievement-progress-fill" style="width: ${isUnlocked ? '100%' : '0%'}"></div>
+        </div>
+      `;
+
+      block.addEventListener('mouseenter', () => {
+        if (isNew) {
+          viewedAchievements.add(`${achievement.id}_${levelIndex}`);
+          const badge = block.querySelector('.achievement-new-badge');
+          if (badge) {
+            badge.style.opacity = '0';
+            setTimeout(() => badge.remove(), 300);
+          }
+        }
       });
-    });
 
-    achievementsContainer.appendChild(categoryEl);
+      gridContainer.appendChild(block);
+    });
   });
 }
 

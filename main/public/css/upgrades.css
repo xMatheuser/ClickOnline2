@@ -339,3 +339,20 @@ body.dark-mode .rpgui-button.golden:disabled {
 body.dark-mode .upgrade-info strong i {
   color: #76c776;
 }
+
+.achievement-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  animation: pulse 1s infinite;
+}
