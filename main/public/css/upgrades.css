@@ -426,3 +426,16 @@ body.dark-mode #tooltip {
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+.history-buff-info {
+  color: #666;
+  cursor: help;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.history-buff-info:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}

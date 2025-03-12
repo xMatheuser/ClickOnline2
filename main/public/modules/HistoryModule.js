@@ -35,6 +35,10 @@ function renderFullHistory() {
 
   container.innerHTML = '';
 
+  // Copy current achievements state to avoid losing it
+  const savedAchievements = gameState.achievements;
+  const savedCategories = gameState.achievementCategories;
+
   const tiers = [
     { name: 'Tier 1', upgrades: upgradeHistory.tier1 || [] },
     { name: 'Tier 2', upgrades: upgradeHistory.tier2 || [] },
@@ -56,8 +60,7 @@ function renderFullHistory() {
       tierElement.innerHTML = `
         <div class="history-tier-title">${tier.name}</div>
         ${tier.upgrades.map(upgrade => {
-          const currentEffect = upgrade.effect ? upgrade.effect(upgrade.level) : 0;
-          const effectText = getEffectText(upgrade, currentEffect);
+          const effectText = getEffectText(upgrade, upgrade.level);
           
           return `
             <div class="history-upgrade-info">
@@ -66,9 +69,9 @@ function renderFullHistory() {
                 <span class="upgrade-name">${upgrade.name}</span>
                 <span class="upgrade-level">(${upgrade.level}/${upgrade.maxLevel})</span>
               </div>
-              <button class="buff-info-button" data-tooltip="${effectText}">
+              <div class="history-buff-info" title="${effectText}">
                 <i class="fas fa-info-circle"></i>
-              </button>
+              </div>
             </div>
           `;
         }).join('')}
@@ -78,13 +81,9 @@ function renderFullHistory() {
     }
   });
 
-  // Update tooltip listeners for buff info buttons
-  const infoButtons = container.querySelectorAll('.buff-info-button');
-  infoButtons.forEach(button => {
-    const tooltip = button.getAttribute('data-tooltip');
-    button.addEventListener('mousemove', (e) => showTooltip(e, tooltip));
-    button.addEventListener('mouseleave', hideTooltip);
-  });
+  // Restore achievements after rendering history
+  gameState.achievements = savedAchievements;
+  gameState.achievementCategories = savedCategories;
 }
 
 function getEffectText(upgrade, effect) {

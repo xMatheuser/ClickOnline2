@@ -95,9 +95,62 @@ export function initSocket() {
 
   socket.on('prestige', () => {
     console.log('Prestige event received');
+    // Keep achievements and stats when resetting upgrades
+    const savedAchievements = gameState.achievements;
+    const savedStats = gameState.bonusStats;
+    const savedBoosts = gameState.achievementBoosts;
+    const savedCategories = gameState.achievementCategories;
+    
     gameState.upgrades.forEach(u => u.level = 0);
     upgradeHistory = { tier1: [], tier2: [], tier3: [] };
+    
+    // Restore achievements and stats
+    gameState.achievements = savedAchievements;
+    gameState.bonusStats = savedStats;
+    gameState.achievementBoosts = savedBoosts;
+    gameState.achievementCategories = savedCategories;
   });
+
+  socket.on('bossResult', (result) => {
+    // Preservar dados antes da atualização
+    const savedAchievements = gameState.achievements;
+    const savedStats = gameState.bonusStats;
+    const savedBoosts = gameState.achievementBoosts;
+    const savedCategories = gameState.achievementCategories;
+  
+    // Processar resultado
+    if (result.surrendered) {
+      gameState.isInBossFight = false;
+      gameState.activeBoss = null;
+      
+      // Restaurar dados preservados
+      gameState.achievements = savedAchievements;
+      gameState.bonusStats = savedStats;
+      gameState.achievementBoosts = savedBoosts;
+      gameState.achievementCategories = savedCategories;
+
+      broadcastGameState();
+    }
+    
+    broadcastGameState();
+  });
+}
+
+function broadcastGameState() {
+  // Preservar dados importantes
+  const savedAchievements = gameState.achievements;
+  const savedStats = gameState.bonusStats;
+  const savedBoosts = gameState.achievementBoosts;
+  const savedCategories = gameState.achievementCategories;
+  
+  // Emitir estado para todos
+  socket.emit('gameStateUpdate', gameState);
+  
+  // Restaurar dados preservados
+  gameState.achievements = savedAchievements;
+  gameState.bonusStats = savedStats;
+  gameState.achievementBoosts = savedBoosts;
+  gameState.achievementCategories = savedCategories;
 }
 
 export function startGame() {
@@ -151,7 +204,20 @@ export function isOwnPlayer() {
 }
 
 export function updateGameState(newState) {
+  // Preservar conquistas e estatísticas
+  const savedAchievements = gameState.achievements;
+  const savedStats = gameState.bonusStats;
+  const savedBoosts = gameState.achievementBoosts;
+  const savedCategories = gameState.achievementCategories;
+  
+  // Atualizar estado
   gameState = newState;
+  
+  // Restaurar dados preservados
+  if (!gameState.achievements) gameState.achievements = savedAchievements;
+  if (!gameState.bonusStats) gameState.bonusStats = savedStats;
+  if (!gameState.achievementBoosts) gameState.achievementBoosts = savedBoosts;
+  if (!gameState.achievementCategories) gameState.achievementCategories = savedCategories;
 }
 
 export function setUserInteraction(value) {
