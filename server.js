@@ -113,6 +113,13 @@ function checkAchievements() {
       if (!achievement.unlockedLevels.includes(index) && level.requirement(gameState)) {
         achievement.unlockedLevels.push(index);
         applyAchievementBoost(level.boost);
+        
+        // Emitir notificação específica para a conquista
+        io.emit('notification', `🏆 Nova Conquista: ${achievement.name} Nível ${index + 1}!\n+${(level.boost.value * 100).toFixed(0)}% ${level.boost.type}`);
+        
+        // Emitir evento para tocar o som e atualizar badge
+        io.emit('achievementUnlocked');
+        
         console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada`);
         newUnlocks = true;
       }
@@ -524,6 +531,9 @@ function calculateClickValue(player) {
 
 function levelUpTeam() {
   gameState.teamLevel++;
+  
+  // Emitir evento específico de level up
+  io.emit('teamLevelUp', gameState.teamLevel);
   
   // Checar se deve spawnar um boss
   if (gameState.teamLevel >= gameState.nextBossLevel) {

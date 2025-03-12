@@ -191,7 +191,7 @@ export function initGame() {
   initSocket();
   initInput();
   initUI();
-  initAudio();
+  initAudio(); // Garantir que esta linha está presente e na ordem correta
   initPrestige();
   initPowerUps();
   initBoss();

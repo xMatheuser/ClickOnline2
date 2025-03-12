@@ -2,6 +2,7 @@ import { socket, gameState, isOwnPlayer, updateGameState } from './CoreModule.js
 import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
 import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription } from './UpgradeModule.js';
 import { initHistory } from './HistoryModule.js';
+import { playSound, levelUpSound, tickSound, achievementSound } from './AudioModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -16,6 +17,7 @@ export const contributionContainer = document.getElementById('contribution-conta
 export const teamGoalDisplay = document.getElementById('team-goal');
 export const teamSharedProgressBar = document.getElementById('team-shared-progress-bar');
 export const progressPercentage = document.getElementById('progress-percentage');
+export const clickArea = document.getElementById('click-area');
 
 export const openAchievementsBtn = document.getElementById('open-achievements');
 export const closeAchievementsBtn = document.getElementById('close-achievements');
@@ -33,6 +35,14 @@ let viewedAchievements = new Set(); // Add at the top with other state variables
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
   socket.on('notification', showNotification);
+  socket.on('teamLevelUp', (newLevel) => {
+    playSound(levelUpSound);
+  });
+  socket.on('achievementUnlocked', () => {
+    playSound(achievementSound);
+    newAchievements++; // Incrementar contador de novas conquistas
+    updateAchievementBadge(); // Atualizar badge
+  });
   // Add immediate initial render
   renderUpgrades();
 
@@ -76,6 +86,9 @@ export function initUI() {
 
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
+
+  // Remover verificação de level up daqui já que agora temos um evento específico
+  const oldLevel = gameState.teamLevel;
 
   // Update achievement stats if overlay is open
   if (achievementsOverlay.classList.contains('active')) {
@@ -231,6 +244,7 @@ export function renderUpgrades() {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
         return;
       }
+      playSound(tickSound); // Mudado de levelUpSound para tickSound
       socket.emit('buyUpgrade', upgrade.id);
     });
 
@@ -256,6 +270,7 @@ export function renderUpgrades() {
 }
 
 export function showNotification(message) {
+  // Removido o som de achievementSound das notificações genéricas
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notificationQueue.push(message);
   if (!isNotificationShowing) showNextNotification();
@@ -381,8 +396,13 @@ function renderAchievementsScreen() {
       const isUnlocked = achievement.unlockedLevels.includes(levelIndex);
       const isNew = !viewedAchievements.has(`${achievement.id}_${levelIndex}`) && isUnlocked;
 
+      // Remover o som daqui - ele será tocado pelo evento 'achievementUnlocked'
+      // if (isNew && !viewedAchievements.has(`${achievement.id}_${levelIndex}`)) {
+      //   playSound(achievementSound);
+      // }
+
       const block = document.createElement('div');
-      block.className = `achievement-block ${isUnlocked ? '' : 'locked'}`;
+      block.className = `achievement-block ${isUnlocked ? 'pulse' : 'locked'}`; // Adicionar animação pulse
       block.innerHTML = `
         <div class="achievement-icon">${categoryInfo.icon}</div>
         <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
@@ -573,4 +593,46 @@ function getUpgradeEffect(upgradeId) {
   if (!upgrade) return 0;
   const effectValue = getUpgradeEffectValue(upgrade);
   return effectValue * (gameState.achievementBoosts?.upgradeEffect || 1);
+}
+
+function showDamageNumber(x, y, amount) {
+  const damageContainer = document.querySelector('.damage-container');
+  if (!damageContainer) return;
+
+  const damageNumber = document.createElement('div');
+  damageNumber.className = 'damage-number';
+  damageNumber.textContent = formatNumber(amount);
+
+  // Posiciona o número de dano aleatoriamente próximo ao ponto de clique
+  const offsetX = (Math.random() - 0.5) * 40;
+  const offsetY = (Math.random() - 0.5) * 40;
+  
+  damageNumber.style.left = `${x + offsetX}px`;
+  damageNumber.style.top = `${y + offsetY}px`;
+  
+  damageContainer.appendChild(damageNumber);
+  requestAnimationFrame(() => damageNumber.classList.add('animate'));
+
+  // Remove o elemento após a animação
+  setTimeout(() => damageNumber.remove(), 1000);
+}
+
+// Modifique o evento de clique do clickArea
+if (clickArea) {
+  clickArea.addEventListener('click', (e) => {
+    if (!isOwnPlayer()) return;
+    
+    socket.emit('click');
+    playSound(tickSound);
+    
+    const rect = clickArea.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calcula o valor do dano baseado no poder de clique atual
+    const player = gameState.players.find(p => p.id === socket.id);
+    const clickPower = calculateClickPower(player);
+    
+    showDamageNumber(x, y, clickPower);
+  });
 }
