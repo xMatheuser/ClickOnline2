@@ -405,28 +405,154 @@ function renderBonusStats() {
   const container = document.getElementById('bonus-stats-content');
   if (!container || !gameState?.bonusStats) return;
 
-  const stats = [
-    { key: 'clickPower', name: 'Poder de Clique', icon: '👆' },
-    { key: 'autoClicker', name: 'Auto Clicker', icon: '🤖' },
-    { key: 'coinMultiplier', name: 'Multiplicador de Moedas', icon: '💰' },
-    { key: 'progressBoost', name: 'Boost de Progresso', icon: '🚀' },
-    { key: 'teamSynergy', name: 'Sinergia de Time', icon: '🤝' },
-    { key: 'sharedRewards', name: 'Recompensas Compartilhadas', icon: '🎁' },
-    { key: 'prestigeMultiplier', name: 'Multiplicador de Prestígio', icon: '⭐' },
-    { key: 'powerUpBonus', name: 'Bônus de Power-Up', icon: '💪' }
-  ];
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return;
 
-  container.innerHTML = `
-    <div class="bonus-stats-grid">
-      ${stats.map(stat => `
-        <div class="bonus-stat-item">
-          <div class="stat-icon">${stat.icon}</div>
-          <div class="stat-info">
-            <div class="stat-name">${stat.name}</div>
-            <div class="stat-value">+${(gameState.bonusStats[stat.key] * 100).toFixed(1)}%</div>
-          </div>
+  const prestigeBonus = ((player.prestigeMultiplier || 1) - 1) * 100;
+  const clickPowerBonus = (getUpgradeEffect('click-power') - 1) * 100;
+  const autoClickerBonus = getUpgradeEffect('auto-clicker') * gameState.achievementBoosts.autoMultiplier;
+  const coinBoostBonus = (getUpgradeEffect('coin-boost') - 1) * 100;
+  const teamSynergyBonus = getUpgradeEffect('team-synergy') * 100;
+  const sharedRewardsBonus = getUpgradeEffect('shared-rewards') * 100;
+
+  const bonusCategories = {
+    basic: {
+      title: "Bônus Básicos",
+      items: [
+        { name: "Poder de Clique", value: clickPowerBonus.toFixed(1) + "%" },
+        { name: "Cliques Automáticos/s", value: autoClickerBonus.toFixed(1) },
+        { name: "Multiplicador de Moedas", value: coinBoostBonus.toFixed(1) + "%" }
+      ]
+    },
+    team: {
+      title: "Bônus de Equipe",
+      items: [
+        { name: "Sinergia de Equipe", value: teamSynergyBonus.toFixed(1) + "%" },
+        { name: "Recompensas Compartilhadas", value: sharedRewardsBonus.toFixed(1) + "%" }
+      ]
+    },
+    achievements: {
+      title: "Bônus de Conquistas",
+      items: [
+        { name: "Multiplicador de Clique", value: ((gameState.achievementBoosts.clickMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Multiplicador Automático", value: ((gameState.achievementBoosts.autoMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Redução Custo Prestígio", value: ((1 - gameState.achievementBoosts.prestigeCostReduction) * 100).toFixed(1) + "%" },
+        { name: "Duração Power-Ups", value: ((gameState.achievementBoosts.powerUpDuration - 1) * 100).toFixed(1) + "%" },
+        { name: "Efeito de Upgrades", value: ((gameState.achievementBoosts.upgradeEffect - 1) * 100).toFixed(1) + "%" }
+      ]
+    },
+    prestige: {
+      title: "Bônus de Prestígio",
+      items: [
+        { name: "Multiplicador de Prestígio", value: prestigeBonus.toFixed(1) + "%" }
+      ]
+    }
+  };
+
+  container.innerHTML = Object.values(bonusCategories).map(category => `
+    <div class="bonus-category">
+      <h3>${category.title}</h3>
+      ${category.items.map(item => `
+        <div class="bonus-item">
+          <span class="bonus-name">${item.name}</span>
+          <span class="bonus-value">${item.value}</span>
         </div>
       `).join('')}
     </div>
-  `;
+  `).join('');
+}
+
+function updateBonusStats() {
+  if (!bonusStatsContent || !gameState.players) return;
+
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return;
+
+  const prestigeBonus = ((player.prestigeMultiplier || 1) - 1) * 100;
+  const clickPowerBonus = (getUpgradeEffect('click-power') - 1) * 100;
+  const autoClickerBonus = getUpgradeEffect('auto-clicker') * gameState.achievementBoosts.autoMultiplier;
+  const coinBoostBonus = (getUpgradeEffect('coin-boost') - 1) * 100;
+  const teamSynergyBonus = getUpgradeEffect('team-synergy') * 100;
+  const sharedRewardsBonus = getUpgradeEffect('shared-rewards') * 100;
+
+  const bonusCategories = {
+    basic: {
+      title: "Bônus Básicos",
+      items: [
+        { name: "Poder de Clique", value: clickPowerBonus.toFixed(1) + "%" },
+        { name: "Cliques Automáticos/s", value: autoClickerBonus.toFixed(1) },
+        { name: "Multiplicador de Moedas", value: coinBoostBonus.toFixed(1) + "%" }
+      ]
+    },
+    team: {
+      title: "Bônus de Equipe",
+      items: [
+        { name: "Sinergia de Equipe", value: teamSynergyBonus.toFixed(1) + "%" },
+        { name: "Recompensas Compartilhadas", value: sharedRewardsBonus.toFixed(1) + "%" }
+      ]
+    },
+    achievements: {
+      title: "Bônus de Conquistas",
+      items: [
+        { name: "Multiplicador de Clique", value: ((gameState.achievementBoosts.clickMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Multiplicador Automático", value: ((gameState.achievementBoosts.autoMultiplier - 1) * 100).toFixed(1) + "%" },
+        { name: "Redução Custo Prestígio", value: ((1 - gameState.achievementBoosts.prestigeCostReduction) * 100).toFixed(1) + "%" },
+        { name: "Duração Power-Ups", value: ((gameState.achievementBoosts.powerUpDuration - 1) * 100).toFixed(1) + "%" },
+        { name: "Efeito de Upgrades", value: ((gameState.achievementBoosts.upgradeEffect - 1) * 100).toFixed(1) + "%" }
+      ]
+    },
+    prestige: {
+      title: "Bônus de Prestígio",
+      items: [
+        { name: "Multiplicador de Prestígio", value: prestigeBonus.toFixed(1) + "%" }
+      ]
+    }
+  };
+
+  bonusStatsContent.innerHTML = Object.values(bonusCategories).map(category => `
+    <div class="bonus-category">
+      <h3>${category.title}</h3>
+      ${category.items.map(item => `
+        <div class="bonus-item">
+          <span class="bonus-name">${item.name}</span>
+          <span class="bonus-value">${item.value}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function getUpgradeEffectValue(upgrade) {
+  if (!upgrade) return 0;
+  
+  switch (upgrade.id) {
+    case 'click-power':
+    case 'click-power-2':
+      return upgrade.level + 1;
+    case 'auto-clicker':
+    case 'auto-clicker-2':
+      return upgrade.level * (upgrade.tier === 1 ? 1 : 2);
+    case 'coin-boost':
+    case 'coin-boost-2':
+      return 1 + upgrade.level * (upgrade.tier === 1 ? 0.2 : 0.4);
+    case 'progress-boost':
+    case 'progress-boost-2':
+      return 1.25 - (upgrade.level * (upgrade.tier === 1 ? 0.05 : 0.08));
+    case 'team-synergy':
+    case 'team-synergy-2':
+      const playerCount = gameState?.players?.length || 0;
+      return upgrade.level * (playerCount * (upgrade.tier === 1 ? 0.1 : 0.2));
+    case 'shared-rewards':
+    case 'shared-rewards-2':
+      return upgrade.level * (upgrade.tier === 1 ? 0.15 : 0.3);
+    default:
+      return 0;
+  }
+}
+
+function getUpgradeEffect(upgradeId) {
+  const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return 0;
+  const effectValue = getUpgradeEffectValue(upgrade);
+  return effectValue * (gameState.achievementBoosts?.upgradeEffect || 1);
 }
