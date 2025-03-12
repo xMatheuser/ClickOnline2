@@ -1,6 +1,7 @@
 import { socket, gameState, isOwnPlayer, updateGameState } from './CoreModule.js';
 import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
 import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription } from './UpgradeModule.js';
+import { initHistory } from './HistoryModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -68,6 +69,9 @@ export function initUI() {
       bonusStatsOverlay.classList.remove('active');
     }
   });
+
+  // Add history initialization
+  initHistory();
 }
 
 export function handleGameStateUpdate(newState) {
