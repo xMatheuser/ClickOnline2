@@ -95,20 +95,38 @@ export function initSocket() {
 
   socket.on('prestige', () => {
     console.log('Prestige event received');
-    // Keep achievements and stats when resetting upgrades
+    // Preservar dados importantes
     const savedAchievements = gameState.achievements;
     const savedStats = gameState.bonusStats;
     const savedBoosts = gameState.achievementBoosts;
     const savedCategories = gameState.achievementCategories;
+    const savedPrestige = {}; // Preservar dados de prestígio atualizados
     
+    // Atualizar e salvar dados de prestígio
+    gameState.players.forEach(p => {
+      savedPrestige[p.id] = {
+        prestige: (p.prestige || 0) + 1,
+        prestigeMultiplier: 1 + ((p.prestige || 0) + 1) * 0.1
+      };
+    });
+    
+    // Resetar upgrades
     gameState.upgrades.forEach(u => u.level = 0);
     upgradeHistory = { tier1: [], tier2: [], tier3: [] };
     
-    // Restore achievements and stats
+    // Restaurar e atualizar todos os dados preservados
     gameState.achievements = savedAchievements;
     gameState.bonusStats = savedStats;
     gameState.achievementBoosts = savedBoosts;
     gameState.achievementCategories = savedCategories;
+    
+    // Atualizar dados de prestígio para cada jogador
+    gameState.players.forEach(p => {
+      if (p.id && savedPrestige[p.id]) {
+        p.prestige = savedPrestige[p.id].prestige;
+        p.prestigeMultiplier = savedPrestige[p.id].prestigeMultiplier;
+      }
+    });
   });
 
   socket.on('bossResult', (result) => {
@@ -204,11 +222,24 @@ export function isOwnPlayer() {
 }
 
 export function updateGameState(newState) {
-  // Preservar conquistas e estatísticas
+  // Preservar dados importantes
   const savedAchievements = gameState.achievements;
   const savedStats = gameState.bonusStats;
   const savedBoosts = gameState.achievementBoosts;
   const savedCategories = gameState.achievementCategories;
+  const savedPrestige = {}; // Preservar dados de prestígio
+  
+  // Salvar dados de prestígio para cada jogador
+  if (gameState.players) {
+    gameState.players.forEach(player => {
+      if (player.id) {
+        savedPrestige[player.id] = {
+          prestige: player.prestige || 0,
+          prestigeMultiplier: player.prestigeMultiplier || 1
+        };
+      }
+    });
+  }
   
   // Atualizar estado
   gameState = newState;
@@ -218,6 +249,16 @@ export function updateGameState(newState) {
   if (!gameState.bonusStats) gameState.bonusStats = savedStats;
   if (!gameState.achievementBoosts) gameState.achievementBoosts = savedBoosts;
   if (!gameState.achievementCategories) gameState.achievementCategories = savedCategories;
+
+  // Restaurar dados de prestígio para cada jogador
+  if (gameState.players) {
+    gameState.players.forEach(player => {
+      if (player.id && savedPrestige[player.id]) {
+        player.prestige = savedPrestige[player.id].prestige;
+        player.prestigeMultiplier = savedPrestige[player.id].prestigeMultiplier;
+      }
+    });
+  }
 }
 
 export function setUserInteraction(value) {
