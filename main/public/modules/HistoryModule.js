@@ -21,9 +21,21 @@ export function initHistory() {
     }
   });
 
-  // Move socket event listener inside init
-  socket.on('gameStateUpdate', () => {
-    if (historyOverlay.classList.contains('active')) {
+  // Atualizar somente quando houver mudanças relevantes
+  socket.on('gameStateUpdate', (newState) => {
+    // Não renderizar se o overlay não estiver visível
+    if (!historyOverlay.classList.contains('active')) return;
+    
+    // Ignorar updates automáticos
+    if (newState.type === 'autoclick') return;
+    if (newState.type === 'levelUp') return;
+    
+    // Verificar se houve mudança real no histórico de upgrades
+    const currentUpgradeState = JSON.stringify(upgradeHistory);
+    const lastUpgradeState = this.lastUpgradeState || '{}';
+    
+    if (currentUpgradeState !== lastUpgradeState) {
+      this.lastUpgradeState = currentUpgradeState;
       renderFullHistory();
     }
   });
