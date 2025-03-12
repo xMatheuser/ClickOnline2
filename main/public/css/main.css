@@ -842,10 +842,13 @@ body.dark-mode .tooltip {
 body.dark-mode .start-screen {
   background: url('/assets/gifs/startscreen.gif') no-repeat center center fixed; /* Mantém a mesma imagem */
   background-size: cover;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 body.dark-mode .start-container {
   background: rgba(42, 42, 42, 0.95);
+  color: #e0e0e0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 body.dark-mode .start-container h1 {
