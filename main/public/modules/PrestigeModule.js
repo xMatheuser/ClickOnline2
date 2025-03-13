@@ -8,9 +8,12 @@ const closePrestigeBtn = document.getElementById('close-prestige');
 
 export function initPrestige() {
   // Socket listeners no início para garantir que os upgrades sejam renderizados
-  socket.on('gameStateUpdate', () => {
+  socket.on('gameStateUpdate', (newState) => {
     updatePrestigeUI();
-    renderPrestigeUpgrades(); // Renderiza mesmo quando o overlay não está ativo
+    // Só renderiza os upgrades se não for uma atualização de auto-click
+    if (newState.type !== 'autoclick') {
+      renderPrestigeUpgrades();
+    }
   });
 
   openPrestigeBtn.addEventListener('click', () => {
