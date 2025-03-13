@@ -116,7 +116,10 @@ function updateGardenSlots() {
   const gardenGrid = document.getElementById('laboratory-garden');
   gardenGrid.innerHTML = '';
   
-  for (let i = 0; i < 4; i++) {
+  // Número total máximo de slots (desbloqueados + 1 bloqueado)
+  const totalSlots = Math.min(laboratoryData.garden.unlockedSlots + 1, 10);
+  
+  for (let i = 0; i < totalSlots; i++) {
     const slot = document.createElement('div');
     slot.className = `garden-slot ${i >= laboratoryData.garden.unlockedSlots ? 'locked' : ''}`;
     slot.dataset.slot = i;
@@ -221,47 +224,47 @@ function checkGardenProgress() {
 }
 
 function buyLabSlot() {
-    const garden = laboratoryData.garden;
-    
-    if (garden.unlockedSlots >= 4) {
-      showNotification('Todos os slots já estão desbloqueados!');
-      return;
-    }
-    
-    if (garden.resources.sunflower >= 5 && garden.resources.tulip >= 3) {
-      garden.resources.sunflower -= 5;
-      garden.resources.tulip -= 3;
-      garden.unlockedSlots++;
-      updateGardenSlots();
-      updateLabResources();
-      showNotification('Novo slot de plantio desbloqueado!');
-    } else {
-      showNotification('Recursos insuficientes!');
-    }
+  const garden = laboratoryData.garden;
+  
+  if (garden.unlockedSlots >= 10) {
+    showNotification('Todos os slots já estão desbloqueados!');
+    return;
   }
+  
+  if (garden.resources.sunflower >= 5 && garden.resources.tulip >= 3) {
+    garden.resources.sunflower -= 5;
+    garden.resources.tulip -= 3;
+    garden.unlockedSlots++;
+    updateGardenSlots();
+    updateLabResources();
+    showNotification('Novo slot de plantio desbloqueado!');
+  } else {
+    showNotification('Recursos insuficientes!');
+  }
+}
 
-  function buyLabCrystal() {
-    const garden = laboratoryData.garden;
-    
-    if (garden.crystalUnlocked) {
-      showNotification('Semente de Cristal já desbloqueada!');
-      return;
-    }
-    
-    if (garden.resources.sunflower >= 8 && garden.resources.tulip >= 5 && garden.resources.mushroom >= 3) {
-      garden.resources.sunflower -= 8;
-      garden.resources.tulip -= 5;
-      garden.resources.mushroom -= 3;
-      garden.crystalUnlocked = true;
-      
-      const crystalSeed = document.querySelector('.seed-option[data-seed="crystal"]');
-      crystalSeed.classList.remove('locked');
-      updateLabResources();
-      showNotification('Semente de Cristal desbloqueada!');
-    } else {
-      showNotification('Recursos insuficientes!');
-    }
+function buyLabCrystal() {
+  const garden = laboratoryData.garden;
+  
+  if (garden.crystalUnlocked) {
+    showNotification('Semente de Cristal já desbloqueada!');
+    return;
   }
+  
+  if (garden.resources.sunflower >= 8 && garden.resources.tulip >= 5 && garden.resources.mushroom >= 3) {
+    garden.resources.sunflower -= 8;
+    garden.resources.tulip -= 5;
+    garden.resources.mushroom -= 3;
+    garden.crystalUnlocked = true;
+    
+    const crystalSeed = document.querySelector('.seed-option[data-seed="crystal"]');
+    crystalSeed.classList.remove('locked');
+    updateLabResources();
+    showNotification('Semente de Cristal desbloqueada!');
+  } else {
+    showNotification('Recursos insuficientes!');
+  }
+}
 
 // Adicione esta função se ainda não existir
 function updateLabResources() {
