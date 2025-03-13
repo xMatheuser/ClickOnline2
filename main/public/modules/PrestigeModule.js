@@ -6,14 +6,24 @@ const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
 const closePrestigeBtn = document.getElementById('close-prestige');
 
+// Cache do último estado para comparação
+let lastPrestigeState = {
+  fragments: 0,
+  prestigeUpgrades: []
+};
+
 export function initPrestige() {
-  // Socket listeners no início para garantir que os upgrades sejam renderizados
   socket.on('gameStateUpdate', (newState) => {
+    const shouldUpdateUI = hasPrestigeStateChanged();
     updatePrestigeUI();
-    // Só renderiza os upgrades se não for uma atualização de auto-click
-    if (newState.type !== 'autoclick') {
+    
+    // Só renderiza os upgrades se houver mudança relevante no estado
+    if (shouldUpdateUI) {
       renderPrestigeUpgrades();
     }
+    
+    // Atualiza o cache do estado
+    updatePrestigeStateCache();
   });
 
   openPrestigeBtn.addEventListener('click', () => {
@@ -40,6 +50,36 @@ export function initPrestige() {
     }
     socket.emit('prestige');
   });
+}
+
+function hasPrestigeStateChanged() {
+  // Ignora se o estado do jogo ainda não está disponível
+  if (!gameState) return false;
+
+  // Verifica mudanças nos fragments
+  if ((gameState.fragments || 0) !== lastPrestigeState.fragments) {
+    return true;
+  }
+
+  // Verifica mudanças nos prestigeUpgrades
+  const currentUpgrades = gameState.prestigeUpgrades || [];
+  if (currentUpgrades.length !== lastPrestigeState.prestigeUpgrades.length) {
+    return true;
+  }
+
+  // Verifica se algum upgrade mudou de nível
+  return currentUpgrades.some((upgrade, index) => {
+    const lastUpgrade = lastPrestigeState.prestigeUpgrades[index];
+    return !lastUpgrade || upgrade.level !== lastUpgrade.level;
+  });
+}
+
+function updatePrestigeStateCache() {
+  lastPrestigeState = {
+    fragments: gameState.fragments || 0,
+    prestigeUpgrades: gameState.prestigeUpgrades ? 
+      JSON.parse(JSON.stringify(gameState.prestigeUpgrades)) : []
+  };
 }
 
 function updatePrestigeUI() {
