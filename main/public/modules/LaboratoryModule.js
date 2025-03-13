@@ -1,6 +1,7 @@
 import { showNotification } from './UIModule.js';
 import { 
   SEEDS,
+  GARDEN_UPGRADES,
   getSeedInfo, 
   getSeedIcon, 
   getSeedGrowthTime,
@@ -11,22 +12,15 @@ import {
 } from './GardenModule.js';
 
 export let laboratoryData = {
-  researchPoints: 0,
-  pointsPerSecond: 0,
-  upgrades: [
-    { id: 'automation', name: 'Automação Básica', description: 'Gera 1 ponto de pesquisa por segundo', baseCost: 10, level: 0, costMultiplier: 1.5, effect: 1 },
-    { id: 'efficiency', name: 'Eficiência de Pesquisa', description: 'Aumenta a geração de pontos em 50%', baseCost: 50, level: 0, costMultiplier: 2, effect: 0.5 }
-  ],
   garden: {
     selectedSeed: 'sunflower',
     unlockedSlots: 1,
     crystalUnlocked: false,
     resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
     plants: {},
-    upgrades: {
-      growthSpeed: 0,
-      harvestYield: 0
-    }
+    upgrades: Object.fromEntries(
+      Object.entries(GARDEN_UPGRADES).map(([key, upgrade]) => [key, 0])
+    )
   }
 };
 
@@ -37,11 +31,10 @@ export function initLaboratory() {
 
   openLabButton.addEventListener('click', () => {
     laboratoryOverlay.classList.add('active');
-    updateLaboratoryUI();
     updateGardenSlots();
     updateLabResources();
-    checkGardenProgress(); // Atualiza imediatamente o progresso das plantas
-    renderSeedOptions(); // Adicione essa função para renderizar as sementes
+    checkGardenProgress();
+    renderSeedOptions();
   });
 
   closeLabButton.addEventListener('click', () => laboratoryOverlay.classList.remove('active'));
@@ -50,63 +43,7 @@ export function initLaboratory() {
     if (e.target === laboratoryOverlay) laboratoryOverlay.classList.remove('active');
   });
 
-  setInterval(updateLaboratory, 1000);
   initLaboratoryGarden();
-}
-
-function updateLaboratory() {
-  laboratoryData.researchPoints += laboratoryData.pointsPerSecond;
-  if (document.getElementById('laboratory-overlay').classList.contains('active')) {
-    updateLaboratoryUI();
-  }
-}
-
-function updateLaboratoryUI() {
-  const researchPoints = document.getElementById('research-points');
-  const researchPerSecond = document.getElementById('research-per-second');
-  const upgradesContainer = document.getElementById('laboratory-upgrades');
-  
-  // Guard against null elements
-  if (researchPoints) {
-    researchPoints.textContent = Math.floor(laboratoryData.researchPoints);
-  }
-  
-  if (researchPerSecond) {
-    researchPerSecond.textContent = laboratoryData.pointsPerSecond.toFixed(1);
-  }
-  
-  if (upgradesContainer) {
-    upgradesContainer.innerHTML = laboratoryData.upgrades.map(upgrade => {
-      const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
-      return `
-        <div class="laboratory-upgrade" onclick="buyLabUpgrade('${upgrade.id}')">
-          <h3>${upgrade.name} (Nível ${upgrade.level})</h3>
-          <p>${upgrade.description}</p>
-          <p>Custo: ${cost} pontos</p>
-        </div>
-      `;
-    }).join('');
-  }
-}
-
-export function buyLabUpgrade(upgradeId) {
-  const upgrade = laboratoryData.upgrades.find(u => u.id === upgradeId);
-  if (!upgrade) return;
-  
-  const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level));
-  
-  if (laboratoryData.researchPoints >= cost) {
-    laboratoryData.researchPoints -= cost;
-    upgrade.level++;
-    
-    if (upgradeId === 'automation') {
-      laboratoryData.pointsPerSecond += upgrade.effect;
-    } else if (upgradeId === 'efficiency') {
-      laboratoryData.pointsPerSecond *= (1 + upgrade.effect);
-    }
-    
-    updateLaboratoryUI();
-  }
 }
 
 function initLaboratoryGarden() {
