@@ -1,5 +1,6 @@
 import { showNotification } from './UIModule.js';
 import { 
+  SEEDS,
   getSeedInfo, 
   getSeedIcon, 
   getSeedGrowthTime,
