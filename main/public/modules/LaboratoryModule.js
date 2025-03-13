@@ -1,4 +1,13 @@
 import { showNotification } from './UIModule.js';
+import { 
+  getSeedInfo, 
+  getSeedIcon, 
+  getSeedGrowthTime,
+  getSlotUnlockCost,
+  getCrystalUnlockCost,
+  calculateGrowthTime,
+  calculateHarvestYield
+} from './GardenModule.js';
 
 export let laboratoryData = {
   researchPoints: 0,
@@ -12,7 +21,11 @@ export let laboratoryData = {
     unlockedSlots: 1,
     crystalUnlocked: false,
     resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
-    plants: {}
+    plants: {},
+    upgrades: {
+      growthSpeed: 0,
+      harvestYield: 0
+    }
   }
 };
 
@@ -158,35 +171,45 @@ function setupGardenSlot(slot) {
 function plantSeed(slotId) {
   const garden = laboratoryData.garden;
   const seedType = garden.selectedSeed;
+  const seedInfo = getSeedInfo(seedType);
   const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  
+  const adjustedGrowthTime = calculateGrowthTime(
+    getSeedGrowthTime(seedType),
+    garden.upgrades
+  );
+  
   slot.innerHTML = `
-    <div class="plant">${seedType === 'sunflower' ? '🌻' : seedType === 'tulip' ? '🌷' : seedType === 'mushroom' ? '🍄' : '💎'}</div>
+    <div class="plant">${getSeedIcon(seedType)}</div>
     <div class="progress-bar"></div>
     <div class="ready-indicator">Pronto!</div>
   `;
-  garden.plants[slotId] = { type: seedType, plantedAt: Date.now(), growthTime: 10000, ready: false };
+  
+  garden.plants[slotId] = {
+    type: seedType,
+    plantedAt: Date.now(),
+    growthTime: adjustedGrowthTime,
+    ready: false
+  };
 }
 
 function harvestPlant(slotId) {
   const garden = laboratoryData.garden;
   const plant = garden.plants[slotId];
-  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  const seedInfo = getSeedInfo(plant.type);
   
-  // Adiciona recursos baseado no tipo da planta
   if (plant.ready) {
-    // Incrementa o recurso apropriado
-    garden.resources[plant.type]++;
+    const harvestAmount = calculateHarvestYield(
+      seedInfo.reward.amount,
+      garden.upgrades
+    );
     
-    // Atualiza o display de recursos
+    garden.resources[plant.type] += harvestAmount;
     const resourceCount = document.getElementById(`lab-${plant.type}-count`);
     if (resourceCount) {
       resourceCount.textContent = garden.resources[plant.type];
     }
-    
-    // Mostra notificação
-    showNotification(`+1 ${plant.type === 'sunflower' ? '🌻' : 
-                           plant.type === 'tulip' ? '🌷' : 
-                           plant.type === 'mushroom' ? '🍄' : '💎'}`);
+    showNotification(`+${harvestAmount} ${getSeedIcon(plant.type)}`);
   }
   
   // Limpa o slot
@@ -231,9 +254,11 @@ function buyLabSlot() {
     return;
   }
   
-  if (garden.resources.sunflower >= 5 && garden.resources.tulip >= 3) {
-    garden.resources.sunflower -= 5;
-    garden.resources.tulip -= 3;
+  const cost = getSlotUnlockCost(garden.unlockedSlots + 1);
+  
+  if (garden.resources.sunflower >= cost.sunflower && garden.resources.tulip >= cost.tulip) {
+    garden.resources.sunflower -= cost.sunflower;
+    garden.resources.tulip -= cost.tulip;
     garden.unlockedSlots++;
     updateGardenSlots();
     updateLabResources();
@@ -251,10 +276,14 @@ function buyLabCrystal() {
     return;
   }
   
-  if (garden.resources.sunflower >= 8 && garden.resources.tulip >= 5 && garden.resources.mushroom >= 3) {
-    garden.resources.sunflower -= 8;
-    garden.resources.tulip -= 5;
-    garden.resources.mushroom -= 3;
+  const cost = getCrystalUnlockCost();
+  
+  if (garden.resources.sunflower >= cost.sunflower && 
+      garden.resources.tulip >= cost.tulip && 
+      garden.resources.mushroom >= cost.mushroom) {
+    garden.resources.sunflower -= cost.sunflower;
+    garden.resources.tulip -= cost.tulip;
+    garden.resources.mushroom -= cost.mushroom;
     garden.crystalUnlocked = true;
     
     const crystalSeed = document.querySelector('.seed-option[data-seed="crystal"]');
