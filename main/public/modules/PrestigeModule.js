@@ -61,11 +61,6 @@ export function initPrestige() {
 function hasPrestigeStateChanged() {
   // Ignora se o estado do jogo ainda não está disponível
   if (!gameState) return false;
-  
-  // Adiciona verificação de visibilidade do overlay
-  if (prestigeOverlay.classList.contains('active')) {
-    return false;
-  }
 
   // Verifica mudanças nos fragments
   if ((gameState.fragments || 0) !== lastPrestigeState.fragments) {
@@ -114,8 +109,9 @@ function calculatePrestigeReward() {
   const base = Math.floor(gameState.teamLevel / 10);
   const fragmentMultiplierUpgrade = gameState.prestigeUpgrades?.find(u => u.id === 'fragment-multiplier');
   
-  // Use the effect value directly instead of calling it as a function
-  const multiplier = fragmentMultiplierUpgrade ? (1 + fragmentMultiplierUpgrade.effect) : 1;
+  // Calcular o multiplicador corretamente
+  const multiplier = fragmentMultiplierUpgrade ? 
+    (1 + fragmentMultiplierUpgrade.level * 0.2) : 1; // usa a mesma fórmula do prestigeUpgrades.js
   
   return Math.max(1, Math.floor(base * multiplier));
 }
@@ -137,9 +133,23 @@ function renderPrestigeUpgrades() {
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
     
-    const currentEffect = upgrade.effect ? upgrade.effect(upgrade.level) : 0;
-    const nextEffect = upgrade.effect ? upgrade.effect(upgrade.level + 1) : 0;
-    const tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\nPróximo: x${nextEffect.toFixed(1)}`;
+    // Tratamento especial para diferentes tipos de upgrade
+    let currentEffect, nextEffect, tooltipText;
+    
+    if (upgrade.id === 'powerups-unlock') {
+      currentEffect = upgrade.level > 0 ? 'Desbloqueado' : 'Bloqueado';
+      nextEffect = 'Desbloqueado';
+      tooltipText = `${upgrade.description}\nStatus: ${currentEffect}`;
+    } else if (upgrade.id === 'fragment-multiplier') {
+      // Use a mesma fórmula do calculatePrestigeReward
+      currentEffect = 1 + upgrade.level * 0.2;
+      nextEffect = !maxedOut ? (1 + (upgrade.level + 1) * 0.2) : currentEffect;
+      tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\n${!maxedOut ? `Próximo: x${nextEffect.toFixed(1)}` : ''}`;
+    } else {
+      currentEffect = upgrade.effect(upgrade.level);
+      nextEffect = !maxedOut ? upgrade.effect(upgrade.level + 1) : currentEffect;
+      tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\n${!maxedOut ? `Próximo: x${nextEffect.toFixed(1)}` : ''}`;
+    }
     
     upgradeElement.setAttribute('data-tooltip', tooltipText);
     upgradeElement.innerHTML = `
