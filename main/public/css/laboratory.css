@@ -79,7 +79,7 @@
 }
 
 .resource-icon {
-  font-size: 1.2em;
+  font-size: 1.8em;
 }
 
 .laboratory-upgrades {
@@ -148,9 +148,11 @@
 
 .garden-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, 1fr); /* 5 slots por linha */
+  grid-template-rows: repeat(2, 1fr);    /* 2 linhas */
   gap: 1rem;
   margin: 1.5rem 0;
+  max-width: 800px;
 }
 
 .garden-slot {
@@ -191,8 +193,13 @@
 }
 
 .garden-slot .seed-icon {
-  font-size: 1.5rem;
-  margin-bottom: 4px;
+  font-size: 2em; /* Increased from default size */
+  margin-right: 0.5rem;
+}
+
+.garden-slot .plant {
+  font-size: 2.5em; /* Increased plant size when planted */
+  margin-bottom: 0.5rem;
 }
 
 .progress-bar {
@@ -202,7 +209,9 @@
   height: 4px;
   background-color: #4CAF50;
   width: 0%;
-  transition: width 0.1s linear;
+  transition: width 0.5s linear;
+  border-radius: 2px;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
 }
 
 .ready-indicator {
@@ -301,7 +310,7 @@ body.dark-mode .store-item {
 }
 
 .lock-icon {
-  font-size: 2em;
+  font-size: 2.5em;
   margin-bottom: 10px;
   opacity: 0.5;
   animation: lock-float 2s ease-in-out infinite;
@@ -364,4 +373,26 @@ body.dark-mode .close-bonus-stats,
 body.dark-mode .close-history,
 body.dark-mode .close-achievements {
   color: #e0e0e0;
+}
+
+.laboratory-stats {
+  background: rgba(30, 41, 59, 0.8);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.research-display {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.research-info {
+  color: #e0e0e0;
+  font-size: 1.1em;
+}
+
+.research-info span:first-child {
+  color: #4CAF50;
 }

@@ -77,32 +77,52 @@ function prepareGameStateForBroadcast(state) {
   return preparedState;
 }
 
+let lastBroadcastState = {}; // Armazenar último estado enviado
+
+function getStateDelta(currentState, lastState) {
+  const delta = {};
+  
+  // Comparar apenas campos essenciais
+  const fieldsToCheck = [
+    'teamCoins', 'levelProgressRemaining', 'totalClicks',
+    'clicks', 'teamLevel', 'fragments'
+  ];
+
+  for (const field of fieldsToCheck) {
+    if (currentState[field] !== lastState[field]) {
+      delta[field] = currentState[field];
+    }
+  }
+
+  // Verificar mudanças em players
+  if (currentState.players) {
+    delta.players = currentState.players.map(player => ({
+      id: player.id,
+      clicks: player.clicks,
+      contribution: player.contribution,
+      clickValue: player.clickValue
+    }));
+  }
+
+  return delta;
+}
+
 function broadcastGameState(type = 'full') {
   gameState.players.forEach(player => {
     player.clickValue = calculateClickValue(player);
   });
-  gameState.players.sort((a, b) => b.contribution - a.contribution);
-  const preparedState = prepareGameStateForBroadcast(gameState);
   
-  // Enviar apenas dados essenciais para atualizações de clique
   if (type === 'autoclick') {
-    const essentialData = {
-      type: 'autoclick',
-      teamCoins: gameState.teamCoins,
-      levelProgressRemaining: gameState.levelProgressRemaining,
-      players: gameState.players.map(p => ({
-        id: p.id,
-        clicks: p.clicks,
-        contribution: p.contribution,
-        clickValue: p.clickValue
-      })),
-      totalClicks: gameState.totalClicks,
-      clicks: gameState.clicks
-    };
-    io.emit('gameStateUpdate', essentialData);
+    const delta = getStateDelta(gameState, lastBroadcastState);
+    if (Object.keys(delta).length > 0) {
+      delta.type = 'delta';
+      io.emit('gameStateUpdate', delta);
+    }
   } else {
+    const preparedState = prepareGameStateForBroadcast(gameState);
     preparedState.type = 'full';
     io.emit('gameStateUpdate', preparedState);
+    lastBroadcastState = JSON.parse(JSON.stringify(gameState));
   }
 }
 
@@ -113,6 +133,13 @@ function checkAchievements() {
       if (!achievement.unlockedLevels.includes(index) && level.requirement(gameState)) {
         achievement.unlockedLevels.push(index);
         applyAchievementBoost(level.boost);
+        
+        // Emitir notificação específica para a conquista
+        io.emit('notification', `🏆 Nova Conquista: ${achievement.name} Nível ${index + 1}!\n+${(level.boost.value * 100).toFixed(0)}% ${level.boost.type}`);
+        
+        // Emitir evento para tocar o som e atualizar badge
+        io.emit('achievementUnlocked');
+        
         console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada`);
         newUnlocks = true;
       }
@@ -210,25 +237,29 @@ io.on('connection', (socket) => {
   socket.emit('gameStateUpdate', preparedState);
 
   socket.on('addPlayer', (playerData) => {
-    if (gameState.players.length >= 3) {
-      socket.emit('gameStateUpdate', prepareGameStateForBroadcast(gameState));
-      socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
-      return;
-    }
+    try {
+      if (gameState.players.length >= 3) {
+        socket.emit('notification', 'O limite de 3 jogadores foi atingido!');
+        return;
+      }
 
-    if (!gameState.players.some(p => p.name === playerData.name)) {
-      playerData.id = socket.id;
-      playerData.clicks = 0;
-      playerData.level = 1;
-      playerData.contribution = 0;
-      playerData.prestige = 0;
-      playerData.prestigeMultiplier = 1;
-      gameState.players.push(playerData);
-      console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
-      broadcastGameState();
-      checkAchievements();
-    } else {
-      socket.emit('notification', 'Este nome já está em uso!');
+      if (!gameState.players.some(p => p.name === playerData.name)) {
+        playerData.id = socket.id;
+        playerData.clicks = 0;
+        playerData.level = 1;
+        playerData.contribution = 0;
+        playerData.prestige = 0;
+        playerData.prestigeMultiplier = 1;
+        gameState.players.push(playerData);
+        console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
+        broadcastGameState();
+        checkAchievements();
+      } else {
+        socket.emit('notification', 'Este nome já está em uso!');
+      }
+    } catch (error) {
+      console.error('[Error] Failed to add player:', error);
+      socket.emit('notification', 'Erro ao adicionar jogador');
     }
   });
 
@@ -344,35 +375,38 @@ io.on('connection', (socket) => {
       socket.emit('notification', 'Você só pode prestigiar quando for o jogador ativo!');
       return;
     }
-
+  
     if (player.level >= 2) {
       const fragmentMultiplier = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.effect(gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.level) || 1;
       const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
       const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier * gameState.achievementBoosts.prestigeCostReduction);
       
-      // Aplicar prestígio para todos os jogadores
-      gameState.players.forEach(p => {
-        p.prestige = (p.prestige || 0) + 1;
-        p.prestigeMultiplier = 1 + p.prestige * 0.1;
-        p.clicks = 0;
-        p.level = 1;
-        p.contribution = 0;
-      });
-
+      // Armazenar multiplicadores atuais
+      const currentMultipliers = gameState.players.map(p => ({
+        id: p.id,
+        prestige: (p.prestige || 0) + 1,
+        prestigeMultiplier: 1 + ((p.prestige || 0) + 1) * 0.1
+      }));
+  
       // Resetar estado global do jogo
       gameState.teamCoins = 0;
       gameState.teamLevel = 1;
       gameState.levelProgressRemaining = 100;
       gameState.upgrades.forEach(u => u.level = 0);
-      gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
       
-      // Emitir evento de prestígio para todos os clientes antes do gameStateUpdate
+      // Atualizar jogadores com novos valores de prestígio
+      gameState.players.forEach(p => {
+        const multiplier = currentMultipliers.find(m => m.id === p.id);
+        p.prestige = multiplier.prestige; 
+        p.prestigeMultiplier = multiplier.prestigeMultiplier;
+        p.clicks = 0;
+        p.level = 1;
+        p.contribution = 0;
+      });
+  
+      // Emitir eventos na ordem correta
       io.emit('prestige');
-      
-      // Enviar notificação para todos os jogadores
       io.emit('notification', `${player.name} ativou o prestígio!\nMultiplicador Global: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
-      
-      // Atualizar estado do jogo depois
       broadcastGameState();
       checkAchievements();
     } else {
@@ -449,6 +483,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('surrenderBoss', () => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !gameState.activeBoss) return;
+  
+    const penalty = Math.floor(gameState.teamCoins * gameState.activeBoss.penalty.coinLossPercentage);
+    gameState.teamCoins = Math.max(0, gameState.teamCoins - penalty);
+    gameState.isInBossFight = false;
+  
+    if (gameState.activeBoss.timerId) {
+      clearTimeout(gameState.activeBoss.timerId);
+    }
+  
+    io.emit('bossResult', { 
+      victory: false,
+      penalty: penalty,
+      surrendered: true,
+      surrenderedBy: player.name
+    });
+    
+    gameState.activeBoss = null;
+    broadcastGameState();
+  });
+
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
@@ -498,6 +555,9 @@ function calculateClickValue(player) {
 function levelUpTeam() {
   gameState.teamLevel++;
   
+  // Emitir evento específico de level up
+  io.emit('teamLevelUp', gameState.teamLevel);
+  
   // Checar se deve spawnar um boss
   if (gameState.teamLevel >= gameState.nextBossLevel) {
     spawnBoss();
@@ -543,7 +603,8 @@ function spawnBoss() {
     maxHealth: boss.maxHealth,
     image: boss.image,
     particles: boss.particles,
-    timeLimit: boss.timeLimit
+    timeLimit: boss.timeLimit,
+    startTime: boss.startTime // Adicionar startTime
   });
 
   // Armazenar o timer separadamente do objeto boss
@@ -575,24 +636,62 @@ function getUpgradeEffect(upgradeId) {
   return upgrade.effect(upgrade.level, gameState) * gameState.achievementBoosts.upgradeEffect;
 }
 
-// Modificar o setInterval do auto-clicker para usar o novo tipo
+// Update the autoClicker interval
 setInterval(() => {
-  const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
-  if (autoClickerUpgrade && autoClickerUpgrade.level > 0 && !gameState.isInBossFight) {
-    gameState.players.forEach(player => {
-      const clickValue = calculateClickValue(player) * autoClickerUpgrade.effect(autoClickerUpgrade.level) * gameState.achievementBoosts.autoMultiplier;
-      player.clicks += clickValue;
-      player.contribution += clickValue;
-      gameState.clicks += clickValue;
-      gameState.totalClicks += clickValue;
-      gameState.levelProgressRemaining -= clickValue;
-      if (gameState.levelProgressRemaining <= 0) {
-        levelUpTeam();
+  try {
+    const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
+    if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
+
+      let totalDamage = 0;
+    const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
+                         gameState.achievementBoosts.autoMultiplier;
+
+    // Create a snapshot of players to avoid modification issues
+    const currentPlayers = [...gameState.players];
+    
+    currentPlayers.forEach(player => {
+      if (!player?.id) return;
+      const clickValue = calculateClickValue(player) * autoClickValue;
+      
+      // Find and update player in original array
+      const playerInState = gameState.players.find(p => p.id === player.id);
+      if (playerInState) {
+        playerInState.clicks += clickValue;
+        // Remove contribution increment from autoclicker
+        
+        // Emitir evento de dano automático para o cliente
+        io.to(player.id).emit('autoClickDamage', clickValue);
       }
+      
+      totalDamage += clickValue;
     });
-    broadcastGameState('autoclick');
+
+    // Update global stats
+    gameState.clicks += totalDamage;
+    gameState.totalClicks += totalDamage;
+    gameState.levelProgressRemaining -= totalDamage;
+
+    if (gameState.levelProgressRemaining <= 0) {
+      levelUpTeam();
+    } else {
+      const updateData = {
+        type: 'autoclick',
+        teamCoins: gameState.teamCoins,
+        fragments: gameState.fragments, // Adicionar fragments
+        levelProgressRemaining: Math.max(0, gameState.levelProgressRemaining),
+        players: gameState.players,
+        totalClicks: gameState.totalClicks,
+        clicks: gameState.clicks,
+        upgrades: gameState.upgrades,
+        teamLevel: gameState.teamLevel, // Add team level to update data
+        prestigeUpgrades: gameState.prestigeUpgrades // Adicionar prestigeUpgrades ao updateData
+      };
+      io.emit('gameStateUpdate', updateData);
+    }
+  } catch (error) {
+    console.error('[AutoClicker Error]:', error);
   }
-}, 1000);
+}, 1000); // Reduzir para 100ms para atualizações mais frequentes
 
 setInterval(checkAchievements, 2000);
 

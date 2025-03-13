@@ -30,9 +30,9 @@
           <i class="nes-octocat animate"></i>
           Coop 
           <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
+          <button class="nes-btn" id="open-laboratory">🌻 Jardim</button>
           <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
           <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
-          <button class="nes-btn" id="open-laboratory">🌻 Jardim</button>
         </h1>
       </div>
       <div class="top-bar-buttons">
@@ -129,7 +129,7 @@
           <div class="stats">
             <div class="stat-box nes-container is-rounded"><h3>Jogador</h3><div id="active-player">-</div></div>
             <div class="stat-box nes-container is-rounded"><h3>Nível</h3><div id="level">1</div></div>
-            <div class="stat-box total-clicks nes-container is-rounded"><h3>Cliques Totais</h3><div id="clicks">0</div></div>
+            <div class="stat-box total-clicks nes-container is-rounded"><h3>Cliques Totais</h><div id="clicks">0</div></div>
             <div class="stat-box clicks-per-second nes-container is-rounded"><h3>Cliques/s</h3><div id="target">0</div></div>
             <div class="stat-box team-coins nes-container is-rounded"><h3>Moedas do Time</h3><div><span id="team-coins">0</span><span class="coin-icon"></span></div></div>
             <div class="stat-box nes-container is-rounded"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
@@ -140,11 +140,12 @@
           <div id="contribution-container"></div>
         </section>
         <section class="click-area nes-container is-rounded" id="click-area">
+          <div class="damage-container"></div>
           Clique aqui ou pressione "P"!
         </section>
       </div>
     </div>
-    <button class="rpgui-button golden floating-powerup" id="activate-click-frenzy">Power Up!</button>
+    <button class="rpgui-button golden floating-powerup" id="activate-click-frenzy" style="display: none">Power Up!</button>
   </div>
   <div class="notification" id="notification"></div>
   <div class="powerup-notification" id="powerup-notification"></div>
@@ -185,6 +186,7 @@
       </div>
       <img class="boss-image" src="" alt="Boss">
       <div class="boss-timer">60</div>
+      <button id="surrender-boss" class="surrender-button">Desistir</button>
     </div>
   </div>
 
@@ -217,34 +219,7 @@
         </div>
         
         <div class="seed-selector">
-          <div class="seed-option selected" data-seed="sunflower">
-            <span class="seed-icon">🌻</span>
-            <div>
-              <div>Girassol</div>
-              <div class="time-info">30s • ⭐⭐</div>
-            </div>
-          </div>
-          <div class="seed-option" data-seed="tulip">
-            <span class="seed-icon">🌷</span>
-            <div>
-              <div>Tulipa</div>
-              <div class="time-info">60s • ⭐⭐⭐</div>
-            </div>
-          </div>
-          <div class="seed-option" data-seed="mushroom">
-            <span class="seed-icon">🍄</span>
-            <div>
-              <div>Cogumelo</div>
-              <div class="time-info">90s • ⭐⭐⭐⭐</div>
-            </div>
-          </div>
-          <div class="seed-option locked" data-seed="crystal">
-            <span class="seed-icon">💎</span>
-            <div>
-              <div>Cristal</div>
-              <div class="time-info">🔒 Bloqueado</div>
-            </div>
-          </div>
+          <!-- Isso será gerado dinamicamente pelo JavaScript usando as informações do GardenModule -->
         </div>
 
         <div class="garden-grid" id="laboratory-garden">
@@ -269,5 +244,6 @@
     </div>
   </div>
 
-</html></body>  <script src="script.js"></script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ad33b6dabe12e7',t:'MTc0MTA0NzU2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script type="module" src="./index.js"></script>
+</body>
 </html>

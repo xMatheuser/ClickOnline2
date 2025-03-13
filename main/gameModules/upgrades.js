@@ -78,7 +78,7 @@ const upgrades = [
     id: 'click-power-2',
     name: 'Poder de Clique II',
     description: 'Versão mais poderosa do aumento de clique',
-    icon: '🎯',
+    icon: '<i class="fas fa-hand-pointer"></i>', // Atualizado para ícone do tier 1
     basePrice: 500,
     level: 0,
     maxLevel: 15,
@@ -91,7 +91,7 @@ const upgrades = [
     id: 'auto-clicker-2',
     name: 'Auto Clicker II',
     description: 'Clica duas vezes por segundo',
-    icon: '⚡',
+    icon: '<i class="fas fa-bolt"></i>', // Atualizado para ícone do tier 1
     basePrice: 1000,
     level: 0,
     maxLevel: 8,
@@ -104,7 +104,7 @@ const upgrades = [
     id: 'coin-boost-2',
     name: 'Boost de Moedas II',
     description: 'Versão melhorada do boost de moedas',
-    icon: '💰',
+    icon: '<i class="fas fa-coins"></i>', // Atualizado para ícone do tier 1
     basePrice: 800,
     level: 0,
     maxLevel: 8,
@@ -117,7 +117,7 @@ const upgrades = [
     id: 'progress-boost-2',
     name: 'Boost de Progresso II',
     description: 'Redução mais eficiente da dificuldade',
-    icon: '📊',
+    icon: '<i class="fas fa-chart-line"></i>', // Atualizado para ícone do tier 1
     basePrice: 2000,
     level: 0,
     maxLevel: 5,
@@ -130,7 +130,7 @@ const upgrades = [
     id: 'team-synergy-2',
     name: 'Sinergia de Equipe II',
     description: 'Sinergia de equipe mais poderosa',
-    icon: '🤝',
+    icon: '<i class="fas fa-users"></i>', // Atualizado para ícone do tier 1
     basePrice: 1200,
     level: 0,
     maxLevel: 8,
@@ -143,7 +143,7 @@ const upgrades = [
     id: 'shared-rewards-2',
     name: 'Recompensas Compartilhadas II',
     description: 'Versão melhorada das recompensas compartilhadas',
-    icon: '🎁',
+    icon: '<i class="fas fa-gift"></i>', // Atualizado para ícone do tier 1
     basePrice: 1500,
     level: 0,
     maxLevel: 5,
@@ -158,7 +158,7 @@ const upgrades = [
     id: 'click-power-3',
     name: 'Poder de Clique Supremo',
     description: 'Versão definitiva do poder de clique',
-    icon: '🎯',
+    icon: '<i class="fas fa-hand-pointer"></i>', // Atualizado para ícone do tier 1
     basePrice: 5000,
     level: 0,
     maxLevel: 10,
@@ -171,7 +171,7 @@ const upgrades = [
     id: 'auto-clicker-3',
     name: 'Auto Clicker Supremo',
     description: 'Clica quatro vezes por segundo',
-    icon: '⚡',
+    icon: '<i class="fas fa-bolt"></i>', // Atualizado para ícone do tier 1
     basePrice: 8000,
     level: 0,
     maxLevel: 5,
@@ -184,7 +184,7 @@ const upgrades = [
     id: 'coin-boost-3',
     name: 'Boost de Moedas Supremo',
     description: 'Multiplicador máximo de moedas',
-    icon: '💰',
+    icon: '<i class="fas fa-coins"></i>', // Atualizado para ícone do tier 1
     basePrice: 6000,
     level: 0,
     maxLevel: 5,
@@ -197,7 +197,7 @@ const upgrades = [
     id: 'progress-boost-3',
     name: 'Boost de Progresso Supremo',
     description: 'Redução suprema da dificuldade',
-    icon: '📊',
+    icon: '<i class="fas fa-chart-line"></i>', // Atualizado para ícone do tier 1
     basePrice: 15000,
     level: 0,
     maxLevel: 3,
@@ -210,7 +210,7 @@ const upgrades = [
     id: 'team-synergy-3',
     name: 'Sinergia de Equipe Suprema',
     description: 'Sinergia de equipe definitiva',
-    icon: '🤝',
+    icon: '<i class="fas fa-users"></i>', // Atualizado para ícone do tier 1
     basePrice: 10000,
     level: 0,
     maxLevel: 5,
@@ -223,7 +223,7 @@ const upgrades = [
     id: 'shared-rewards-3',
     name: 'Recompensas Compartilhadas Supremas',
     description: 'Sistema definitivo de recompensas',
-    icon: '🎁',
+    icon: '<i class="fas fa-gift"></i>', // Atualizado para ícone do tier 1
     basePrice: 12000,
     level: 0,
     maxLevel: 3,

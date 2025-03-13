@@ -158,6 +158,48 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  padding: 8px;
+  margin: 4px 0;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  transition: background 0.2s;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.history-upgrade-info:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.history-upgrade-info:active {
+  transform: translateY(0);
+}
+
+.upgrade-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upgrade-icon {
+  font-size: 1.2em;
+}
+
+.upgrade-name {
+  font-weight: bold;
+}
+
+.upgrade-level {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
 }
 
 /* Dark mode */
@@ -203,12 +245,17 @@ body.dark-mode .history-tier-title {
   font-size: 1.2rem;
   padding: 5px 10px;
   border-radius: 5px;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
   margin-left: 10px;
 }
 
 .buff-info-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.buff-info-button:active {
+  transform: scale(0.95);
 }
 
 .buff-tooltip {
@@ -338,4 +385,57 @@ body.dark-mode .rpgui-button.golden:disabled {
 
 body.dark-mode .upgrade-info strong i {
   color: #76c776;
+}
+
+.achievement-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  animation: pulse 1s infinite;
+}
+
+#tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 300px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  white-space: pre-line;
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  line-height: 1.4;
+}
+
+body.dark-mode #tooltip {
+  background: rgba(40, 40, 40, 0.95);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.history-buff-info {
+  color: #666;
+  cursor: help;
+  padding: 5px 10px;
+  border-radius: 5px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.history-buff-info:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
 }
