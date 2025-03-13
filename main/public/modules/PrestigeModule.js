@@ -7,10 +7,16 @@ const openPrestigeBtn = document.getElementById('open-prestige');
 const closePrestigeBtn = document.getElementById('close-prestige');
 
 export function initPrestige() {
+  // Socket listeners no início para garantir que os upgrades sejam renderizados
+  socket.on('gameStateUpdate', () => {
+    updatePrestigeUI();
+    renderPrestigeUpgrades(); // Renderiza mesmo quando o overlay não está ativo
+  });
+
   openPrestigeBtn.addEventListener('click', () => {
     prestigeOverlay.classList.add('active');
     updatePrestigeUI();
-    renderPrestigeUpgrades(); // Add this line to render upgrades
+    renderPrestigeUpgrades();
   });
 
   closePrestigeBtn.addEventListener('click', () => prestigeOverlay.classList.remove('active'));
@@ -30,14 +36,6 @@ export function initPrestige() {
       return;
     }
     socket.emit('prestige');
-  });
-
-  // Move socket listener inside init
-  socket.on('gameStateUpdate', () => {
-    if (prestigeOverlay.classList.contains('active')) {
-      updatePrestigeUI();
-      renderPrestigeUpgrades();
-    }
   });
 }
 
@@ -72,6 +70,9 @@ function renderPrestigeUpgrades() {
   const container = document.getElementById('prestige-upgrades-container');
   if (!container || !gameState?.prestigeUpgrades) return;
 
+  // Garante que o container está visível
+  container.style.display = 'block';
+  
   container.innerHTML = '';
   gameState.prestigeUpgrades.forEach(upgrade => {
     const price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
