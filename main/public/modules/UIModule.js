@@ -113,12 +113,11 @@ export function initUI() {
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
 
-  // Remover verificação de level up daqui já que agora temos um evento específico
-  const oldLevel = gameState.teamLevel;
-
-  // Update achievement stats if overlay is open
+  // Update achievement stats and grid if overlay is open
   if (achievementsOverlay.classList.contains('active')) {
     updateAchievementStats();
+    // Atualizar o grid de conquistas quando receber um novo estado
+    renderAchievementsScreen();
   }
   
   if (newState.type === 'autoclick') {
