@@ -90,6 +90,7 @@ function broadcastGameState(type = 'full') {
       type: 'autoclick',
       teamCoins: gameState.teamCoins,
       levelProgressRemaining: gameState.levelProgressRemaining,
+      fragments: gameState.fragments, // Adicionar fragments aos dados essenciais
       players: gameState.players.map(p => ({
         id: p.id,
         clicks: p.clicks,
@@ -373,12 +374,11 @@ io.on('connection', (socket) => {
       gameState.teamLevel = 1;
       gameState.levelProgressRemaining = 100;
       gameState.upgrades.forEach(u => u.level = 0);
-      gameState.fragments = (gameState.fragments || 0) + fragmentsToGain;
-  
+      
       // Atualizar jogadores com novos valores de prestígio
       gameState.players.forEach(p => {
         const multiplier = currentMultipliers.find(m => m.id === p.id);
-        p.prestige = multiplier.prestige;
+        p.prestige = multiplier.prestige; 
         p.prestigeMultiplier = multiplier.prestigeMultiplier;
         p.clicks = 0;
         p.level = 1;
@@ -659,6 +659,7 @@ setInterval(() => {
       const updateData = {
         type: 'autoclick',
         teamCoins: gameState.teamCoins,
+        fragments: gameState.fragments, // Adicionar fragments
         levelProgressRemaining: Math.max(0, gameState.levelProgressRemaining),
         players: gameState.players,
         totalClicks: gameState.totalClicks,
