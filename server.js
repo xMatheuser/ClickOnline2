@@ -642,8 +642,7 @@ setInterval(() => {
     const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
     if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
 
-    let changed = false;
-    let totalDamage = 0;
+      let totalDamage = 0;
     const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
                          gameState.achievementBoosts.autoMultiplier;
 
@@ -691,7 +690,7 @@ setInterval(() => {
   } catch (error) {
     console.error('[AutoClicker Error]:', error);
   }
-}, 100); // Reduzir para 100ms para atualizações mais frequentes
+}, 1000); // Reduzir para 100ms para atualizações mais frequentes
 
 setInterval(checkAchievements, 2000);
 
