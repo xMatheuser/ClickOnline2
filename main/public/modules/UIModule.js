@@ -36,7 +36,8 @@ let notificationQueue = [];
 let isNotificationShowing = false;
 let newAchievements = 0;
 let viewedAchievements = new Set();
-let lastRenderedUpgrades = null; // Novo: rastreia o último estado renderizado dos upgrades
+let lastRenderedUpgrades = null; // Para upgrades
+let lastRenderedAchievements = null; // Novo: para conquistas
 
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
@@ -48,6 +49,11 @@ export function initUI() {
     playSound(achievementSound);
     newAchievements++;
     updateAchievementBadge();
+    // Forçar renderização imediata se o overlay estiver ativo
+    if (achievementsOverlay.classList.contains('active')) {
+      renderAchievementsScreen();
+      lastRenderedAchievements = JSON.stringify(gameState.achievements);
+    }
   });
   socket.on('autoClickDamage', (amount) => {
     if (!clickArea) return;
@@ -58,11 +64,12 @@ export function initUI() {
     
     showDamageNumber(x, y, amount);
   });
-  renderUpgrades(); // Renderização inicial
+  renderUpgrades(); // Renderização inicial dos upgrades
 
   openAchievementsBtn.addEventListener('click', () => {
     achievementsOverlay.classList.add('active');
-    renderAchievementsScreen();
+    renderAchievementsScreen(); // Renderiza ao abrir
+    lastRenderedAchievements = JSON.stringify(gameState.achievements); // Atualiza estado renderizado
     newAchievements = 0;
     updateAchievementBadge();
   });
@@ -105,7 +112,10 @@ export function handleGameStateUpdate(newState) {
 
   if (achievementsOverlay.classList.contains('active') && newState.type !== 'autoclick') {
     updateAchievementStats();
-    renderAchievementsScreen();
+    if (shouldRenderAchievements(newState)) {
+      renderAchievementsScreen();
+      lastRenderedAchievements = JSON.stringify(newState.achievements);
+    }
   }
   
   if (newState.type === 'autoclick') {
@@ -140,7 +150,6 @@ export function handleGameStateUpdate(newState) {
       renderPlayers();
       renderContributions();
 
-      // Otimização: só re-renderizar upgrades se houver mudanças
       if (shouldRenderUpgrades(newState)) {
         renderUpgrades();
         lastRenderedUpgrades = JSON.stringify(newState.upgrades);
@@ -151,9 +160,15 @@ export function handleGameStateUpdate(newState) {
 }
 
 function shouldRenderUpgrades(newState) {
-  if (newState.upgradesChanged === true) return true; // Flag do servidor
+  if (newState.upgradesChanged === true) return true;
   const currentUpgrades = JSON.stringify(newState.upgrades);
-  return lastRenderedUpgrades !== currentUpgrades; // Comparação manual
+  return lastRenderedUpgrades !== currentUpgrades;
+}
+
+function shouldRenderAchievements(newState) {
+  if (newState.achievementsChanged === true) return true; // Flag do servidor
+  const currentAchievements = JSON.stringify(newState.achievements);
+  return lastRenderedAchievements !== currentAchievements; // Comparação manual
 }
 
 function getClickValue(player) {
