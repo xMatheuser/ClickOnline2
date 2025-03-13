@@ -10,6 +10,7 @@ import { initTheme } from './ThemeModule.js';
 
 const socket = io();
 let gameState = { players: [] };
+let lastReceivedState = {};
 
 export { socket, gameState };
 
@@ -79,11 +80,19 @@ export function initSocket() {
     console.log('Connected to server');
   });
 
-  socket.on('gameStateUpdate', (newState) => {
-    console.log('Game state updated');
-    gameState = newState;
+  socket.on('gameStateUpdate', (update) => {
+    if (update.type === 'delta') {
+      // Aplicar apenas as mudanças
+      Object.assign(gameState, update);
+      lastReceivedState = {...gameState};
+    } else {
+      // Atualização completa
+      gameState = update;
+      lastReceivedState = {...update};
+    }
+
     import('./UIModule.js').then(module => {
-      module.handleGameStateUpdate(newState);
+      module.handleGameStateUpdate(gameState);
     });
   });
 

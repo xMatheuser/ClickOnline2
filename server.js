@@ -77,33 +77,52 @@ function prepareGameStateForBroadcast(state) {
   return preparedState;
 }
 
+let lastBroadcastState = {}; // Armazenar último estado enviado
+
+function getStateDelta(currentState, lastState) {
+  const delta = {};
+  
+  // Comparar apenas campos essenciais
+  const fieldsToCheck = [
+    'teamCoins', 'levelProgressRemaining', 'totalClicks',
+    'clicks', 'teamLevel', 'fragments'
+  ];
+
+  for (const field of fieldsToCheck) {
+    if (currentState[field] !== lastState[field]) {
+      delta[field] = currentState[field];
+    }
+  }
+
+  // Verificar mudanças em players
+  if (currentState.players) {
+    delta.players = currentState.players.map(player => ({
+      id: player.id,
+      clicks: player.clicks,
+      contribution: player.contribution,
+      clickValue: player.clickValue
+    }));
+  }
+
+  return delta;
+}
+
 function broadcastGameState(type = 'full') {
   gameState.players.forEach(player => {
     player.clickValue = calculateClickValue(player);
   });
-  gameState.players.sort((a, b) => b.contribution - a.contribution);
-  const preparedState = prepareGameStateForBroadcast(gameState);
   
-  // Enviar apenas dados essenciais para atualizações de clique
   if (type === 'autoclick') {
-    const essentialData = {
-      type: 'autoclick',
-      teamCoins: gameState.teamCoins,
-      levelProgressRemaining: gameState.levelProgressRemaining,
-      fragments: gameState.fragments, // Adicionar fragments aos dados essenciais
-      players: gameState.players.map(p => ({
-        id: p.id,
-        clicks: p.clicks,
-        contribution: p.contribution,
-        clickValue: p.clickValue
-      })),
-      totalClicks: gameState.totalClicks,
-      clicks: gameState.clicks
-    };
-    io.emit('gameStateUpdate', essentialData);
+    const delta = getStateDelta(gameState, lastBroadcastState);
+    if (Object.keys(delta).length > 0) {
+      delta.type = 'delta';
+      io.emit('gameStateUpdate', delta);
+    }
   } else {
+    const preparedState = prepareGameStateForBroadcast(gameState);
     preparedState.type = 'full';
     io.emit('gameStateUpdate', preparedState);
+    lastBroadcastState = JSON.parse(JSON.stringify(gameState));
   }
 }
 
@@ -623,7 +642,7 @@ setInterval(() => {
     const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
     if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
 
-    // Keep track of total damage for this tick
+    let changed = false;
     let totalDamage = 0;
     const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
                          gameState.achievementBoosts.autoMultiplier;
@@ -672,7 +691,7 @@ setInterval(() => {
   } catch (error) {
     console.error('[AutoClicker Error]:', error);
   }
-}, 1000);
+}, 100); // Reduzir para 100ms para atualizações mais frequentes
 
 setInterval(checkAchievements, 2000);
 
