@@ -80,11 +80,23 @@ function updateGardenSlots() {
     slot.dataset.slot = i;
     
     if (i < laboratoryData.garden.unlockedSlots) {
-      slot.innerHTML = `
-        <div class="plant-placeholder">Clique para plantar</div>
-        <div class="progress-bar"></div>
-        <div class="ready-indicator">Pronto!</div>
-      `;
+      const existingPlant = laboratoryData.garden.plants[i];
+      
+      if (existingPlant) {
+        // Se há uma planta existente, restaura seu visual
+        slot.innerHTML = `
+          <div class="plant">${getSeedIcon(existingPlant.type)}</div>
+          <div class="progress-bar"></div>
+          <div class="ready-indicator" style="display: ${existingPlant.ready ? 'block' : 'none'}">Pronto!</div>
+        `;
+      } else {
+        // Slot vazio
+        slot.innerHTML = `
+          <div class="plant-placeholder">Clique para plantar</div>
+          <div class="progress-bar"></div>
+          <div class="ready-indicator">Pronto!</div>
+        `;
+      }
       setupGardenSlot(slot);
     } else {
       slot.innerHTML = `
@@ -139,6 +151,7 @@ function harvestPlant(slotId) {
   const garden = laboratoryData.garden;
   const plant = garden.plants[slotId];
   const seedInfo = getSeedInfo(plant.type);
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`); // Adicionar esta linha
   
   if (plant.ready) {
     const harvestAmount = calculateHarvestYield(
@@ -156,11 +169,13 @@ function harvestPlant(slotId) {
   
   // Limpa o slot
   delete garden.plants[slotId];
-  slot.innerHTML = `
-    <div class="plant-placeholder">Clique para plantar</div>
-    <div class="progress-bar"></div>
-    <div class="ready-indicator">Pronto!</div>
-  `;
+  if (slot) { // Adicionar verificação
+    slot.innerHTML = `
+      <div class="plant-placeholder">Clique para plantar</div>
+      <div class="progress-bar"></div>
+      <div class="ready-indicator">Pronto!</div>
+    `;
+  }
   
   // Atualiza os recursos mostrados
   updateLabResources();
