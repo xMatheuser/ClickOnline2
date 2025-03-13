@@ -113,10 +113,9 @@ export function initUI() {
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
 
-  // Update achievement stats and grid if overlay is open
-  if (achievementsOverlay.classList.contains('active')) {
+  // Apenas atualizar conquistas se não for um autoclick
+  if (achievementsOverlay.classList.contains('active') && newState.type !== 'autoclick') {
     updateAchievementStats();
-    // Atualizar o grid de conquistas quando receber um novo estado
     renderAchievementsScreen();
   }
   
