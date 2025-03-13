@@ -37,7 +37,7 @@ let isNotificationShowing = false;
 let newAchievements = 0;
 let viewedAchievements = new Set();
 let lastRenderedUpgrades = null; // Para upgrades
-let lastRenderedAchievements = null; // Novo: para conquistas
+let lastRenderedAchievements = null; // Para conquistas
 
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
@@ -49,7 +49,6 @@ export function initUI() {
     playSound(achievementSound);
     newAchievements++;
     updateAchievementBadge();
-    // Forçar renderização imediata se o overlay estiver ativo
     if (achievementsOverlay.classList.contains('active')) {
       renderAchievementsScreen();
       lastRenderedAchievements = JSON.stringify(gameState.achievements);
@@ -68,8 +67,8 @@ export function initUI() {
 
   openAchievementsBtn.addEventListener('click', () => {
     achievementsOverlay.classList.add('active');
-    renderAchievementsScreen(); // Renderiza ao abrir
-    lastRenderedAchievements = JSON.stringify(gameState.achievements); // Atualiza estado renderizado
+    renderAchievementsScreen();
+    lastRenderedAchievements = JSON.stringify(gameState.achievements);
     newAchievements = 0;
     updateAchievementBadge();
   });
@@ -130,6 +129,7 @@ export function handleGameStateUpdate(newState) {
       teamLevel: newState.teamLevel || gameState.teamLevel
     });
     updateStatDisplays();
+    updateUpgradeButtons(); // Atualiza botões para auto-clicks
   } else {
     updateGameState(newState);
     const ownPlayer = newState.players?.find(player => player?.id === socket.id);
@@ -154,6 +154,7 @@ export function handleGameStateUpdate(newState) {
         renderUpgrades();
         lastRenderedUpgrades = JSON.stringify(newState.upgrades);
       }
+      updateUpgradeButtons(); // Atualiza botões para qualquer mudança no estado
     }
   }
   updateClicksPerSecond();
@@ -166,9 +167,34 @@ function shouldRenderUpgrades(newState) {
 }
 
 function shouldRenderAchievements(newState) {
-  if (newState.achievementsChanged === true) return true; // Flag do servidor
+  if (newState.achievementsChanged === true) return true;
   const currentAchievements = JSON.stringify(newState.achievements);
-  return lastRenderedAchievements !== currentAchievements; // Comparação manual
+  return lastRenderedAchievements !== currentAchievements;
+}
+
+function updateUpgradeButtons() {
+  if (!gameState.upgrades || !gameState.players) return;
+
+  const ownPlayer = gameState.players.find(player => player.id === socket.id);
+  if (!ownPlayer) return;
+
+  const visibleUpgrades = getVisibleUpgrades();
+  visibleUpgrades.forEach(upgrade => {
+    const price = calculateUpgradePrice(upgrade);
+    const canAfford = gameState.teamCoins >= price;
+    const maxedOut = upgrade.level >= upgrade.maxLevel;
+    const canBuy = canAfford && !maxedOut && isOwnPlayer();
+
+    const upgradeElement = upgradesContainer.querySelector(`[data-id="${upgrade.id}"]`);
+    if (upgradeElement) {
+      const button = upgradeElement.querySelector('.rpgui-button.golden');
+      if (button) {
+        button.disabled = !canBuy;
+        button.textContent = maxedOut ? 'MAX' : formatNumber(price);
+        upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
+      }
+    }
+  });
 }
 
 function getClickValue(player) {
