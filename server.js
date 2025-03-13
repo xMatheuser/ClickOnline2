@@ -683,7 +683,8 @@ setInterval(() => {
         totalClicks: gameState.totalClicks,
         clicks: gameState.clicks,
         upgrades: gameState.upgrades,
-        teamLevel: gameState.teamLevel // Add team level to update data
+        teamLevel: gameState.teamLevel, // Add team level to update data
+        prestigeUpgrades: gameState.prestigeUpgrades // Adicionar prestigeUpgrades ao updateData
       };
       io.emit('gameStateUpdate', updateData);
     }
