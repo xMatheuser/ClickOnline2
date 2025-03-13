@@ -35,7 +35,8 @@ let clicksLastSecond = 0;
 let notificationQueue = [];
 let isNotificationShowing = false;
 let newAchievements = 0;
-let viewedAchievements = new Set(); // Add at the top with other state variables
+let viewedAchievements = new Set();
+let lastRenderedUpgrades = null; // Novo: rastreia o último estado renderizado dos upgrades
 
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
@@ -45,25 +46,23 @@ export function initUI() {
   });
   socket.on('achievementUnlocked', () => {
     playSound(achievementSound);
-    newAchievements++; // Incrementar contador de novas conquistas
-    updateAchievementBadge(); // Atualizar badge
+    newAchievements++;
+    updateAchievementBadge();
   });
   socket.on('autoClickDamage', (amount) => {
     if (!clickArea) return;
     
     const rect = clickArea.getBoundingClientRect();
-    const x = Math.random() * rect.width; // Posição aleatória
+    const x = Math.random() * rect.width;
     const y = Math.random() * rect.height;
     
     showDamageNumber(x, y, amount);
   });
-  // Add immediate initial render
-  renderUpgrades();
+  renderUpgrades(); // Renderização inicial
 
-  // Add achievements buttons handling
   openAchievementsBtn.addEventListener('click', () => {
     achievementsOverlay.classList.add('active');
-    renderAchievementsScreen(); // Change to use new render method
+    renderAchievementsScreen();
     newAchievements = 0;
     updateAchievementBadge();
   });
@@ -78,7 +77,6 @@ export function initUI() {
     }
   });
 
-  // Add bonus stats handling
   openBonusStatsBtn.addEventListener('click', () => {
     bonusStatsOverlay.classList.add('active');
     renderBonusStats();
@@ -94,26 +92,17 @@ export function initUI() {
     }
   });
 
-  // Add history initialization
   initHistory();
 
-  // Adicionar intervalo de atualização da interface
   setInterval(() => {
     updateClicksPerSecond();
     updateStatDisplays();
   }, 1000);
-
-  // Remover este listener
-  /*socket.on('click', () => {
-    clicksLastSecond++;
-    setTimeout(() => clicksLastSecond--, 1000);
-  });*/
 }
 
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
 
-  // Apenas atualizar conquistas se não for um autoclick
   if (achievementsOverlay.classList.contains('active') && newState.type !== 'autoclick') {
     updateAchievementStats();
     renderAchievementsScreen();
@@ -142,18 +131,29 @@ export function handleGameStateUpdate(newState) {
       activePlayerDisplay.textContent = ownPlayer.name;
       teamGoalDisplay.textContent = newState.teamLevel;
 
-      // Update progress bar
       const currentHP = newState.levelProgressRemaining;
       const maxHP = newState.teamLevel * 100;
       const percentage = (currentHP / maxHP * 100).toFixed(0);
       teamSharedProgressBar.style.width = `${percentage}%`;
       progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+
+      renderPlayers();
+      renderContributions();
+
+      // Otimização: só re-renderizar upgrades se houver mudanças
+      if (shouldRenderUpgrades(newState)) {
+        renderUpgrades();
+        lastRenderedUpgrades = JSON.stringify(newState.upgrades);
+      }
     }
-    renderPlayers();
-    renderContributions();
-    renderUpgrades();
   }
   updateClicksPerSecond();
+}
+
+function shouldRenderUpgrades(newState) {
+  if (newState.upgradesChanged === true) return true; // Flag do servidor
+  const currentUpgrades = JSON.stringify(newState.upgrades);
+  return lastRenderedUpgrades !== currentUpgrades; // Comparação manual
 }
 
 function getClickValue(player) {
@@ -167,14 +167,13 @@ export function renderPlayers() {
   if (!gameState?.players?.length) return;
 
   gameState.players.forEach(player => {
-    if (!player?.name) return; // Skip invalid players
+    if (!player?.name) return;
     
     try {
       const playerTag = document.createElement('div');
       playerTag.className = 'player-tag';
       playerTag.setAttribute('data-active', player.id === socket.id ? 'true' : 'false');
       
-      // Safe string operations with null checks
       const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
       
       playerTag.innerHTML = `
@@ -269,11 +268,10 @@ export function renderUpgrades() {
         showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
         return;
       }
-      playSound(tickSound); // Mudado de levelUpSound para tickSound
+      playSound(tickSound);
       socket.emit('buyUpgrade', upgrade.id);
     });
 
-    // Adicionar eventos para o tooltip
     upgradeElement.addEventListener('mouseenter', (event) => {
       showTooltip(event, tooltipText);
     });
@@ -295,7 +293,6 @@ export function renderUpgrades() {
 }
 
 export function showNotification(message) {
-  // Removido o som de achievementSound das notificações genéricas
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
   notificationQueue.push(message);
   if (!isNotificationShowing) showNextNotification();
@@ -326,10 +323,6 @@ export function updateUpgradesUI() {
   if (!upgradesContainer) return;
   
   const visibleUpgrades = renderUpgrades(upgradesContainer);
-  // Render visible upgrades
-  visibleUpgrades.forEach(upgrade => {
-    // ...existing upgrade rendering code...
-  });
 }
 
 function updateStatDisplays() {
@@ -338,7 +331,6 @@ function updateStatDisplays() {
     clicksDisplay.textContent = formatNumber(gameState.totalClicks || 0);
     teamCoinsDisplay.textContent = formatNumber(gameState.teamCoins);
     
-    // Safe update of progress bar
     const currentHP = Math.max(0, gameState.levelProgressRemaining || 0);
     const maxHP = (gameState.teamLevel || 1) * 100;
     const percentage = Math.min(100, Math.max(0, (currentHP / maxHP * 100))).toFixed(0);
@@ -390,11 +382,7 @@ function updateAchievementBadge() {
   }
 }
 
-// Remove or comment out old renderAchievements function
-// function renderAchievements() { ... }
-
 function renderAchievementsScreen() {
-  // First, clear current content
   const achievementsContent = document.getElementById('achievements-content');
   achievementsContent.innerHTML = `
     <div class="achievements-summary">
@@ -403,7 +391,6 @@ function renderAchievementsScreen() {
     <div class="achievements-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; padding: 15px;"></div>
   `;
 
-  // Update achievement stats first
   updateAchievementStats();
 
   const gridContainer = achievementsContent.querySelector('.achievements-grid');
@@ -421,13 +408,8 @@ function renderAchievementsScreen() {
       const isUnlocked = achievement.unlockedLevels.includes(levelIndex);
       const isNew = !viewedAchievements.has(`${achievement.id}_${levelIndex}`) && isUnlocked;
 
-      // Remover o som daqui - ele será tocado pelo evento 'achievementUnlocked'
-      // if (isNew && !viewedAchievements.has(`${achievement.id}_${levelIndex}`)) {
-      //   playSound(achievementSound);
-      // }
-
       const block = document.createElement('div');
-      block.className = `achievement-block ${isUnlocked ? 'pulse' : 'locked'}`; // Adicionar animação pulse
+      block.className = `achievement-block ${isUnlocked ? 'pulse' : 'locked'}`;
       block.innerHTML = `
         <div class="achievement-icon">${categoryInfo.icon}</div>
         <div class="achievement-name">${achievement.name} ${levelIndex + 1}</div>
@@ -526,7 +508,8 @@ function renderBonusStats() {
 }
 
 function updateBonusStats() {
-  if (!bonusStatsContent || !gameState.players) return;
+  const container = document.getElementById('bonus-stats-content');
+  if (!container || !gameState.players) return;
 
   const player = gameState.players.find(p => p.id === socket.id);
   if (!player) return;
@@ -572,7 +555,7 @@ function updateBonusStats() {
     }
   };
 
-  bonusStatsContent.innerHTML = Object.values(bonusCategories).map(category => `
+  container.innerHTML = Object.values(bonusCategories).map(category => `
     <div class="bonus-category">
       <h3>${category.title}</h3>
       ${category.items.map(item => `
@@ -628,7 +611,6 @@ export function showDamageNumber(x, y, amount) {
   damageNumber.className = 'damage-number';
   damageNumber.textContent = formatNumber(amount);
 
-  // Posiciona o número de dano aleatoriamente próximo ao ponto de clique
   const offsetX = (Math.random() - 0.5) * 40;
   const offsetY = (Math.random() - 0.5) * 40;
   
@@ -638,11 +620,9 @@ export function showDamageNumber(x, y, amount) {
   damageContainer.appendChild(damageNumber);
   requestAnimationFrame(() => damageNumber.classList.add('animate'));
 
-  // Remove o elemento após a animação
   setTimeout(() => damageNumber.remove(), 1000);
 }
 
-// Adicionar função para centralizar a lógica de clique
 function handleClick(x, y) {
   if (!isOwnPlayer()) return;
   
@@ -654,7 +634,6 @@ function handleClick(x, y) {
   showDamageNumber(x, y, clickValue);
 }
 
-// Modifique o evento de clique do clickArea
 if (clickArea) {
   clickArea.addEventListener('click', (e) => {
     const rect = clickArea.getBoundingClientRect();
@@ -664,7 +643,6 @@ if (clickArea) {
   });
 }
 
-// Modifique o evento de tecla P
 document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'p' && isOwnPlayer()) {
     const rect = clickArea.getBoundingClientRect();
@@ -674,7 +652,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ...existing code...
 function updateClicksPerSecond() {
   if (!clicksPerSecondDisplay || !gameState?.upgrades) return;
   
@@ -690,7 +667,6 @@ function updateClicksPerSecond() {
     ((autoClicker2?.level || 0) * 2) +
     ((autoClicker3?.level || 0) * 4);
   
-  // Usar função do InputModule
   const manualClicksPerSecond = getClicksPerSecond();
   
   const clickValue = getClickValue(player);
@@ -698,4 +674,3 @@ function updateClicksPerSecond() {
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
 }
-// ...existing code...
