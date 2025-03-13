@@ -37,6 +37,10 @@ export function initLaboratory() {
   openLabButton.addEventListener('click', () => {
     laboratoryOverlay.classList.add('active');
     updateLaboratoryUI();
+    updateGardenSlots();
+    updateLabResources();
+    checkGardenProgress(); // Atualiza imediatamente o progresso das plantas
+    renderSeedOptions(); // Adicione essa função para renderizar as sementes
   });
 
   closeLabButton.addEventListener('click', () => laboratoryOverlay.classList.remove('active'));
@@ -305,5 +309,30 @@ function updateLabResources() {
     if (counter) {
       counter.textContent = amount;
     }
+  });
+}
+
+function renderSeedOptions() {
+  const seedSelector = document.querySelector('.seed-selector');
+  seedSelector.innerHTML = Object.values(SEEDS).map(seed => `
+    <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
+                           ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
+         data-seed="${seed.id}">
+      <span class="seed-icon">${seed.icon}</span>
+      <div>
+        <div>${seed.name}</div>
+        <div class="time-info">${seed.growthTime/1000}s • ${seed.difficulty}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Reattach event listeners
+  seedSelector.querySelectorAll('.seed-option').forEach(option => {
+    option.addEventListener('click', () => {
+      if (option.classList.contains('locked')) return;
+      seedSelector.querySelectorAll('.seed-option').forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+      laboratoryData.garden.selectedSeed = option.dataset.seed;
+    });
   });
 }
