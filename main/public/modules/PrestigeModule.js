@@ -58,16 +58,14 @@ function updatePrestigeUI() {
   }
 }
 
-function calculatePrestigeReward(playerLevel) {
-  if (playerLevel < 2) return 0;
-  
+function calculatePrestigeReward() {
+  const base = Math.floor(gameState.teamLevel / 10);
   const fragmentMultiplierUpgrade = gameState.prestigeUpgrades?.find(u => u.id === 'fragment-multiplier');
-  const multiplier = fragmentMultiplierUpgrade 
-    ? fragmentMultiplierUpgrade.effect(fragmentMultiplierUpgrade.level || 0)
-    : 1;
-
-  const baseFragments = Math.floor(Math.sqrt(playerLevel) * 2);
-  return Math.floor(baseFragments * multiplier * (gameState.achievementBoosts?.prestigeCostReduction || 1));
+  
+  // Use the effect value directly instead of calling it as a function
+  const multiplier = fragmentMultiplierUpgrade ? (1 + fragmentMultiplierUpgrade.effect) : 1;
+  
+  return Math.max(1, Math.floor(base * multiplier));
 }
 
 function renderPrestigeUpgrades() {
