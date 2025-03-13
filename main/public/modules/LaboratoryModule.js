@@ -33,6 +33,7 @@ export function initLaboratory() {
     laboratoryOverlay.classList.add('active');
     updateGardenSlots();
     updateLabResources();
+    updateSlotCost(); // Adicionar esta linha
     checkGardenProgress();
     renderSeedOptions();
   });
@@ -219,6 +220,7 @@ function buyLabSlot() {
     garden.unlockedSlots++;
     updateGardenSlots();
     updateLabResources();
+    updateSlotCost(); // Adicionar esta linha
     showNotification('Novo slot de plantio desbloqueado!');
   } else {
     showNotification('Recursos insuficientes!');
@@ -288,4 +290,15 @@ function renderSeedOptions() {
       laboratoryData.garden.selectedSeed = option.dataset.seed;
     });
   });
+}
+
+// Adicionar esta nova função
+function updateSlotCost() {
+  const slotCostElement = document.querySelector('[data-item="slot"] .store-item-cost');
+  if (!slotCostElement) return;
+  
+  const nextSlotNumber = laboratoryData.garden.unlockedSlots + 1;
+  const cost = getSlotUnlockCost(nextSlotNumber);
+  
+  slotCostElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
 }
