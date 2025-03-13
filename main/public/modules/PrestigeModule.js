@@ -14,16 +14,22 @@ let lastPrestigeState = {
 
 export function initPrestige() {
   socket.on('gameStateUpdate', (newState) => {
-    const shouldUpdateUI = hasPrestigeStateChanged();
-    updatePrestigeUI();
-    
-    // Só renderiza os upgrades se houver mudança relevante no estado
-    if (shouldUpdateUI) {
-      renderPrestigeUpgrades();
+    // Ignora atualizações de clique e auto-clique
+    if (newState.type === 'click' || newState.type === 'autoclick') {
+      // Atualiza apenas o UI básico se necessário
+      if (prestigeOverlay.classList.contains('active')) {
+        updatePrestigeUI();
+      }
+      return;
     }
-    
-    // Atualiza o cache do estado
-    updatePrestigeStateCache();
+
+    // Para outros tipos de atualização, verifica se houve mudança relevante
+    const shouldUpdateUI = hasPrestigeStateChanged();
+    if (shouldUpdateUI) {
+      updatePrestigeUI();
+      renderPrestigeUpgrades();
+      updatePrestigeStateCache();
+    }
   });
 
   openPrestigeBtn.addEventListener('click', () => {
@@ -55,6 +61,11 @@ export function initPrestige() {
 function hasPrestigeStateChanged() {
   // Ignora se o estado do jogo ainda não está disponível
   if (!gameState) return false;
+  
+  // Adiciona verificação de visibilidade do overlay
+  if (prestigeOverlay.classList.contains('active')) {
+    return false;
+  }
 
   // Verifica mudanças nos fragments
   if ((gameState.fragments || 0) !== lastPrestigeState.fragments) {
