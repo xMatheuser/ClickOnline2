@@ -657,7 +657,7 @@ setInterval(() => {
       const playerInState = gameState.players.find(p => p.id === player.id);
       if (playerInState) {
         playerInState.clicks += clickValue;
-        playerInState.contribution += clickValue;
+        // Remove contribution increment from autoclicker
         
         // Emitir evento de dano automático para o cliente
         io.to(player.id).emit('autoClickDamage', clickValue);
