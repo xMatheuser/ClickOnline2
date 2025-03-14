@@ -439,3 +439,46 @@ body.dark-mode #tooltip {
   background-color: rgba(0, 0, 0, 0.1);
   transform: scale(1.1);
 }
+
+.bulk-buy-container {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0;
+  padding: 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+}
+
+.bulk-buy-button {
+  background: linear-gradient(to bottom, #8b4513, #654321);
+  border: 2px solid #deb887;
+  color: #ffe4b5;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  min-width: 60px;
+}
+
+.bulk-buy-button.active {
+  background: linear-gradient(to bottom, #4CAF50, #388E3C);
+  border-color: #81C784;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+}
+
+.bulk-buy-button:hover {
+  transform: translateY(-1px);
+}
+
+body.dark-mode .bulk-buy-button {
+  background: linear-gradient(to bottom, #654321, #3a2612);
+  border-color: #8b4513;
+}
+
+body.dark-mode .bulk-buy-button.active {
+  background: linear-gradient(to bottom, #388E3C, #2E7D32);
+  border-color: #66BB6A;
+}

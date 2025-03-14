@@ -39,6 +39,9 @@ let viewedAchievements = new Set();
 let lastRenderedUpgrades = null; // Para upgrades
 let lastRenderedAchievements = null; // Para conquistas
 
+export const bulkBuyOptions = [1, 10, 100, 'max'];
+let selectedBulkBuy = 1;
+
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
   socket.on('notification', showNotification);
@@ -104,6 +107,29 @@ export function initUI() {
     updateClicksPerSecond();
     updateStatDisplays();
   }, 1000);
+
+  // Add bulk buy buttons
+  if (upgradesContainer) {
+    const bulkBuyContainer = document.createElement('div');
+    bulkBuyContainer.className = 'bulk-buy-container';
+    
+    bulkBuyOptions.forEach(amount => {
+      const button = document.createElement('button');
+      button.className = `bulk-buy-button ${amount === selectedBulkBuy ? 'active' : ''}`;
+      button.textContent = amount === 'max' ? 'Máximo' : `x${amount}`;
+      button.onclick = () => {
+        selectedBulkBuy = amount;
+        document.querySelectorAll('.bulk-buy-button').forEach(btn => 
+          btn.classList.toggle('active', btn.textContent === button.textContent)
+        );
+        updateUpgradeButtons();
+      };
+      bulkBuyContainer.appendChild(button);
+    });
+    
+    // Inserir no início do container de upgrades
+    upgradesContainer.insertAdjacentElement('beforebegin', bulkBuyContainer);
+  }
 }
 
 export function handleGameStateUpdate(newState) {
@@ -180,17 +206,18 @@ function updateUpgradeButtons() {
 
   const visibleUpgrades = getVisibleUpgrades();
   visibleUpgrades.forEach(upgrade => {
-    const price = calculateUpgradePrice(upgrade);
-    const canAfford = gameState.teamCoins >= price;
+    const { cost: totalPrice, levels: purchaseLevels } = calculateBulkPrice(upgrade, selectedBulkBuy);
+    const canAfford = gameState.teamCoins >= totalPrice;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
-    const canBuy = canAfford && !maxedOut && isOwnPlayer();
+    const canBuy = canAfford && !maxedOut && isOwnPlayer() && purchaseLevels > 0;
 
     const upgradeElement = upgradesContainer.querySelector(`[data-id="${upgrade.id}"]`);
     if (upgradeElement) {
       const button = upgradeElement.querySelector('.rpgui-button.golden');
       if (button) {
         button.disabled = !canBuy;
-        button.textContent = maxedOut ? 'MAX' : formatNumber(price);
+        const buttonText = maxedOut ? 'MAX' : `${formatNumber(totalPrice)} ${purchaseLevels > 1 ? `(x${purchaseLevels})` : ''}`;
+        button.textContent = buttonText;
         upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
       }
     }
@@ -285,10 +312,10 @@ export function renderUpgrades() {
   const visibleUpgrades = getVisibleUpgrades();
   
   visibleUpgrades.forEach(upgrade => {
-    const price = calculateUpgradePrice(upgrade);
-    const canAfford = gameState.teamCoins >= price;
+    const { cost: totalPrice, levels: purchaseLevels } = calculateBulkPrice(upgrade, selectedBulkBuy);
+    const canAfford = gameState.teamCoins >= totalPrice;
     const maxedOut = upgrade.level >= upgrade.maxLevel;
-    const canBuy = canAfford && !maxedOut && isOwnPlayer();
+    const canBuy = canAfford && !maxedOut && isOwnPlayer() && purchaseLevels > 0;
 
     const upgradeElement = document.createElement('div');
     upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
@@ -300,7 +327,7 @@ export function renderUpgrades() {
         <div><strong>${upgrade.icon} ${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(price)}</button>
+      <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(totalPrice)} ${purchaseLevels > 1 ? `(x${purchaseLevels})` : ''}`}</button>
     `;
 
     const buyButton = upgradeElement.querySelector('.rpgui-button.golden');
@@ -310,7 +337,7 @@ export function renderUpgrades() {
         return;
       }
       playSound(tickSound);
-      socket.emit('buyUpgrade', upgrade.id);
+      socket.emit('buyUpgrade', { id: upgrade.id, amount: selectedBulkBuy });
     });
 
     upgradeElement.addEventListener('mouseenter', (event) => {
@@ -714,4 +741,32 @@ function updateClicksPerSecond() {
   const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
+}
+
+function calculateBulkPrice(upgrade, amount) {
+  if (amount === 'max') {
+    let maxAffordable = 0;
+    let totalCost = 0;
+    let currentPrice = calculateUpgradePrice(upgrade);
+    let remainingLevels = upgrade.maxLevel - upgrade.level;
+    let availableCoins = gameState.teamCoins;
+
+    while (maxAffordable < remainingLevels && availableCoins >= currentPrice) {
+      totalCost += currentPrice;
+      availableCoins -= currentPrice;
+      maxAffordable++;
+      currentPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + maxAffordable));
+    }
+
+    return { cost: totalCost, levels: maxAffordable };
+  } else {
+    let totalCost = 0;
+    let actualLevels = Math.min(amount, upgrade.maxLevel - upgrade.level);
+    
+    for (let i = 0; i < actualLevels; i++) {
+      totalCost += Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + i));
+    }
+
+    return { cost: totalCost, levels: actualLevels };
+  }
 }

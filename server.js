@@ -338,34 +338,51 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('buyUpgrade', (upgradeId) => {
+  socket.on('buyUpgrade', (data) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (!player || !isActivePlayer(socket.id, player.id)) {
       socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
       return;
     }
-
-    const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+  
+    const upgrade = gameState.upgrades.find(u => u.id === (typeof data === 'string' ? data : data.id));
     if (!upgrade) {
       socket.emit('notification', 'Upgrade não encontrado!');
       return;
     }
-
-    let price = getUpgradePrice(upgrade);
-    if (gameState.teamCoins >= price && upgrade.level < upgrade.maxLevel) {
-      gameState.teamCoins -= price;
-      upgrade.level++;
-      // Add emit for purchase animation
-      io.emit('upgradePurchased', upgradeId);
+  
+    const amount = typeof data === 'string' ? 1 : (data.amount === 'max' ? Infinity : data.amount);
+    let totalCost = 0;
+    let levelsToAdd = 0;
+    let currentLevel = upgrade.level;
+  
+    while (levelsToAdd < amount && currentLevel < upgrade.maxLevel) {
+      const nextPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, currentLevel));
+      if (gameState.teamCoins >= totalCost + nextPrice) {
+        totalCost += nextPrice;
+        levelsToAdd++;
+        currentLevel++;
+      } else {
+        break;
+      }
+    }
+  
+    if (levelsToAdd > 0) {
+      gameState.teamCoins -= totalCost;
+      upgrade.level += levelsToAdd;
+      
+      // Existing shared rewards logic
       const sharedRewardBonus = getUpgradeEffect('shared-rewards');
       if (sharedRewardBonus > 0) {
-        const sharedCoins = Math.round(price * sharedRewardBonus);
+        const sharedCoins = Math.round(totalCost * sharedRewardBonus);
         gameState.teamCoins += sharedCoins;
       }
+  
       broadcastGameState();
       checkAchievements();
+      socket.emit('notification', `Upgrade ${upgrade.name} comprado ${levelsToAdd}x! Agora é nível ${upgrade.level}`);
     } else {
-      socket.emit('notification', gameState.teamCoins < price ? `Moedas insuficientes!` : `${upgrade.name} já está no nível máximo!`);
+      socket.emit('notification', gameState.teamCoins < totalCost ? 'Moedas insuficientes!' : `${upgrade.name} já está no nível máximo!`);
     }
   });
 
