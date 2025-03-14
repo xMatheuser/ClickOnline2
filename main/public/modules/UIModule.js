@@ -327,13 +327,15 @@ export function renderUpgrades() {
     const tooltipText = getUpgradeEffectDescription(upgrade);
 
     upgradeElement.innerHTML = `
-      <div class="upgrade-info">
-        <div><strong>${upgrade.icon} ${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
-        <div>${upgrade.description}</div>
-      </div>
-      <div class="upgrade-purchase">
-        ${!maxedOut ? `<div class="upgrade-amount ${purchaseLevels > 1 ? 'visible' : ''}">${purchaseLevels > 1 ? `x${purchaseLevels}` : ''}</div>` : ''}
-        <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(totalPrice)}</button>
+      <div class="upgrade-header">
+        <div class="upgrade-name">
+          ${upgrade.icon} ${upgrade.name}
+        </div>
+        <div class="upgrade-purchase">
+          <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span>
+          ${!maxedOut ? `<div class="upgrade-amount ${purchaseLevels > 1 ? 'visible' : ''}">${purchaseLevels > 1 ? `x${purchaseLevels}` : ''}</div>` : ''}
+          <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(totalPrice)}</button>
+        </div>
       </div>
     `;
 
