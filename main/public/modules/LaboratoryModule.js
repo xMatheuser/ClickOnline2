@@ -21,16 +21,59 @@ socket.on('gardenUpdate', (garden) => {
   };
   updateGardenSlots();
   updateLabResources();
+  updateFertilizerCost();
   renderSeedOptions();
 });
 
 // Listen for initial garden data
 socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
   laboratoryData.seeds = seeds;
-  laboratoryData.gardenUpgrades = upgrades;
+  
+  // Reconstruir as funções a partir das strings
+  laboratoryData.gardenUpgrades = {};
+  Object.entries(upgrades).forEach(([key, upgrade]) => {
+    try {
+      // Reconstruir as funções getEffect e getCost
+      const getEffectFn = upgrade.getEffectStr ? 
+        new Function('return ' + upgrade.getEffectStr)() : 
+        (level) => 1; // Função padrão
+      
+      const getCostFn = upgrade.getCostStr ? 
+        new Function('return ' + upgrade.getCostStr)() : 
+        (level) => ({}); // Função padrão
+      
+      laboratoryData.gardenUpgrades[key] = {
+        ...upgrade,
+        getEffect: getEffectFn,
+        getCost: getCostFn
+      };
+    } catch (error) {
+      console.error(`[Jardim] Erro ao reconstruir funções para upgrade ${key}:`, error);
+      // Fallback para funções padrão
+      laboratoryData.gardenUpgrades[key] = {
+        ...upgrade,
+        getEffect: (level) => 1,
+        getCost: (level) => ({})
+      };
+    }
+  });
+  
   laboratoryData.garden = garden;
+  
+  console.log('[Jardim] Dados iniciais recebidos:', {
+    seeds: Object.keys(seeds),
+    upgrades: Object.keys(laboratoryData.gardenUpgrades),
+    garden: {
+      unlockedSlots: garden.unlockedSlots,
+      crystalUnlocked: garden.crystalUnlocked,
+      resources: garden.resources,
+      upgrades: garden.upgrades
+    }
+  });
+  
   updateGardenSlots();
   updateLabResources();
+  updateFertilizerCost();
   renderSeedOptions();
 });
 
@@ -51,6 +94,7 @@ export function initLaboratory() {
     updateGardenSlots();
     updateLabResources();
     updateSlotCost();
+    updateFertilizerCost();
     checkGardenProgress();
     renderSeedOptions();
     
@@ -92,6 +136,18 @@ function initLaboratoryGarden() {
   
   document.getElementById('buy-lab-slot').addEventListener('click', buyLabSlot);
   document.getElementById('buy-lab-crystal').addEventListener('click', buyLabCrystal);
+  
+  // Adiciona event listener para o botão do fertilizante
+  const buyFertilizerButton = document.getElementById('buy-lab-fertilizer');
+  if (buyFertilizerButton) {
+    buyFertilizerButton.addEventListener('click', buyLabFertilizer);
+  }
+  
+  // Adiciona event listener para o botão "Colher Tudo"
+  const harvestAllButton = document.getElementById('harvest-all-button');
+  if (harvestAllButton) {
+    harvestAllButton.addEventListener('click', harvestAllPlants);
+  }
   
   setInterval(checkGardenProgress, 1000);
 }
@@ -234,12 +290,36 @@ function harvestPlant(slotId) {
   socket.emit('harvestPlant', slotId);
 }
 
+function harvestAllPlants() {
+  const garden = laboratoryData.garden;
+  let readyPlantsFound = false;
+  
+  // Verifica se há plantas prontas para colher
+  for (const slotId in garden.plants) {
+    if (garden.plants[slotId].ready) {
+      readyPlantsFound = true;
+      break;
+    }
+  }
+  
+  if (readyPlantsFound) {
+    socket.emit('harvestAllPlants');
+    console.log('Solicitação para colher todas as plantas enviada');
+  } else {
+    console.log('Não há plantas prontas para colher');
+  }
+}
+
 function buyLabSlot() {
   socket.emit('buyGardenUpgrade', { upgradeId: 'slot' });
 }
 
 function buyLabCrystal() {
   socket.emit('buyGardenUpgrade', { upgradeId: 'crystal' });
+}
+
+function buyLabFertilizer() {
+  socket.emit('buyGardenUpgrade', { upgradeId: 'fertilizer' });
 }
 
 function checkGardenProgress() {
@@ -296,17 +376,28 @@ function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
   if (!seedSelector) return;
   
-  seedSelector.innerHTML = Object.values(laboratoryData.seeds).map(seed => `
-    <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
+  seedSelector.innerHTML = Object.values(laboratoryData.seeds).map(seed => {
+    // Calcular o tempo real de crescimento com os upgrades
+    const baseTime = seed.growthTime / 1000; // Converter para segundos
+    const adjustedTime = Math.round(calculateAdjustedGrowthTime(seed.growthTime) / 1000);
+    
+    // Formatar o tempo para exibição
+    const timeDisplay = adjustedTime < baseTime ? 
+      `<span class="time-reduced">${adjustedTime}s</span> <span class="time-original">(${baseTime}s)</span>` : 
+      `${adjustedTime}s`;
+    
+    return `
+      <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
                            ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
-         data-seed="${seed.id}">
-      <span class="seed-icon">${seed.icon}</span>
-      <div>
-        <div>${seed.name}</div>
-        <div class="time-info">${seed.growthTime/1000}s • ${seed.difficulty}</div>
+           data-seed="${seed.id}">
+        <span class="seed-icon">${seed.icon}</span>
+        <div>
+          <div>${seed.name}</div>
+          <div class="time-info">${timeDisplay} • ${seed.difficulty}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   // Reattach event listeners
   seedSelector.querySelectorAll('.seed-option').forEach(option => {
@@ -336,6 +427,69 @@ function updateSlotCost() {
   const cost = getSlotUnlockCost(nextSlotNumber);
   
   slotCostElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
+  
+  // Atualiza o custo do fertilizante
+  updateFertilizerCost();
+}
+
+// Função para atualizar o custo e nível do fertilizante
+function updateFertilizerCost() {
+  const fertilizerElement = document.querySelector('[data-item="fertilizer"]');
+  if (!fertilizerElement) return;
+  
+  const costElement = fertilizerElement.querySelector('.store-item-cost');
+  const titleElement = fertilizerElement.querySelector('.store-item-title');
+  const buyButton = fertilizerElement.querySelector('.buy-button');
+  
+  if (!costElement || !titleElement || !buyButton) return;
+  
+  const garden = laboratoryData.garden;
+  const currentLevel = garden.upgrades?.fertilizer || 0;
+  
+  // Atualiza o título para mostrar o nível atual
+  titleElement.textContent = `Fertilizante Superior ${currentLevel > 0 ? `Nível ${currentLevel}` : ''}`;
+  
+  // Adiciona classe visual para indicar que o upgrade foi comprado
+  if (currentLevel > 0) {
+    fertilizerElement.classList.add('purchased');
+  } else {
+    fertilizerElement.classList.remove('purchased');
+  }
+  
+  // Se atingiu o nível máximo
+  if (currentLevel >= 5) {
+    costElement.textContent = 'Nível Máximo';
+    buyButton.disabled = true;
+    buyButton.textContent = 'Máximo';
+    return;
+  } else {
+    buyButton.disabled = false;
+    buyButton.textContent = 'Comprar';
+  }
+  
+  // Calcula o custo para o próximo nível
+  const nextLevel = currentLevel + 1;
+  const baseCost = { sunflower: 10, tulip: 8, mushroom: 5 };
+  const cost = {
+    sunflower: Math.floor(baseCost.sunflower * Math.pow(1.5, currentLevel)),
+    tulip: Math.floor(baseCost.tulip * Math.pow(1.5, currentLevel)),
+    mushroom: Math.floor(baseCost.mushroom * Math.pow(1.5, currentLevel))
+  };
+  
+  // Verifica se o jogador tem recursos suficientes
+  const hasEnoughResources = 
+    garden.resources.sunflower >= cost.sunflower &&
+    garden.resources.tulip >= cost.tulip &&
+    garden.resources.mushroom >= cost.mushroom;
+  
+  // Atualiza o visual do botão com base nos recursos
+  if (!hasEnoughResources) {
+    buyButton.classList.add('insufficient');
+  } else {
+    buyButton.classList.remove('insufficient');
+  }
+  
+  costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷, ${cost.mushroom} 🍄`;
 }
 
 // Novo sistema de custos para slots
@@ -348,4 +502,44 @@ function getSlotUnlockCost(nextSlotNumber) {
 
 function getSeedIcon(seedId) {
   return laboratoryData.seeds[seedId]?.icon || '❓';
+}
+
+// Função para calcular o tempo de crescimento ajustado
+function calculateAdjustedGrowthTime(baseTime) {
+  const garden = laboratoryData.garden;
+  const upgrades = garden.upgrades || {};
+  
+  // Calcular multiplicador de velocidade
+  let speedMultiplier = 1;
+  const speedLevel = upgrades.growthSpeed || 0;
+  if (speedLevel > 0 && laboratoryData.gardenUpgrades?.growthSpeed?.getEffect) {
+    try {
+      speedMultiplier = laboratoryData.gardenUpgrades.growthSpeed.getEffect(speedLevel);
+    } catch (error) {
+      console.error('[Jardim] Erro ao calcular efeito de velocidade:', error);
+      // Fallback para cálculo manual
+      speedMultiplier = 1 - (speedLevel * 0.1);
+    }
+  }
+  
+  // Calcular multiplicador de fertilizante
+  let fertilizerMultiplier = 1;
+  const fertilizerLevel = upgrades.fertilizer || 0;
+  if (fertilizerLevel > 0 && laboratoryData.gardenUpgrades?.fertilizer?.getEffect) {
+    try {
+      fertilizerMultiplier = laboratoryData.gardenUpgrades.fertilizer.getEffect(fertilizerLevel);
+    } catch (error) {
+      console.error('[Jardim] Erro ao calcular efeito de fertilizante:', error);
+      // Fallback para cálculo manual
+      fertilizerMultiplier = 1 - (fertilizerLevel * 0.2);
+    }
+  }
+  
+  // Calcular tempo ajustado
+  const totalMultiplier = speedMultiplier * fertilizerMultiplier;
+  const adjustedTime = baseTime * totalMultiplier;
+  
+  console.log(`[Jardim] Tempo ajustado: ${baseTime}ms -> ${adjustedTime}ms (${totalMultiplier.toFixed(2)}x)`);
+  
+  return adjustedTime;
 }

@@ -73,5 +73,18 @@ export const GARDEN_UPGRADES = {
         tulip: Math.floor(8 * Math.pow(2, level)),
         mushroom: Math.floor(3 * Math.pow(2, level))
       })
+    },
+    fertilizer: {
+      id: 'fertilizer',
+      name: 'Fertilizante Superior',
+      description: 'Reduz em 20% o tempo de crescimento de todas as plantas',
+      baseCost: { sunflower: 10, tulip: 8, mushroom: 5 },
+      maxLevel: 5,
+      getEffect: (level) => 1 - (level * 0.2), // 20% reduction per level
+      getCost: (level) => ({
+        sunflower: Math.floor(10 * Math.pow(1.5, level)),
+        tulip: Math.floor(8 * Math.pow(1.5, level)),
+        mushroom: Math.floor(5 * Math.pow(1.5, level))
+      })
     }
 };

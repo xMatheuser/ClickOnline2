@@ -589,6 +589,37 @@ io.on('connection', (socket) => {
     io.emit('gardenUpdate', garden);
   });
 
+  socket.on('harvestAllPlants', () => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    let plantsHarvested = false;
+
+    // Percorre todas as plantas e colhe as que estão prontas
+    for (const slotId in garden.plants) {
+      const plant = garden.plants[slotId];
+      if (plant && plant.ready) {
+        const harvestAmount = calculateHarvestYield(
+          gameState.gardenSeeds[plant.type].reward.amount,
+          garden.upgrades
+        );
+
+        // Adiciona recursos ao inventário compartilhado
+        garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+        delete garden.plants[slotId];
+        plantsHarvested = true;
+      }
+    }
+
+    if (plantsHarvested) {
+      // Envia atualização para todos os jogadores
+      io.emit('gardenUpdate', garden);
+      socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
+    } else {
+      socket.emit('notification', 'Não há plantas prontas para colher!');
+    }
+  });
+
   socket.on('buyGardenUpgrade', ({ upgradeId }) => {
     const garden = gameState.gardens.sharedGarden;
     if (!garden) return;
@@ -601,6 +632,60 @@ io.on('connection', (socket) => {
       garden.unlockedSlots++;
     } else if (upgradeId === 'crystal') {
       garden.crystalUnlocked = true;
+    } else if (upgradeId === 'fertilizer') {
+      // Verificar se já tem o upgrade e se está no nível máximo
+      if (!garden.upgrades.fertilizer) {
+        garden.upgrades.fertilizer = 0;
+      }
+      
+      if (garden.upgrades.fertilizer >= gameState.gardenUpgrades.fertilizer.maxLevel) {
+        socket.emit('notification', 'Fertilizante já está no nível máximo!');
+        return;
+      }
+      
+      // Verificar se tem recursos suficientes
+      const nextLevel = garden.upgrades.fertilizer + 1;
+      const cost = gameState.gardenUpgrades.fertilizer.getCost(garden.upgrades.fertilizer);
+      
+      if (garden.resources.sunflower < cost.sunflower || 
+          garden.resources.tulip < cost.tulip || 
+          garden.resources.mushroom < cost.mushroom) {
+        socket.emit('notification', 'Recursos insuficientes para comprar o Fertilizante!');
+        return;
+      }
+      
+      // Deduzir recursos
+      garden.resources.sunflower -= cost.sunflower;
+      garden.resources.tulip -= cost.tulip;
+      garden.resources.mushroom -= cost.mushroom;
+      
+      // Aumentar nível do fertilizante
+      garden.upgrades.fertilizer++;
+      
+      // Recalcular o tempo de crescimento de todas as plantas existentes
+      for (const slotId in garden.plants) {
+        const plant = garden.plants[slotId];
+        if (plant && !plant.ready) {
+          // Calcular o progresso atual em porcentagem
+          const elapsed = Date.now() - plant.plantedAt;
+          const progressPercent = elapsed / plant.growthTime;
+          
+          // Recalcular o tempo de crescimento com o novo nível de fertilizante
+          const newGrowthTime = calculateGrowthTime(
+            getSeedGrowthTime(plant.type),
+            garden.upgrades
+          );
+          
+          // Atualizar o tempo de plantio para manter o mesmo progresso percentual
+          const newElapsed = progressPercent * newGrowthTime;
+          plant.plantedAt = Date.now() - newElapsed;
+          plant.growthTime = newGrowthTime;
+          
+          console.log(`[Jardim] Planta no slot ${slotId} atualizada: Progresso=${(progressPercent*100).toFixed(1)}%, Novo tempo=${newGrowthTime}ms`);
+        }
+      }
+      
+      socket.emit('notification', `Fertilizante Superior melhorado para nível ${garden.upgrades.fertilizer}!`);
     }
 
     // Broadcast updates to all players
@@ -612,10 +697,23 @@ io.on('connection', (socket) => {
     const garden = gameState.gardens.sharedGarden;
     if (!garden) return;
 
+    // Garantir que os upgrades sejam enviados como objetos completos
+    const gardenUpgrades = {};
+    
+    // Copiar os métodos e propriedades dos upgrades
+    Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
+      gardenUpgrades[key] = {
+        ...upgrade,
+        // Converter as funções em strings para serem reconstruídas no cliente
+        getEffectStr: upgrade.getEffect.toString(),
+        getCostStr: upgrade.getCost.toString()
+      };
+    });
+
     // Envia dados atualizados do jardim para o cliente
     socket.emit('gardenInit', {
       seeds: gameState.gardenSeeds,
-      upgrades: gameState.gardenUpgrades,
+      upgrades: gardenUpgrades,
       garden: garden
     });
 
@@ -844,8 +942,24 @@ setInterval(() => {
 
 
 function calculateGrowthTime(baseTime, upgradeLevels) {
-  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
-  return baseTime * speedMultiplier;
+  // Garantir que upgradeLevels seja um objeto válido
+  upgradeLevels = upgradeLevels || {};
+  
+  // Calcular o multiplicador de velocidade de crescimento
+  const speedLevel = upgradeLevels.growthSpeed || 0;
+  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(speedLevel);
+  
+  // Calcular o multiplicador do fertilizante
+  const fertilizerLevel = upgradeLevels.fertilizer || 0;
+  const fertilizerMultiplier = fertilizerLevel > 0 ? 
+    GARDEN_UPGRADES.fertilizer.getEffect(fertilizerLevel) : 1;
+  
+  // Calcular o tempo de crescimento ajustado
+  const adjustedTime = baseTime * speedMultiplier * fertilizerMultiplier;
+  
+  console.log(`[Jardim] Tempo de crescimento: Base=${baseTime}ms, Velocidade=${speedMultiplier.toFixed(2)}x (Nível ${speedLevel}), Fertilizante=${fertilizerMultiplier.toFixed(2)}x (Nível ${fertilizerLevel}), Final=${adjustedTime}ms`);
+  
+  return adjustedTime;
 }
 
 function calculateHarvestYield(baseAmount, upgradeLevels) {
