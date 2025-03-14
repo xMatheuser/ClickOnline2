@@ -214,11 +214,15 @@ function updateUpgradeButtons() {
     const upgradeElement = upgradesContainer.querySelector(`[data-id="${upgrade.id}"]`);
     if (upgradeElement) {
       const button = upgradeElement.querySelector('.rpgui-button.golden');
+      const amountDisplay = upgradeElement.querySelector('.upgrade-amount');
       if (button) {
         button.disabled = !canBuy;
-        const buttonText = maxedOut ? 'MAX' : `${formatNumber(totalPrice)} ${purchaseLevels > 1 ? `(x${purchaseLevels})` : ''}`;
-        button.textContent = buttonText;
+        button.textContent = maxedOut ? 'MAX' : formatNumber(totalPrice);
         upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
+      }
+      if (amountDisplay) {
+        amountDisplay.textContent = purchaseLevels > 1 ? `x${purchaseLevels}` : '';
+        amountDisplay.className = `upgrade-amount ${purchaseLevels > 1 ? 'visible' : ''}`;
       }
     }
   });
@@ -327,7 +331,10 @@ export function renderUpgrades() {
         <div><strong>${upgrade.icon} ${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
         <div>${upgrade.description}</div>
       </div>
-      <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(totalPrice)} ${purchaseLevels > 1 ? `(x${purchaseLevels})` : ''}`}</button>
+      <div class="upgrade-purchase">
+        ${!maxedOut ? `<div class="upgrade-amount ${purchaseLevels > 1 ? 'visible' : ''}">${purchaseLevels > 1 ? `x${purchaseLevels}` : ''}</div>` : ''}
+        <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : formatNumber(totalPrice)}</button>
+      </div>
     `;
 
     const buyButton = upgradeElement.querySelector('.rpgui-button.golden');
