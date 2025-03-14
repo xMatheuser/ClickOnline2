@@ -157,21 +157,73 @@
   cursor: not-allowed;
 }
 
-.harvest-all-container {
+.garden-controls {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   margin: 1rem 0;
+  padding: 0 1rem;
+  position: relative;
 }
 
 #harvest-all-button {
-  padding: 0.5rem 1.5rem;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
+  font-size: 0.9rem !important;
+  padding: 8px 16px !important;
+  height: auto !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  margin-left: auto;
+  margin-right: 0.5rem;
+  box-shadow: 0 2px 5px rgba(76, 175, 80, 0.2);
+}
+
+.harvest-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+  animation: gentle-bounce 2s infinite ease-in-out;
+}
+
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 #harvest-all-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+#harvest-all-button:hover .harvest-icon {
+  animation-duration: 0.5s;
+}
+
+#harvest-all-button.has-ready-plants {
+  background: linear-gradient(to bottom, #66BB6A, #43A047);
+  border-color: #A5D6A7;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  animation: pulse-glow 2s infinite;
+}
+
+#harvest-all-button:disabled {
+  background: linear-gradient(to bottom, #696969, #4a4a4a);
+  border-color: #808080;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+
+#harvest-all-button:disabled .harvest-icon {
+  animation: none;
+  opacity: 0.5;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+  50% { box-shadow: 0 0 15px rgba(76, 175, 80, 0.8); }
 }
 
 .garden-grid {

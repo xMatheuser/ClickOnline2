@@ -24,6 +24,7 @@ socket.on('gardenUpdate', (garden) => {
   updateSlotCost();
   updateCrystalCost();
   updateFertilizerCost();
+  updateHarvestAllButton();
   renderSeedOptions();
 });
 
@@ -78,6 +79,7 @@ socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
   updateSlotCost();
   updateCrystalCost();
   updateFertilizerCost();
+  updateHarvestAllButton();
   renderSeedOptions();
 });
 
@@ -100,6 +102,7 @@ export function initLaboratory() {
     updateSlotCost();
     updateCrystalCost();
     updateFertilizerCost();
+    updateHarvestAllButton();
     checkGardenProgress();
     renderSeedOptions();
     
@@ -250,6 +253,9 @@ function updateGardenSlots() {
   while (gardenGrid.children.length > totalSlots) {
     gardenGrid.removeChild(gardenGrid.lastChild);
   }
+  
+  // Atualiza o botão "Colher Tudo" após atualizar os slots
+  updateHarvestAllButton();
 }
 
 function setupGardenSlot(slot) {
@@ -310,6 +316,7 @@ function harvestAllPlants() {
   if (readyPlantsFound) {
     socket.emit('harvestAllPlants');
     console.log('Solicitação para colher todas as plantas enviada');
+    // O botão será atualizado quando o servidor enviar a atualização do jardim
   } else {
     console.log('Não há plantas prontas para colher');
   }
@@ -361,6 +368,36 @@ function checkGardenProgress() {
   // Se alguma planta foi atualizada para pronta, atualiza a interface
   if (updated) {
     updateGardenSlots();
+    updateHarvestAllButton();
+  }
+}
+
+// Função para atualizar o botão "Colher Tudo"
+function updateHarvestAllButton() {
+  const harvestAllButton = document.getElementById('harvest-all-button');
+  if (!harvestAllButton) return;
+  
+  const garden = laboratoryData.garden;
+  let readyPlantsCount = 0;
+  
+  // Conta quantas plantas estão prontas para colheita
+  for (const slotId in garden.plants) {
+    if (garden.plants[slotId].ready) {
+      readyPlantsCount++;
+    }
+  }
+  
+  // Atualiza o texto do botão com o contador
+  if (readyPlantsCount > 0) {
+    harvestAllButton.innerHTML = `<span class="harvest-icon">🌿</span> Colher Tudo (${readyPlantsCount})`;
+    harvestAllButton.classList.add('has-ready-plants');
+    harvestAllButton.disabled = false;
+    harvestAllButton.title = `Colher ${readyPlantsCount} ${readyPlantsCount === 1 ? 'planta pronta' : 'plantas prontas'}`;
+  } else {
+    harvestAllButton.innerHTML = `<span class="harvest-icon">🌿</span> Colher Tudo`;
+    harvestAllButton.classList.remove('has-ready-plants');
+    harvestAllButton.disabled = true;
+    harvestAllButton.title = 'Não há plantas prontas para colher';
   }
 }
 
