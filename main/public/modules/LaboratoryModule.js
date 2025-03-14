@@ -1,6 +1,3 @@
-import { 
-  getSeedIcon, 
-  getSlotUnlockCost} from './GardenModule.js';
 import socket from './SocketManager.js';
 
 export let laboratoryData = {
@@ -350,5 +347,5 @@ function getSlotUnlockCost(nextSlotNumber) {
 }
 
 function getSeedIcon(seedId) {
-  return SEEDS[seedId]?.icon || '❓';
+  return laboratoryData.seeds[seedId]?.icon || '❓';
 }
