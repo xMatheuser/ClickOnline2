@@ -41,6 +41,44 @@ export function calculateUpgradePrice(upgrade) {
   return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
 }
 
+export function calculateBulkPrice(upgrade, amount) {
+  if (amount === 'max') {
+    let maxAffordable = 0;
+    let totalCost = 0;
+    let currentPrice = calculateUpgradePrice(upgrade);
+    let remainingLevels = upgrade.maxLevel - upgrade.level;
+    let availableCoins = gameState.teamCoins;
+
+    // Se não pode comprar nem mesmo 1 nível, retorna o custo de 1 nível
+    if (availableCoins < currentPrice) {
+      return { cost: currentPrice, levels: 0 };
+    }
+
+    while (maxAffordable < remainingLevels && availableCoins >= currentPrice) {
+      totalCost += currentPrice;
+      availableCoins -= currentPrice;
+      maxAffordable++;
+      currentPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + maxAffordable));
+    }
+
+    // Se não conseguiu comprar nenhum nível, retorna o custo de 1 nível
+    if (maxAffordable === 0) {
+      return { cost: calculateUpgradePrice(upgrade), levels: 0 };
+    }
+
+    return { cost: totalCost, levels: maxAffordable };
+  } else {
+    let totalCost = 0;
+    let actualLevels = Math.min(amount, upgrade.maxLevel - upgrade.level);
+    
+    for (let i = 0; i < actualLevels; i++) {
+      totalCost += Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + i));
+    }
+
+    return { cost: totalCost, levels: actualLevels };
+  }
+}
+
 export function getUpgradeEffectDescription(upgrade) {
   if (!upgrade) return '';
   
