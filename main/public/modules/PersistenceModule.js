@@ -1,9 +1,9 @@
-import { gameState } from './CoreModule.js';
+import { laboratoryData } from './LaboratoryModule.js';
 import { showNotification } from './UIModule.js';
 
 export function saveGameState() {
   try {
-    localStorage.setItem('laboratoryData', JSON.stringify(gameState.laboratory));
+    localStorage.setItem('laboratoryData', JSON.stringify(laboratoryData));
     localStorage.setItem('lastSaveTime', Date.now().toString());
   } catch (e) {
     console.error('Error saving game state:', e);
@@ -14,7 +14,7 @@ export function loadGameState() {
   try {
     const savedLaboratoryData = localStorage.getItem('laboratoryData');
     if (savedLaboratoryData) {
-      gameState.laboratory = JSON.parse(savedLaboratoryData);
+      Object.assign(laboratoryData, JSON.parse(savedLaboratoryData));
     }
     const lastSaveTime = parseInt(localStorage.getItem('lastSaveTime') || '0');
     const timeDiff = Date.now() - lastSaveTime;
@@ -26,16 +26,16 @@ export function loadGameState() {
 
 function processOfflineProgress(timeDiff) {
   const seconds = Math.floor(timeDiff / 1000);
-  const garden = gameState.laboratory.garden;
-  
-  // Update plants that grew while offline
-  Object.entries(garden.plants).forEach(([slotId, plant]) => {
+  const pointsGained = laboratoryData.pointsPerSecond * seconds;
+  laboratoryData.researchPoints += pointsGained;
+  Object.entries(laboratoryData.garden.plants).forEach(([slotId, plant]) => {
     if (!plant.ready && Date.now() - plant.plantedAt >= plant.growthTime) {
       plant.ready = true;
     }
   });
-  
-  showNotification(`Progresso Offline:\nPlantações atualizadas!`);
+  if (pointsGained > 0) {
+    showNotification(`Progresso Offline:\n+${Math.floor(pointsGained)} pontos de pesquisa\nPlantações atualizadas!`);
+  }
 }
 
 setInterval(saveGameState, 60000);

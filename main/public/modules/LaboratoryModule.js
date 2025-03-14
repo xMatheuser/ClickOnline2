@@ -9,33 +9,20 @@ import {
   getCrystalUnlockCost,
   calculateGrowthTime,
   calculateHarvestYield
-} from './GardenModuleClient.js';
-import { socket, gameState, isOwnPlayer } from './CoreModule.js';
+} from './GardenModule.js';
 
-function checkGardenProgress() {
-  const garden = gameState.laboratory.garden;
-  for (const slotId in garden.plants) {
-    const plant = garden.plants[slotId];
-    if (!plant.ready) {
-      const elapsed = Date.now() - plant.plantedAt;
-      const progress = Math.min(100, (elapsed / plant.growthTime) * 100);
-      
-      // Atualiza a barra de progresso
-      const progressBar = document.querySelector(`.garden-slot[data-slot="${slotId}"] .progress-bar`);
-      if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-      }
-
-      if (elapsed >= plant.growthTime) {
-        plant.ready = true;
-        const readyIndicator = document.querySelector(`.garden-slot[data-slot="${slotId}"] .ready-indicator`);
-        if (readyIndicator) {
-          readyIndicator.style.display = 'block';
-        }
-      }
-    }
+export let laboratoryData = {
+  garden: {
+    selectedSeed: 'sunflower',
+    unlockedSlots: 1,
+    crystalUnlocked: false,
+    resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
+    plants: {},
+    upgrades: Object.fromEntries(
+      Object.entries(GARDEN_UPGRADES).map(([key, upgrade]) => [key, 0])
+    )
   }
-}
+};
 
 export function initLaboratory() {
   const openLabButton = document.getElementById('open-laboratory');
@@ -58,19 +45,6 @@ export function initLaboratory() {
   });
 
   initLaboratoryGarden();
-
-  // Adicionar listener para atualizações do jardim
-  socket.on('gardenUpdate', (laboratoryState) => {
-    // Atualizar estado local
-    gameState.laboratory = laboratoryState;
-    
-    // Atualizar interface
-    updateGardenSlots();
-    updateLabResources();
-    updateSlotCost();
-    checkGardenProgress();
-    renderSeedOptions();
-  });
 }
 
 function initLaboratoryGarden() {
@@ -84,7 +58,7 @@ function initLaboratoryGarden() {
       if (option.classList.contains('locked')) return;
       seedOptions.forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
-      gameState.laboratory.garden.selectedSeed = option.dataset.seed;
+      laboratoryData.garden.selectedSeed = option.dataset.seed;
     });
   });
   
@@ -98,18 +72,16 @@ function updateGardenSlots() {
   const gardenGrid = document.getElementById('laboratory-garden');
   gardenGrid.innerHTML = '';
   
-  const garden = gameState.laboratory.garden;
-  
   // Número total máximo de slots (desbloqueados + 1 bloqueado)
-  const totalSlots = Math.min(garden.unlockedSlots + 1, 10);
+  const totalSlots = Math.min(laboratoryData.garden.unlockedSlots + 1, 10);
   
   for (let i = 0; i < totalSlots; i++) {
     const slot = document.createElement('div');
-    slot.className = `garden-slot ${i >= garden.unlockedSlots ? 'locked' : ''}`;
+    slot.className = `garden-slot ${i >= laboratoryData.garden.unlockedSlots ? 'locked' : ''}`;
     slot.dataset.slot = i;
     
-    if (i < garden.unlockedSlots) {
-      const existingPlant = garden.plants[i];
+    if (i < laboratoryData.garden.unlockedSlots) {
+      const existingPlant = laboratoryData.garden.plants[i];
       
       if (existingPlant) {
         // Se há uma planta existente, restaura seu visual
@@ -141,7 +113,7 @@ function updateGardenSlots() {
 function setupGardenSlot(slot) {
   slot.addEventListener('click', () => {
     const slotId = slot.dataset.slot;
-    const garden = gameState.laboratory.garden;
+    const garden = laboratoryData.garden;
     
     if (garden.plants[slotId]?.ready) {
       harvestPlant(slotId);
@@ -152,38 +124,111 @@ function setupGardenSlot(slot) {
 }
 
 function plantSeed(slotId) {
-  if (!isOwnPlayer()) {
-    showNotification('Você só pode plantar quando for o jogador ativo!');
-    return;
-  }
-
-  socket.emit('plantSeed', {
-    slotId,
-    seedType: gameState.laboratory.garden.selectedSeed
-  });
+  const garden = laboratoryData.garden;
+  const seedType = garden.selectedSeed;
+  const seedInfo = getSeedInfo(seedType);
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  
+  const adjustedGrowthTime = calculateGrowthTime(
+    getSeedGrowthTime(seedType),
+    garden.upgrades
+  );
+  
+  slot.innerHTML = `
+    <div class="plant">${getSeedIcon(seedType)}</div>
+    <div class="progress-bar"></div>
+    <div class="ready-indicator">Pronto!</div>
+  `;
+  
+  garden.plants[slotId] = {
+    type: seedType,
+    plantedAt: Date.now(),
+    growthTime: adjustedGrowthTime,
+    ready: false
+  };
 }
 
 function harvestPlant(slotId) {
-  if (!isOwnPlayer()) {
-    showNotification('Você só pode colher quando for o jogador ativo!');
-    return;
+  const garden = laboratoryData.garden;
+  const plant = garden.plants[slotId];
+  const seedInfo = getSeedInfo(plant.type);
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`); // Adicionar esta linha
+  
+  if (plant.ready) {
+    const harvestAmount = calculateHarvestYield(
+      seedInfo.reward.amount,
+      garden.upgrades
+    );
+    
+    garden.resources[plant.type] += harvestAmount;
+    const resourceCount = document.getElementById(`lab-${plant.type}-count`);
+    if (resourceCount) {
+      resourceCount.textContent = garden.resources[plant.type];
+    }
+    showNotification(`+${harvestAmount} ${getSeedIcon(plant.type)}`);
   }
+  
+  // Limpa o slot
+  delete garden.plants[slotId];
+  if (slot) { // Adicionar verificação
+    slot.innerHTML = `
+      <div class="plant-placeholder">Clique para plantar</div>
+      <div class="progress-bar"></div>
+      <div class="ready-indicator">Pronto!</div>
+    `;
+  }
+  
+  // Atualiza os recursos mostrados
+  updateLabResources();
+}
 
-  socket.emit('harvestPlant', slotId);
+function checkGardenProgress() {
+  const garden = laboratoryData.garden;
+  for (const slotId in garden.plants) {
+    const plant = garden.plants[slotId];
+    if (!plant.ready) {
+      const elapsed = Date.now() - plant.plantedAt;
+      const progress = Math.min(100, (elapsed / plant.growthTime) * 100);
+      
+      // Atualiza a barra de progresso
+      const progressBar = document.querySelector(`.garden-slot[data-slot="${slotId}"] .progress-bar`);
+      if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+      }
+
+      if (elapsed >= plant.growthTime) {
+        plant.ready = true;
+        document.querySelector(`.garden-slot[data-slot="${slotId}"] .ready-indicator`).style.display = 'block';
+      }
+    }
+  }
 }
 
 function buyLabSlot() {
-  if (!isOwnPlayer()) {
-    showNotification('Você só pode comprar slots quando for o jogador ativo!');
+  const garden = laboratoryData.garden;
+  
+  if (garden.unlockedSlots >= 10) {
+    showNotification('Todos os slots já estão desbloqueados!');
     return;
   }
-
-  // Emitir evento de compra
-  socket.emit('buyLabUpgrade', { type: 'slot' });
+  
+  const cost = getSlotUnlockCost(garden.unlockedSlots + 1);
+  
+  if (garden.resources.sunflower >= cost.sunflower && garden.resources.tulip >= cost.tulip) {
+    garden.resources.sunflower -= cost.sunflower;
+    garden.resources.tulip -= cost.tulip;
+    garden.unlockedSlots++;
+    updateGardenSlots();
+    updateLabResources();
+    updateSlotCost(); // Adicionar esta linha
+    showNotification('Novo slot de plantio desbloqueado!');
+  } else {
+    showNotification('Recursos insuficientes!');
+  }
 }
 
 function buyLabCrystal() {
-  const garden = gameState.laboratory.garden;
+  const garden = laboratoryData.garden;
   
   if (garden.crystalUnlocked) {
     showNotification('Semente de Cristal já desbloqueada!');
@@ -211,7 +256,7 @@ function buyLabCrystal() {
 
 // Adicione esta função se ainda não existir
 function updateLabResources() {
-  const garden = gameState.laboratory.garden;
+  const garden = laboratoryData.garden;
   
   // Atualiza cada contador de recurso
   Object.entries(garden.resources).forEach(([type, amount]) => {
@@ -225,8 +270,8 @@ function updateLabResources() {
 function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
   seedSelector.innerHTML = Object.values(SEEDS).map(seed => `
-    <div class="seed-option ${seed.id === gameState.laboratory.garden.selectedSeed ? 'selected' : ''} 
-                           ${!seed.unlockedByDefault && !gameState.laboratory.garden.crystalUnlocked ? 'locked' : ''}"
+    <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
+                           ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
          data-seed="${seed.id}">
       <span class="seed-icon">${seed.icon}</span>
       <div>
@@ -242,7 +287,7 @@ function renderSeedOptions() {
       if (option.classList.contains('locked')) return;
       seedSelector.querySelectorAll('.seed-option').forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
-      gameState.laboratory.garden.selectedSeed = option.dataset.seed;
+      laboratoryData.garden.selectedSeed = option.dataset.seed;
     });
   });
 }
@@ -252,7 +297,7 @@ function updateSlotCost() {
   const slotCostElement = document.querySelector('[data-item="slot"] .store-item-cost');
   if (!slotCostElement) return;
   
-  const nextSlotNumber = gameState.laboratory.garden.unlockedSlots + 1;
+  const nextSlotNumber = laboratoryData.garden.unlockedSlots + 1;
   const cost = getSlotUnlockCost(nextSlotNumber);
   
   slotCostElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
