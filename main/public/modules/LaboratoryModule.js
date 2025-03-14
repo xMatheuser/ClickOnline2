@@ -25,6 +25,7 @@ socket.on('gardenUpdate', (garden) => {
   };
   updateGardenSlots();
   updateLabResources();
+  renderSeedOptions();
 });
 
 // Listen for initial garden data
@@ -42,22 +43,40 @@ export function initLaboratory() {
   const closeLabButton = document.getElementById('close-laboratory');
   const laboratoryOverlay = document.getElementById('laboratory-overlay');
 
+  if (!openLabButton || !closeLabButton || !laboratoryOverlay) {
+    console.error('Elementos do laboratório não encontrados');
+    return;
+  }
+
   openLabButton.addEventListener('click', () => {
     laboratoryOverlay.classList.add('active');
+    
+    // Atualiza a interface do jardim
     updateGardenSlots();
     updateLabResources();
-    updateSlotCost(); // Adicionar esta linha
+    updateSlotCost();
     checkGardenProgress();
     renderSeedOptions();
+    
+    console.log('Laboratório aberto');
   });
 
-  closeLabButton.addEventListener('click', () => laboratoryOverlay.classList.remove('active'));
+  closeLabButton.addEventListener('click', () => {
+    laboratoryOverlay.classList.remove('active');
+    console.log('Laboratório fechado');
+  });
 
   laboratoryOverlay.addEventListener('click', (e) => {
     if (e.target === laboratoryOverlay) laboratoryOverlay.classList.remove('active');
   });
 
+  // Inicializa o jardim
   initLaboratoryGarden();
+  
+  // Solicita dados atualizados do servidor
+  socket.emit('requestGardenUpdate');
+  
+  console.log('Laboratório inicializado');
 }
 
 function initLaboratoryGarden() {
@@ -83,12 +102,62 @@ function initLaboratoryGarden() {
 
 function updateGardenSlots() {
   const gardenGrid = document.getElementById('laboratory-garden');
-  gardenGrid.innerHTML = '';
+  const existingSlots = gardenGrid.children;
   
   // Número total máximo de slots (desbloqueados + 1 bloqueado)
   const totalSlots = Math.min(laboratoryData.garden.unlockedSlots + 1, 10);
   
-  for (let i = 0; i < totalSlots; i++) {
+  // Atualiza slots existentes
+  for (let i = 0; i < existingSlots.length; i++) {
+    const slot = existingSlots[i];
+    const isLocked = i >= laboratoryData.garden.unlockedSlots;
+    
+    // Atualiza classe locked
+    slot.className = `garden-slot ${isLocked ? 'locked' : ''}`;
+    
+    if (!isLocked) {
+      const existingPlant = laboratoryData.garden.plants[i];
+      
+      if (existingPlant) {
+        // Atualiza planta existente
+        let plantElement = slot.querySelector('.plant');
+        const progressBar = slot.querySelector('.progress-bar');
+        const readyIndicator = slot.querySelector('.ready-indicator');
+        
+        // Se não existir o elemento da planta, recria o conteúdo do slot
+        if (!plantElement) {
+          slot.innerHTML = `
+            <div class="plant">${getSeedIcon(existingPlant.type)}</div>
+            <div class="progress-bar"></div>
+            <div class="ready-indicator" style="display: ${existingPlant.ready ? 'block' : 'none'}">Pronto!</div>
+          `;
+          setupGardenSlot(slot);
+        } else {
+          plantElement.textContent = getSeedIcon(existingPlant.type);
+          if (readyIndicator) {
+            readyIndicator.style.display = existingPlant.ready ? 'block' : 'none';
+          }
+        }
+      } else {
+        // Slot vazio
+        slot.innerHTML = `
+          <div class="plant-placeholder">Clique para plantar</div>
+          <div class="progress-bar"></div>
+          <div class="ready-indicator">Pronto!</div>
+        `;
+        setupGardenSlot(slot);
+      }
+    } else {
+      // Slot bloqueado
+      slot.innerHTML = `
+        <div class="lock-icon">🔒</div>
+        <div class="plant-placeholder">Slot Bloqueado</div>
+      `;
+    }
+  }
+  
+  // Adiciona novos slots se necessário
+  for (let i = existingSlots.length; i < totalSlots; i++) {
     const slot = document.createElement('div');
     slot.className = `garden-slot ${i >= laboratoryData.garden.unlockedSlots ? 'locked' : ''}`;
     slot.dataset.slot = i;
@@ -97,14 +166,12 @@ function updateGardenSlots() {
       const existingPlant = laboratoryData.garden.plants[i];
       
       if (existingPlant) {
-        // Se há uma planta existente, restaura seu visual
         slot.innerHTML = `
           <div class="plant">${getSeedIcon(existingPlant.type)}</div>
           <div class="progress-bar"></div>
           <div class="ready-indicator" style="display: ${existingPlant.ready ? 'block' : 'none'}">Pronto!</div>
         `;
       } else {
-        // Slot vazio
         slot.innerHTML = `
           <div class="plant-placeholder">Clique para plantar</div>
           <div class="progress-bar"></div>
@@ -121,9 +188,22 @@ function updateGardenSlots() {
     
     gardenGrid.appendChild(slot);
   }
+  
+  // Remove slots extras se necessário
+  while (gardenGrid.children.length > totalSlots) {
+    gardenGrid.removeChild(gardenGrid.lastChild);
+  }
 }
 
 function setupGardenSlot(slot) {
+  // Garante que o slot tenha o atributo data-slot
+  if (!slot.dataset.slot && slot.parentElement) {
+    const index = Array.from(slot.parentElement.children).indexOf(slot);
+    if (index >= 0) {
+      slot.dataset.slot = index;
+    }
+  }
+  
   slot.addEventListener('click', () => {
     const slotId = slot.dataset.slot;
     const garden = laboratoryData.garden;
@@ -138,6 +218,19 @@ function setupGardenSlot(slot) {
 
 function plantSeed(slotId) {
   const seedType = laboratoryData.garden.selectedSeed;
+  
+  // Atualiza localmente para feedback imediato
+  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+  if (slot) {
+    slot.innerHTML = `
+      <div class="plant">${getSeedIcon(seedType)}</div>
+      <div class="progress-bar" style="width: 0%"></div>
+      <div class="ready-indicator" style="display: none">Pronto!</div>
+    `;
+    setupGardenSlot(slot);
+  }
+  
+  // Envia para o servidor
   socket.emit('plantSeed', { slotId, seedType });
 }
 
@@ -155,6 +248,8 @@ function buyLabCrystal() {
 
 function checkGardenProgress() {
   const garden = laboratoryData.garden;
+  let updated = false;
+  
   for (const slotId in garden.plants) {
     const plant = garden.plants[slotId];
     if (!plant.ready) {
@@ -162,11 +257,29 @@ function checkGardenProgress() {
       const progress = Math.min(100, (elapsed / plant.growthTime) * 100);
       
       // Atualiza a barra de progresso
-      const progressBar = document.querySelector(`.garden-slot[data-slot="${slotId}"] .progress-bar`);
+      const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
+      const progressBar = slot?.querySelector('.progress-bar');
+      const readyIndicator = slot?.querySelector('.ready-indicator');
+      
       if (progressBar) {
         progressBar.style.width = `${progress}%`;
       }
+      
+      // Verifica se a planta está pronta
+      if (elapsed >= plant.growthTime && !plant.ready) {
+        plant.ready = true;
+        updated = true;
+        
+        if (readyIndicator) {
+          readyIndicator.style.display = 'block';
+        }
+      }
     }
+  }
+  
+  // Se alguma planta foi atualizada para pronta, atualiza a interface
+  if (updated) {
+    updateGardenSlots();
   }
 }
 
@@ -185,6 +298,8 @@ function updateLabResources() {
 
 function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
+  if (!seedSelector) return;
+  
   seedSelector.innerHTML = Object.values(laboratoryData.seeds).map(seed => `
     <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
                            ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
@@ -201,9 +316,17 @@ function renderSeedOptions() {
   seedSelector.querySelectorAll('.seed-option').forEach(option => {
     option.addEventListener('click', () => {
       if (option.classList.contains('locked')) return;
+      
+      // Remove a classe selected de todas as opções
       seedSelector.querySelectorAll('.seed-option').forEach(opt => opt.classList.remove('selected'));
+      
+      // Adiciona a classe selected à opção clicada
       option.classList.add('selected');
+      
+      // Atualiza a semente selecionada
       laboratoryData.garden.selectedSeed = option.dataset.seed;
+      
+      console.log(`Semente selecionada: ${option.dataset.seed}`);
     });
   });
 }

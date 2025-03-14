@@ -607,25 +607,20 @@ io.on('connection', (socket) => {
     io.emit('gardenUpdate', garden);
   });
 
-function getSeedInfo(seedId) {
-  return SEEDS[seedId];
-}
-
-
-function calculateGrowthTime(baseTime, upgradeLevels) {
-  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
-  return baseTime * speedMultiplier;
-}
-
-function calculateHarvestYield(baseAmount, upgradeLevels) {
-  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
-  return Math.floor(baseAmount * yieldMultiplier);
-}
-
-
-function getSeedGrowthTime(seedId) {
-  return SEEDS[seedId]?.growthTime || 30000;
-}
+  // Adiciona handler para solicitação de atualização do jardim
+  socket.on('requestGardenUpdate', () => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+    
+    // Envia dados atualizados do jardim para o cliente
+    socket.emit('gardenInit', {
+      seeds: gameState.gardenSeeds,
+      upgrades: gameState.gardenUpgrades,
+      garden: garden
+    });
+    
+    console.log(`[Jardim] Enviando atualização para ${socket.id}`);
+  });
 
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
@@ -850,6 +845,24 @@ setInterval(() => {
     io.emit('gardenUpdate', garden);
   }
 }, 1000);
+
+function getSeedInfo(seedId) {
+  return SEEDS[seedId];
+}
+
+function calculateGrowthTime(baseTime, upgradeLevels) {
+  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
+  return baseTime * speedMultiplier;
+}
+
+function calculateHarvestYield(baseAmount, upgradeLevels) {
+  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
+  return Math.floor(baseAmount * yieldMultiplier);
+}
+
+function getSeedGrowthTime(seedId) {
+  return SEEDS[seedId]?.growthTime || 30000;
+}
 
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
