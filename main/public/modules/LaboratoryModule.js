@@ -1,5 +1,4 @@
 import { 
-  GARDEN_UPGRADES,
   getSeedIcon, 
   getSlotUnlockCost} from './GardenModule.js';
 import socket from './SocketManager.js';
@@ -340,4 +339,16 @@ function updateSlotCost() {
   const cost = getSlotUnlockCost(nextSlotNumber);
   
   slotCostElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
+}
+
+// Novo sistema de custos para slots
+function getSlotUnlockCost(nextSlotNumber) {
+  return {
+    sunflower: 5 * nextSlotNumber,
+    tulip: 3 * nextSlotNumber
+  };
+}
+
+function getSeedIcon(seedId) {
+  return SEEDS[seedId]?.icon || '❓';
 }
