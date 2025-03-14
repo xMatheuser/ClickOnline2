@@ -21,6 +21,8 @@ socket.on('gardenUpdate', (garden) => {
   };
   updateGardenSlots();
   updateLabResources();
+  updateSlotCost();
+  updateCrystalCost();
   updateFertilizerCost();
   renderSeedOptions();
 });
@@ -73,6 +75,8 @@ socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
   
   updateGardenSlots();
   updateLabResources();
+  updateSlotCost();
+  updateCrystalCost();
   updateFertilizerCost();
   renderSeedOptions();
 });
@@ -94,6 +98,7 @@ export function initLaboratory() {
     updateGardenSlots();
     updateLabResources();
     updateSlotCost();
+    updateCrystalCost();
     updateFertilizerCost();
     checkGardenProgress();
     renderSeedOptions();
@@ -420,16 +425,95 @@ function renderSeedOptions() {
 
 // Adicionar esta nova função
 function updateSlotCost() {
-  const slotCostElement = document.querySelector('[data-item="slot"] .store-item-cost');
-  if (!slotCostElement) return;
+  const slotElement = document.querySelector('[data-item="slot"]');
+  if (!slotElement) return;
   
-  const nextSlotNumber = laboratoryData.garden.unlockedSlots + 1;
+  const costElement = slotElement.querySelector('.store-item-cost');
+  const buyButton = slotElement.querySelector('.buy-button');
+  
+  if (!costElement || !buyButton) return;
+  
+  const garden = laboratoryData.garden;
+  
+  // Se atingiu o máximo de slots
+  if (garden.unlockedSlots >= 10) {
+    costElement.textContent = 'Máximo de slots atingido';
+    buyButton.disabled = true;
+    buyButton.textContent = 'Máximo';
+    return;
+  } else {
+    buyButton.disabled = false;
+    buyButton.textContent = 'Comprar';
+  }
+  
+  const nextSlotNumber = garden.unlockedSlots + 1;
   const cost = getSlotUnlockCost(nextSlotNumber);
   
-  slotCostElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
+  // Verifica se o jogador tem recursos suficientes
+  const hasEnoughResources = 
+    garden.resources.sunflower >= cost.sunflower &&
+    garden.resources.tulip >= cost.tulip;
   
-  // Atualiza o custo do fertilizante
+  // Atualiza o visual do botão com base nos recursos
+  if (!hasEnoughResources) {
+    buyButton.classList.add('insufficient');
+  } else {
+    buyButton.classList.remove('insufficient');
+  }
+  
+  costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
+  
+  // Atualiza o custo do crystal e fertilizante
+  updateCrystalCost();
   updateFertilizerCost();
+}
+
+// Função para atualizar o custo do crystal
+function updateCrystalCost() {
+  const crystalElement = document.querySelector('[data-item="crystal"]');
+  if (!crystalElement) return;
+  
+  const costElement = crystalElement.querySelector('.store-item-cost');
+  const buyButton = crystalElement.querySelector('.buy-button');
+  
+  if (!costElement || !buyButton) return;
+  
+  const garden = laboratoryData.garden;
+  
+  // Se já tem o crystal desbloqueado
+  if (garden.crystalUnlocked) {
+    costElement.textContent = 'Desbloqueado';
+    buyButton.disabled = true;
+    buyButton.textContent = 'Desbloqueado';
+    crystalElement.classList.add('purchased');
+    return;
+  } else {
+    buyButton.disabled = false;
+    buyButton.textContent = 'Comprar';
+    crystalElement.classList.remove('purchased');
+  }
+  
+  // Definir custo do crystal
+  const cost = {
+    sunflower: 50,
+    tulip: 30,
+    mushroom: 20
+  };
+  
+  // Verifica se o jogador tem recursos suficientes
+  const hasEnoughResources = 
+    garden.resources.sunflower >= cost.sunflower &&
+    garden.resources.tulip >= cost.tulip &&
+    garden.resources.mushroom >= cost.mushroom;
+  
+  // Atualiza o visual do botão com base nos recursos
+  if (!hasEnoughResources) {
+    buyButton.classList.add('insufficient');
+  } else {
+    buyButton.classList.remove('insufficient');
+  }
+  
+  costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷, ${cost.mushroom} 🍄`;
 }
 
 // Função para atualizar o custo e nível do fertilizante
@@ -538,8 +622,6 @@ function calculateAdjustedGrowthTime(baseTime) {
   // Calcular tempo ajustado
   const totalMultiplier = speedMultiplier * fertilizerMultiplier;
   const adjustedTime = baseTime * totalMultiplier;
-  
-  console.log(`[Jardim] Tempo ajustado: ${baseTime}ms -> ${adjustedTime}ms (${totalMultiplier.toFixed(2)}x)`);
   
   return adjustedTime;
 }

@@ -63,7 +63,7 @@ let gameState = {
     sharedGarden: {
       unlockedSlots: 1,
       crystalUnlocked: false,
-      resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
+      resources: { sunflower: 100, tulip: 100, mushroom: 100, crystal: 100 },
       plants: {},
       upgrades: {}
     }
@@ -629,9 +629,59 @@ io.on('connection', (socket) => {
         socket.emit('notification', 'Máximo de slots atingido!');
         return;
       }
+      
+      // Calcular custo do próximo slot
+      const nextSlotNumber = garden.unlockedSlots + 1;
+      const cost = {
+        sunflower: 5 * nextSlotNumber,
+        tulip: 3 * nextSlotNumber
+      };
+      
+      // Verificar se tem recursos suficientes
+      if (garden.resources.sunflower < cost.sunflower || 
+          garden.resources.tulip < cost.tulip) {
+        socket.emit('notification', 'Recursos insuficientes para comprar um novo slot!');
+        return;
+      }
+      
+      // Deduzir recursos
+      garden.resources.sunflower -= cost.sunflower;
+      garden.resources.tulip -= cost.tulip;
+      
+      // Aumentar número de slots
       garden.unlockedSlots++;
+      socket.emit('notification', 'Novo slot de plantação desbloqueado!');
     } else if (upgradeId === 'crystal') {
+      // Verificar se já tem o crystal desbloqueado
+      if (garden.crystalUnlocked) {
+        socket.emit('notification', 'Cristal já está desbloqueado!');
+        return;
+      }
+      
+      // Definir custo do crystal
+      const cost = {
+        sunflower: 50,
+        tulip: 30,
+        mushroom: 20,
+        crystal: 0
+      };
+      
+      // Verificar se tem recursos suficientes
+      if (garden.resources.sunflower < cost.sunflower || 
+          garden.resources.tulip < cost.tulip || 
+          garden.resources.mushroom < cost.mushroom) {
+        socket.emit('notification', 'Recursos insuficientes para desbloquear o Cristal!');
+        return;
+      }
+      
+      // Deduzir recursos
+      garden.resources.sunflower -= cost.sunflower;
+      garden.resources.tulip -= cost.tulip;
+      garden.resources.mushroom -= cost.mushroom;
+      
+      // Desbloquear o crystal
       garden.crystalUnlocked = true;
+      socket.emit('notification', 'Cristal desbloqueado! Novas sementes disponíveis.');
     } else if (upgradeId === 'fertilizer') {
       // Verificar se já tem o upgrade e se está no nível máximo
       if (!garden.upgrades.fertilizer) {
@@ -680,8 +730,6 @@ io.on('connection', (socket) => {
           const newElapsed = progressPercent * newGrowthTime;
           plant.plantedAt = Date.now() - newElapsed;
           plant.growthTime = newGrowthTime;
-          
-          console.log(`[Jardim] Planta no slot ${slotId} atualizada: Progresso=${(progressPercent*100).toFixed(1)}%, Novo tempo=${newGrowthTime}ms`);
         }
       }
       
@@ -956,8 +1004,6 @@ function calculateGrowthTime(baseTime, upgradeLevels) {
   
   // Calcular o tempo de crescimento ajustado
   const adjustedTime = baseTime * speedMultiplier * fertilizerMultiplier;
-  
-  console.log(`[Jardim] Tempo de crescimento: Base=${baseTime}ms, Velocidade=${speedMultiplier.toFixed(2)}x (Nível ${speedLevel}), Fertilizante=${fertilizerMultiplier.toFixed(2)}x (Nível ${fertilizerLevel}), Final=${adjustedTime}ms`);
   
   return adjustedTime;
 }
