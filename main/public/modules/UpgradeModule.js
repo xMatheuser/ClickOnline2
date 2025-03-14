@@ -49,11 +49,21 @@ export function calculateBulkPrice(upgrade, amount) {
     let remainingLevels = upgrade.maxLevel - upgrade.level;
     let availableCoins = gameState.teamCoins;
 
+    // Se não pode comprar nem mesmo 1 nível, retorna o custo de 1 nível
+    if (availableCoins < currentPrice) {
+      return { cost: currentPrice, levels: 0 };
+    }
+
     while (maxAffordable < remainingLevels && availableCoins >= currentPrice) {
       totalCost += currentPrice;
       availableCoins -= currentPrice;
       maxAffordable++;
       currentPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + maxAffordable));
+    }
+
+    // Se não conseguiu comprar nenhum nível, retorna o custo de 1 nível
+    if (maxAffordable === 0) {
+      return { cost: calculateUpgradePrice(upgrade), levels: 0 };
     }
 
     return { cost: totalCost, levels: maxAffordable };
