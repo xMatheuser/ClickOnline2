@@ -326,8 +326,13 @@ function buyLabSlot() {
   socket.emit('buyGardenUpgrade', { upgradeId: 'slot' });
 }
 
+// Replace buyLabCrystal function with unlockSeed
 function buyLabCrystal() {
-  socket.emit('buyGardenUpgrade', { upgradeId: 'crystal' });
+  // Remove this function completely
+}
+
+function unlockSeed(seedId) {
+  socket.emit('buyGardenUpgrade', { upgradeId: `unlock_${seedId}` });
 }
 
 function buyLabFertilizer() {
@@ -414,6 +419,7 @@ function updateLabResources() {
   });
 }
 
+// Modify renderSeedOptions to include unlock buttons
 function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
   if (!seedSelector) return;
@@ -440,23 +446,52 @@ function renderSeedOptions() {
       </div>
     `;
   }).join('');
+  const garden = laboratoryData.garden;
+  
+  seedSelector.innerHTML = Object.values(laboratoryData.seeds)
+    .filter(seed => seed.visible) // Servidor controla quais sementes são visíveis
+    .map(seed => {
+      const isLocked = !garden[`${seed.id}Unlocked`];
+      const unlockButton = isLocked && seed.unlockCost ? `
+        <button class="unlock-seed-button" data-seed="${seed.id}">
+          (${Object.entries(seed.unlockCost)
+            .map(([res, amt]) => `${amt} ${laboratoryData.seeds[res].icon}`)
+            .join(', ')})
+        </button>
+      ` : '';
 
-  // Reattach event listeners
+      return `
+        <div class="seed-option ${seed.id === garden.selectedSeed ? 'selected' : ''} 
+                               ${isLocked ? 'locked' : ''}"
+             data-seed="${seed.id}">
+          <span class="seed-icon">${seed.icon}</span>
+          <div>
+            <div>${seed.name}</div>
+            <div class="time-info">${seed.growthTime/1000}s • ${seed.difficulty}</div>
+            ${unlockButton}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // Add event listeners for seed selection and unlocking
   seedSelector.querySelectorAll('.seed-option').forEach(option => {
-    option.addEventListener('click', () => {
-      if (option.classList.contains('locked')) return;
-      
-      // Remove a classe selected de todas as opções
-      seedSelector.querySelectorAll('.seed-option').forEach(opt => opt.classList.remove('selected'));
-      
-      // Adiciona a classe selected à opção clicada
-      option.classList.add('selected');
-      
-      // Atualiza a semente selecionada
-      laboratoryData.garden.selectedSeed = option.dataset.seed;
-      
-      console.log(`Semente selecionada: ${option.dataset.seed}`);
-    });
+    if (!option.classList.contains('locked')) {
+      option.addEventListener('click', () => {
+        seedSelector.querySelectorAll('.seed-option').forEach(opt => 
+          opt.classList.remove('selected'));
+        option.classList.add('selected');
+        garden.selectedSeed = option.dataset.seed;
+      });
+    }
+
+    const unlockButton = option.querySelector('.unlock-seed-button');
+    if (unlockButton) {
+      unlockButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        unlockSeed(unlockButton.dataset.seed);
+      });
+    }
   });
 }
 

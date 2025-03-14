@@ -492,3 +492,24 @@ body.dark-mode .close-achievements {
 .research-info span:first-child {
   color: #4CAF50;
 }
+
+.unlock-seed-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: all 0.2s;
+}
+
+.unlock-seed-button:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+}
+
+.seed-option.locked .unlock-seed-button {
+  opacity: 0.9;
+}

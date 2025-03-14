@@ -3,8 +3,8 @@ export const SEEDS = {
       id: 'sunflower',
       name: 'Girassol',
       icon: '🌻',
-      growthTime: 3000, // 30 segundos
-      difficulty: '⭐⭐',
+      growthTime: 1000, // 30 segundos
+      difficulty: '⭐',
       unlockedByDefault: true,
       reward: {
         type: 'sunflower',
@@ -15,9 +15,9 @@ export const SEEDS = {
       id: 'tulip',
       name: 'Tulipa',
       icon: '🌷',
-      growthTime: 60000, // 60 segundos
-      difficulty: '⭐⭐⭐',
-      unlockedByDefault: true,
+      growthTime: 2000, // 60 segundos
+      difficulty: '⭐',
+      unlockedByDefault: false,
       reward: {
         type: 'tulip',
         amount: 1
@@ -27,9 +27,9 @@ export const SEEDS = {
       id: 'mushroom',
       name: 'Cogumelo',
       icon: '🍄',
-      growthTime: 90000, // 90 segundos
-      difficulty: '⭐⭐⭐⭐',
-      unlockedByDefault: true,
+      growthTime: 3000, // 90 segundos
+      difficulty: '⭐⭐',
+      unlockedByDefault: false,
       reward: {
         type: 'mushroom',
         amount: 1
@@ -39,8 +39,8 @@ export const SEEDS = {
       id: 'crystal',
       name: 'Cristal',
       icon: '💎',
-      growthTime: 120000, // 120 segundos
-      difficulty: '⭐⭐⭐⭐⭐',
+      growthTime: 4000, // 120 segundos
+      difficulty: '⭐⭐⭐',
       unlockedByDefault: false,
       reward: {
         type: 'crystal',
@@ -88,3 +88,82 @@ export const GARDEN_UPGRADES = {
       })
     }
 };
+
+export const SEED_PROGRESSION = ['sunflower', 'tulip', 'mushroom', 'crystal'];
+
+export const UNLOCK_COSTS = {
+  tulip: { sunflower: 10 },
+  mushroom: { tulip: 8, sunflower: 15 },
+  crystal: { mushroom: 5, tulip: 12, sunflower: 20 }
+};
+
+export function getSeedUnlockCost(seedId) {
+  return UNLOCK_COSTS[seedId];
+}
+
+export function canUnlockSeed(garden, seedId) {
+  const cost = UNLOCK_COSTS[seedId];
+  if (!cost) return false;
+
+  return Object.entries(cost).every(([resource, amount]) => 
+    garden.resources[resource] >= amount);
+}
+
+export function isSeedVisible(garden, seedId) {
+  // Girassol sempre visível
+  if (seedId === 'sunflower') return true;
+  
+  const index = SEED_PROGRESSION.indexOf(seedId);
+  if (index <= 0) return false;
+  
+  const previousSeed = SEED_PROGRESSION[index - 1];
+  // Mostra a próxima semente se tiver pelo menos 1 do recurso anterior
+  return garden.resources[previousSeed] > 0;
+}
+
+export function processSeedUnlock(garden, seedId) {
+  // Girassol sempre liberado
+  if (seedId === 'sunflower') return true;
+  
+  if (garden[`${seedId}Unlocked`]) return false;
+  
+  const cost = UNLOCK_COSTS[seedId];
+  if (!cost || !canUnlockSeed(garden, seedId)) return false;
+
+  // Deduz os recursos
+  Object.entries(cost).forEach(([resource, amount]) => {
+    garden.resources[resource] -= amount;
+  });
+
+  // Desbloqueia a semente
+  garden[`${seedId}Unlocked`] = true;
+  return true;
+}
+
+export function calculateGrowthTime(baseTime, upgradeLevels) {
+  // Garantir que upgradeLevels seja um objeto válido
+  upgradeLevels = upgradeLevels || {};
+  
+  // Calcular o multiplicador de velocidade de crescimento
+  const speedLevel = upgradeLevels.growthSpeed || 0;
+  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(speedLevel);
+  
+  // Calcular o multiplicador do fertilizante
+  const fertilizerLevel = upgradeLevels.fertilizer || 0;
+  const fertilizerMultiplier = fertilizerLevel > 0 ? 
+    GARDEN_UPGRADES.fertilizer.getEffect(fertilizerLevel) : 1;
+  
+  // Calcular o tempo de crescimento ajustado
+  const adjustedTime = baseTime * speedMultiplier * fertilizerMultiplier;
+  
+  return adjustedTime;
+}
+  
+export function calculateHarvestYield(baseAmount, upgradeLevels) {
+  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
+  return Math.floor(baseAmount * yieldMultiplier);
+}
+  
+export function getSeedGrowthTime(seedId) {
+  return SEEDS[seedId]?.growthTime || 30000;
+}

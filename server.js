@@ -7,7 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
-const { SEEDS, GARDEN_UPGRADES } = require('./main/gameModules/garden.js');
+const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -62,7 +62,7 @@ let gameState = {
   gardens: {
     sharedGarden: {
       unlockedSlots: 1,
-      crystalUnlocked: false,
+      sunflowerUnlocked: true, // Adicionar esta linha
       resources: { sunflower: 100, tulip: 100, mushroom: 100, crystal: 100 },
       plants: {},
       upgrades: {}
@@ -585,8 +585,53 @@ io.on('connection', (socket) => {
     garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
     delete garden.plants[slotId];
 
-    // Broadcast updates to all players
-    io.emit('gardenUpdate', garden);
+    // Atualizar informações de visibilidade das sementes
+    const updatedSeeds = { ...gameState.gardenSeeds };
+    Object.keys(updatedSeeds).forEach(seedId => {
+      updatedSeeds[seedId] = {
+        ...updatedSeeds[seedId],
+        visible: isSeedVisible(garden, seedId),
+        unlockCost: getSeedUnlockCost(seedId)
+      };
+    });
+
+    // Enviar atualização completa incluindo novas sementes visíveis
+    io.emit('gardenInit', {
+      seeds: updatedSeeds,
+      upgrades: gameState.gardenUpgrades,
+      garden: garden
+    });
+  });
+
+  socket.on('harvestAllPlants', () => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    let plantsHarvested = false;
+
+    // Percorre todas as plantas e colhe as que estão prontas
+    for (const slotId in garden.plants) {
+      const plant = garden.plants[slotId];
+      if (plant && plant.ready) {
+        const harvestAmount = calculateHarvestYield(
+          gameState.gardenSeeds[plant.type].reward.amount,
+          garden.upgrades
+        );
+
+        // Adiciona recursos ao inventário compartilhado
+        garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+        delete garden.plants[slotId];
+        plantsHarvested = true;
+      }
+    }
+
+    if (plantsHarvested) {
+      // Envia atualização para todos os jogadores
+      io.emit('gardenUpdate', garden);
+      socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
+    } else {
+      socket.emit('notification', 'Não há plantas prontas para colher!');
+    }
   });
 
   socket.on('harvestAllPlants', () => {
@@ -681,6 +726,12 @@ io.on('connection', (socket) => {
       
       // Desbloquear o crystal
       garden.crystalUnlocked = true;
+    } else if (upgradeId.startsWith('unlock_')) {
+      const seedId = upgradeId.replace('unlock_', '');
+      if (processSeedUnlock(garden, seedId)) {
+        // Envia atualização para todos os jogadores
+        io.emit('gardenUpdate', garden);
+      }
       socket.emit('notification', 'Cristal desbloqueado! Novas sementes disponíveis.');
     } else if (upgradeId === 'fertilizer') {
       // Verificar se já tem o upgrade e se está no nível máximo
@@ -745,6 +796,16 @@ io.on('connection', (socket) => {
     const garden = gameState.gardens.sharedGarden;
     if (!garden) return;
 
+    // Adiciona informações de visibilidade e custo para cada semente
+    const seeds = { ...SEEDS };
+    Object.keys(seeds).forEach(seedId => {
+      seeds[seedId] = {
+        ...seeds[seedId],
+        visible: isSeedVisible(garden, seedId),
+        unlockCost: getSeedUnlockCost(seedId)
+      };
+    });
+
     // Garantir que os upgrades sejam enviados como objetos completos
     const gardenUpgrades = {};
     
@@ -760,9 +821,9 @@ io.on('connection', (socket) => {
 
     // Envia dados atualizados do jardim para o cliente
     socket.emit('gardenInit', {
-      seeds: gameState.gardenSeeds,
-      upgrades: gardenUpgrades,
-      garden: garden
+      seeds,
+      upgrades: GARDEN_UPGRADES,
+      garden
     });
 
     console.log(`[Jardim] Enviando atualização para ${socket.id}`);
@@ -987,35 +1048,6 @@ setInterval(() => {
     io.emit('gardenUpdate', garden);
   }
 }, 1000);
-
-
-function calculateGrowthTime(baseTime, upgradeLevels) {
-  // Garantir que upgradeLevels seja um objeto válido
-  upgradeLevels = upgradeLevels || {};
-  
-  // Calcular o multiplicador de velocidade de crescimento
-  const speedLevel = upgradeLevels.growthSpeed || 0;
-  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(speedLevel);
-  
-  // Calcular o multiplicador do fertilizante
-  const fertilizerLevel = upgradeLevels.fertilizer || 0;
-  const fertilizerMultiplier = fertilizerLevel > 0 ? 
-    GARDEN_UPGRADES.fertilizer.getEffect(fertilizerLevel) : 1;
-  
-  // Calcular o tempo de crescimento ajustado
-  const adjustedTime = baseTime * speedMultiplier * fertilizerMultiplier;
-  
-  return adjustedTime;
-}
-
-function calculateHarvestYield(baseAmount, upgradeLevels) {
-  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
-  return Math.floor(baseAmount * yieldMultiplier);
-}
-
-function getSeedGrowthTime(seedId) {
-  return SEEDS[seedId]?.growthTime || 30000;
-}
 
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
