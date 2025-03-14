@@ -7,6 +7,14 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
+const { 
+  getSeedInfo, 
+  getSeedIcon, 
+  getSeedGrowthTime,
+  calculateGrowthTime,
+  calculateHarvestYield,
+  GARDEN_UPGRADES
+} = require('./main/public/modules/GardenModule.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,8 +65,23 @@ let gameState = {
   activeBoss: null,
   nextBossLevel: 5, // Primeiro boss aparece no nível 5
   bossSpawnInterval: 10, // Intervalo de níveis entre cada boss
-  isInBossFight: false // Add flag for boss fight state
+  isInBossFight: false, // Add flag for boss fight state
+  laboratory: {
+    garden: {
+      selectedSeed: 'sunflower',
+      unlockedSlots: 1,
+      crystalUnlocked: false,
+      resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
+      plants: {},
+      upgrades: {} // Será inicializado com os upgrades do jardim
+    }
+  }
 };
+
+// Initialize garden upgrades when creating gameState
+gameState.laboratory.garden.upgrades = Object.fromEntries(
+  Object.entries(GARDEN_UPGRADES).map(([key, upgrade]) => [key, 0])
+);
 
 let lastTotalCPS = 0;
 
@@ -521,6 +544,63 @@ io.on('connection', (socket) => {
     
     gameState.activeBoss = null;
     broadcastGameState();
+  });
+
+  socket.on('plantSeed', ({slotId, seedType}) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !isActivePlayer(socket.id, player.id)) {
+      socket.emit('notification', 'Você só pode plantar quando for o jogador ativo!');
+      return;
+    }
+
+    const garden = gameState.laboratory.garden;
+    const adjustedGrowthTime = calculateGrowthTime(getSeedGrowthTime(seedType), garden.upgrades);
+    
+    garden.plants[slotId] = {
+      type: seedType,
+      plantedAt: Date.now(),
+      growthTime: adjustedGrowthTime,
+      ready: false
+    };
+
+    io.emit('gardenUpdate', gameState.laboratory);
+  });
+
+  socket.on('harvestPlant', (slotId) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !isActivePlayer(socket.id, player.id)) {
+      socket.emit('notification', 'Você só pode colher quando for o jogador ativo!');
+      return;
+    }
+
+    const garden = gameState.laboratory.garden;
+    const plant = garden.plants[slotId];
+    
+    if (plant?.ready) {
+      const harvestAmount = calculateHarvestYield(
+        getSeedInfo(plant.type).reward.amount,
+        garden.upgrades
+      );
+      
+      garden.resources[plant.type] += harvestAmount;
+      delete garden.plants[slotId];
+
+      io.emit('gardenUpdate', gameState.laboratory);
+      socket.emit('notification', `+${harvestAmount} ${getSeedIcon(plant.type)}`);
+    }
+  });
+
+  socket.on('buyLabUpgrade', ({type}) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player || !isActivePlayer(socket.id, player.id)) {
+      socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
+      return;
+    }
+
+    // Implementar lógica de compra de upgrade
+    // ...
+
+    io.emit('gardenUpdate', gameState.laboratory);
   });
 
   socket.on('disconnect', () => {

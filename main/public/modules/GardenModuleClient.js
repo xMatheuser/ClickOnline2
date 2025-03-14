@@ -1,4 +1,4 @@
-const SEEDS = {
+export const SEEDS = {
   sunflower: {
     id: 'sunflower',
     name: 'Girassol',
@@ -49,7 +49,7 @@ const SEEDS = {
   }
 };
 
-const GARDEN_UPGRADES = {
+export const GARDEN_UPGRADES = {
   growthSpeed: {
     id: 'growth-speed',
     name: 'Velocidade de Crescimento',
@@ -76,51 +76,39 @@ const GARDEN_UPGRADES = {
   }
 };
 
-function getSeedInfo(seedId) {
+export function getSeedInfo(seedId) {
   return SEEDS[seedId];
 }
 
-function getSeedIcon(seedId) {
+export function getSeedIcon(seedId) {
   return SEEDS[seedId]?.icon || '❓';
 }
 
-function getSeedGrowthTime(seedId) {
+export function getSeedGrowthTime(seedId) {
   return SEEDS[seedId]?.growthTime || 30000;
 }
 
-function calculateGrowthTime(baseTime, upgradeLevels) {
+export function calculateGrowthTime(baseTime, upgradeLevels) {
   const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
   return baseTime * speedMultiplier;
 }
 
-function calculateHarvestYield(baseAmount, upgradeLevels) {
+export function calculateHarvestYield(baseAmount, upgradeLevels) {
   const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
   return Math.floor(baseAmount * yieldMultiplier);
 }
 
-function getSlotUnlockCost(nextSlotNumber) {
+export function getSlotUnlockCost(nextSlotNumber) {
   return {
     sunflower: 5 * nextSlotNumber,
     tulip: 3 * nextSlotNumber
   };
 }
 
-function getCrystalUnlockCost() {
+export function getCrystalUnlockCost() {
   return {
     sunflower: 8,
     tulip: 5,
     mushroom: 3
   };
 }
-
-module.exports = {
-  SEEDS,
-  GARDEN_UPGRADES,
-  getSeedInfo,
-  getSeedIcon,
-  getSeedGrowthTime,
-  calculateGrowthTime,
-  calculateHarvestYield,
-  getSlotUnlockCost,
-  getCrystalUnlockCost
-};
