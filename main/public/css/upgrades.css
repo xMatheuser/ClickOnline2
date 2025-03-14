@@ -40,6 +40,7 @@
   opacity: 0.9;
   font-weight: normal;
   white-space: nowrap;
+  text-align: center;
 }
 
 .upgrade-item:hover {
@@ -516,10 +517,11 @@ body.dark-mode .bulk-buy-button.active {
 .upgrade-purchase {
   display: flex;
   align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
+  gap: 12px;
+  justify-content: center;
   position: relative;
   margin-top: 4px;
+  width: 100%;
 }
 
 .upgrade-amount {
