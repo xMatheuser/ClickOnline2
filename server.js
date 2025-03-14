@@ -627,8 +627,6 @@ function getSeedGrowthTime(seedId) {
   return SEEDS[seedId]?.growthTime || 30000;
 }
 
-
-
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
