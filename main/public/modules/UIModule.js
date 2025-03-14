@@ -1,6 +1,6 @@
 import { socket, gameState, isOwnPlayer, updateGameState } from './CoreModule.js';
 import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
-import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription } from './UpgradeModule.js';
+import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription, calculateBulkPrice } from './UpgradeModule.js';
 import { initHistory } from './HistoryModule.js';
 import { playSound, levelUpSound, tickSound, achievementSound } from './AudioModule.js';
 import { getClicksPerSecond } from './InputModule.js';
@@ -741,32 +741,4 @@ function updateClicksPerSecond() {
   const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
-}
-
-function calculateBulkPrice(upgrade, amount) {
-  if (amount === 'max') {
-    let maxAffordable = 0;
-    let totalCost = 0;
-    let currentPrice = calculateUpgradePrice(upgrade);
-    let remainingLevels = upgrade.maxLevel - upgrade.level;
-    let availableCoins = gameState.teamCoins;
-
-    while (maxAffordable < remainingLevels && availableCoins >= currentPrice) {
-      totalCost += currentPrice;
-      availableCoins -= currentPrice;
-      maxAffordable++;
-      currentPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + maxAffordable));
-    }
-
-    return { cost: totalCost, levels: maxAffordable };
-  } else {
-    let totalCost = 0;
-    let actualLevels = Math.min(amount, upgrade.maxLevel - upgrade.level);
-    
-    for (let i = 0; i < actualLevels; i++) {
-      totalCost += Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level + i));
-    }
-
-    return { cost: totalCost, levels: actualLevels };
-  }
 }
