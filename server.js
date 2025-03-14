@@ -7,6 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
+const { SEEDS, GARDEN_UPGRADES } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,7 +58,18 @@ let gameState = {
   activeBoss: null,
   nextBossLevel: 5, // Primeiro boss aparece no nível 5
   bossSpawnInterval: 10, // Intervalo de níveis entre cada boss
-  isInBossFight: false // Add flag for boss fight state
+  isInBossFight: false, // Add flag for boss fight state
+  gardens: {
+    sharedGarden: {
+      unlockedSlots: 1,
+      crystalUnlocked: false,
+      resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
+      plants: {},
+      upgrades: {}
+    }
+  },
+  gardenSeeds: SEEDS,
+  gardenUpgrades: GARDEN_UPGRADES,
 };
 
 let lastTotalCPS = 0;
@@ -235,6 +247,13 @@ io.on('connection', (socket) => {
 
   const preparedState = prepareGameStateForBroadcast(gameState);
   socket.emit('gameStateUpdate', preparedState);
+
+  // Send garden data on initial connection
+  socket.emit('gardenInit', {
+    seeds: gameState.gardenSeeds,
+    upgrades: gameState.gardenUpgrades,
+    garden: gameState.gardens.sharedGarden
+  });
 
   socket.on('addPlayer', (playerData) => {
     try {
@@ -523,6 +542,93 @@ io.on('connection', (socket) => {
     broadcastGameState();
   });
 
+  socket.on('plantSeed', ({ slotId, seedType }) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    const seedInfo = gameState.gardenSeeds[seedType];
+    if (!seedInfo) return;
+
+    // Validate slot is available
+    if (garden.plants[slotId] || slotId >= garden.unlockedSlots) return;
+
+    const adjustedGrowthTime = calculateGrowthTime(
+      getSeedGrowthTime(seedType),
+      garden.upgrades
+    );
+
+    garden.plants[slotId] = {
+      type: seedType,
+      plantedAt: Date.now(),
+      growthTime: adjustedGrowthTime,
+      ready: false,
+      plantedBy: socket.id
+    };
+
+    // Broadcast to all players
+    io.emit('gardenUpdate', garden);
+  });
+
+  socket.on('harvestPlant', (slotId) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    const plant = garden.plants[slotId];
+    if (!plant || !plant.ready) return;
+
+    const harvestAmount = calculateHarvestYield(
+      gameState.gardenSeeds[plant.type].reward.amount,
+      garden.upgrades
+    );
+
+    // Add resources to shared inventory
+    garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+    delete garden.plants[slotId];
+
+    // Broadcast updates to all players
+    io.emit('gardenUpdate', garden);
+  });
+
+  socket.on('buyGardenUpgrade', ({ upgradeId }) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    if (upgradeId === 'slot') {
+      if (garden.unlockedSlots >= 10) {
+        socket.emit('notification', 'Máximo de slots atingido!');
+        return;
+      }
+      garden.unlockedSlots++;
+    } else if (upgradeId === 'crystal') {
+      garden.crystalUnlocked = true;
+    }
+
+    // Broadcast updates to all players
+    io.emit('gardenUpdate', garden);
+  });
+
+function getSeedInfo(seedId) {
+  return SEEDS[seedId];
+}
+
+
+function calculateGrowthTime(baseTime, upgradeLevels) {
+  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
+  return baseTime * speedMultiplier;
+}
+
+function calculateHarvestYield(baseAmount, upgradeLevels) {
+  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
+  return Math.floor(baseAmount * yieldMultiplier);
+}
+
+
+function getSeedGrowthTime(seedId) {
+  return SEEDS[seedId]?.growthTime || 30000;
+}
+
+
+
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
@@ -729,6 +835,21 @@ setInterval(() => {
 
   if (buffRemoved) {
     broadcastGameState();
+  }
+}, 1000);
+
+// Add garden check interval to update plant growth
+setInterval(() => {
+  const garden = gameState.gardens.sharedGarden;
+  let updated = false;
+  Object.entries(garden.plants).forEach(([slotId, plant]) => {
+    if (!plant.ready && Date.now() - plant.plantedAt >= plant.growthTime) {
+      plant.ready = true;
+      updated = true;
+    }
+  });
+  if (updated) {
+    io.emit('gardenUpdate', garden);
   }
 }, 1000);
 

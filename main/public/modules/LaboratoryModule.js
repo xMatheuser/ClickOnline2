@@ -1,28 +1,41 @@
-import { showNotification } from './UIModule.js';
 import { 
-  SEEDS,
   GARDEN_UPGRADES,
-  getSeedInfo, 
   getSeedIcon, 
-  getSeedGrowthTime,
-  getSlotUnlockCost,
-  getCrystalUnlockCost,
-  calculateGrowthTime,
-  calculateHarvestYield
-} from './GardenModule.js';
+  getSlotUnlockCost} from './GardenModule.js';
+import socket from './SocketManager.js';
 
 export let laboratoryData = {
   garden: {
     selectedSeed: 'sunflower',
     unlockedSlots: 1,
     crystalUnlocked: false,
-    resources: { sunflower: 1000, tulip: 1000, mushroom: 1000, crystal: 1000 },
+    resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
     plants: {},
-    upgrades: Object.fromEntries(
-      Object.entries(GARDEN_UPGRADES).map(([key, upgrade]) => [key, 0])
-    )
-  }
+    upgrades: {}
+  },
+  seeds: {}, // Will be populated from server
+  gardenUpgrades: {} // Will be populated from server
 };
+
+// Listen for garden updates from server
+socket.on('gardenUpdate', (garden) => {
+  laboratoryData.garden = {
+    ...laboratoryData.garden,
+    ...garden
+  };
+  updateGardenSlots();
+  updateLabResources();
+});
+
+// Listen for initial garden data
+socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
+  laboratoryData.seeds = seeds;
+  laboratoryData.gardenUpgrades = upgrades;
+  laboratoryData.garden = garden;
+  updateGardenSlots();
+  updateLabResources();
+  renderSeedOptions();
+});
 
 export function initLaboratory() {
   const openLabButton = document.getElementById('open-laboratory');
@@ -124,62 +137,20 @@ function setupGardenSlot(slot) {
 }
 
 function plantSeed(slotId) {
-  const garden = laboratoryData.garden;
-  const seedType = garden.selectedSeed;
-  const seedInfo = getSeedInfo(seedType);
-  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
-  
-  const adjustedGrowthTime = calculateGrowthTime(
-    getSeedGrowthTime(seedType),
-    garden.upgrades
-  );
-  
-  slot.innerHTML = `
-    <div class="plant">${getSeedIcon(seedType)}</div>
-    <div class="progress-bar"></div>
-    <div class="ready-indicator">Pronto!</div>
-  `;
-  
-  garden.plants[slotId] = {
-    type: seedType,
-    plantedAt: Date.now(),
-    growthTime: adjustedGrowthTime,
-    ready: false
-  };
+  const seedType = laboratoryData.garden.selectedSeed;
+  socket.emit('plantSeed', { slotId, seedType });
 }
 
 function harvestPlant(slotId) {
-  const garden = laboratoryData.garden;
-  const plant = garden.plants[slotId];
-  const seedInfo = getSeedInfo(plant.type);
-  const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`); // Adicionar esta linha
-  
-  if (plant.ready) {
-    const harvestAmount = calculateHarvestYield(
-      seedInfo.reward.amount,
-      garden.upgrades
-    );
-    
-    garden.resources[plant.type] += harvestAmount;
-    const resourceCount = document.getElementById(`lab-${plant.type}-count`);
-    if (resourceCount) {
-      resourceCount.textContent = garden.resources[plant.type];
-    }
-    showNotification(`+${harvestAmount} ${getSeedIcon(plant.type)}`);
-  }
-  
-  // Limpa o slot
-  delete garden.plants[slotId];
-  if (slot) { // Adicionar verificação
-    slot.innerHTML = `
-      <div class="plant-placeholder">Clique para plantar</div>
-      <div class="progress-bar"></div>
-      <div class="ready-indicator">Pronto!</div>
-    `;
-  }
-  
-  // Atualiza os recursos mostrados
-  updateLabResources();
+  socket.emit('harvestPlant', slotId);
+}
+
+function buyLabSlot() {
+  socket.emit('buyGardenUpgrade', { upgradeId: 'slot' });
+}
+
+function buyLabCrystal() {
+  socket.emit('buyGardenUpgrade', { upgradeId: 'crystal' });
 }
 
 function checkGardenProgress() {
@@ -195,62 +166,7 @@ function checkGardenProgress() {
       if (progressBar) {
         progressBar.style.width = `${progress}%`;
       }
-
-      if (elapsed >= plant.growthTime) {
-        plant.ready = true;
-        document.querySelector(`.garden-slot[data-slot="${slotId}"] .ready-indicator`).style.display = 'block';
-      }
     }
-  }
-}
-
-function buyLabSlot() {
-  const garden = laboratoryData.garden;
-  
-  if (garden.unlockedSlots >= 10) {
-    showNotification('Todos os slots já estão desbloqueados!');
-    return;
-  }
-  
-  const cost = getSlotUnlockCost(garden.unlockedSlots + 1);
-  
-  if (garden.resources.sunflower >= cost.sunflower && garden.resources.tulip >= cost.tulip) {
-    garden.resources.sunflower -= cost.sunflower;
-    garden.resources.tulip -= cost.tulip;
-    garden.unlockedSlots++;
-    updateGardenSlots();
-    updateLabResources();
-    updateSlotCost(); // Adicionar esta linha
-    showNotification('Novo slot de plantio desbloqueado!');
-  } else {
-    showNotification('Recursos insuficientes!');
-  }
-}
-
-function buyLabCrystal() {
-  const garden = laboratoryData.garden;
-  
-  if (garden.crystalUnlocked) {
-    showNotification('Semente de Cristal já desbloqueada!');
-    return;
-  }
-  
-  const cost = getCrystalUnlockCost();
-  
-  if (garden.resources.sunflower >= cost.sunflower && 
-      garden.resources.tulip >= cost.tulip && 
-      garden.resources.mushroom >= cost.mushroom) {
-    garden.resources.sunflower -= cost.sunflower;
-    garden.resources.tulip -= cost.tulip;
-    garden.resources.mushroom -= cost.mushroom;
-    garden.crystalUnlocked = true;
-    
-    const crystalSeed = document.querySelector('.seed-option[data-seed="crystal"]');
-    crystalSeed.classList.remove('locked');
-    updateLabResources();
-    showNotification('Semente de Cristal desbloqueada!');
-  } else {
-    showNotification('Recursos insuficientes!');
   }
 }
 
@@ -258,7 +174,7 @@ function buyLabCrystal() {
 function updateLabResources() {
   const garden = laboratoryData.garden;
   
-  // Atualiza cada contador de recurso
+  // Atualiza cada contador de recurso usando os recursos compartilhados
   Object.entries(garden.resources).forEach(([type, amount]) => {
     const counter = document.getElementById(`lab-${type}-count`);
     if (counter) {
@@ -269,7 +185,7 @@ function updateLabResources() {
 
 function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
-  seedSelector.innerHTML = Object.values(SEEDS).map(seed => `
+  seedSelector.innerHTML = Object.values(laboratoryData.seeds).map(seed => `
     <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
                            ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
          data-seed="${seed.id}">

@@ -49,16 +49,8 @@ export const SEEDS = {
   }
 };
 
-export function getSeedInfo(seedId) {
-  return SEEDS[seedId];
-}
-
 export function getSeedIcon(seedId) {
   return SEEDS[seedId]?.icon || '❓';
-}
-
-export function getSeedGrowthTime(seedId) {
-  return SEEDS[seedId]?.growthTime || 30000;
 }
 
 export const GARDEN_UPGRADES = {
@@ -88,28 +80,10 @@ export const GARDEN_UPGRADES = {
   }
 };
 
-export function calculateGrowthTime(baseTime, upgradeLevels) {
-  const speedMultiplier = GARDEN_UPGRADES.growthSpeed.getEffect(upgradeLevels.growthSpeed || 0);
-  return baseTime * speedMultiplier;
-}
-
-export function calculateHarvestYield(baseAmount, upgradeLevels) {
-  const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
-  return Math.floor(baseAmount * yieldMultiplier);
-}
-
 // Novo sistema de custos para slots
 export function getSlotUnlockCost(nextSlotNumber) {
   return {
     sunflower: 5 * nextSlotNumber,
     tulip: 3 * nextSlotNumber
-  };
-}
-
-export function getCrystalUnlockCost() {
-  return {
-    sunflower: 8,
-    tulip: 5,
-    mushroom: 3
   };
 }
