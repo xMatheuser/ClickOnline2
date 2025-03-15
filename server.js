@@ -583,6 +583,20 @@ io.on('connection', (socket) => {
 
     // Add resources to shared inventory
     garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+    
+    // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
+    if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
+      // Obter a chance real do efeito da podadora usando getEffect
+      const prunerChance = gameState.gardenUpgrades.prunerPrecision.getEffect(garden.upgrades.prunerPrecision);
+      
+      // Aplicar a chance de acordo com o efeito
+      if (Math.random() < prunerChance) {
+        const extraAmount = 1; // Quantidade extra fixa de 1
+        garden.resources[plant.type] += extraAmount;
+        socket.emit('notification', `Podadora de Precisão: +${extraAmount} ${getResourceEmoji(plant.type)}!`);
+      }
+    }
+    
     delete garden.plants[slotId];
 
     // Atualizar informações de visibilidade das sementes
@@ -608,6 +622,7 @@ io.on('connection', (socket) => {
     if (!garden) return;
 
     let plantsHarvested = false;
+    let extraResourcesGained = {}; // Para rastrear recursos extras obtidos com a podadora
 
     // Percorre todas as plantas e colhe as que estão prontas
     for (const slotId in garden.plants) {
@@ -620,12 +635,39 @@ io.on('connection', (socket) => {
 
         // Adiciona recursos ao inventário compartilhado
         garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+        
+        // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
+        if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
+          // Obter a chance real do efeito da podadora usando getEffect
+          const prunerChance = gameState.gardenUpgrades.prunerPrecision.getEffect(garden.upgrades.prunerPrecision);
+          
+          // Aplicar a chance de acordo com o efeito
+          if (Math.random() < prunerChance) {
+            const extraAmount = 1; // Quantidade extra fixa de 1
+            garden.resources[plant.type] += extraAmount;
+            
+            // Acumula o total de recursos extras para mostrar na notificação
+            if (!extraResourcesGained[plant.type]) {
+              extraResourcesGained[plant.type] = 0;
+            }
+            extraResourcesGained[plant.type] += extraAmount;
+          }
+        }
+        
         delete garden.plants[slotId];
         plantsHarvested = true;
       }
     }
 
     if (plantsHarvested) {
+      // Enviar notificação sobre recursos extras obtidos com a podadora
+      if (Object.keys(extraResourcesGained).length > 0) {
+        const extraMessage = Object.entries(extraResourcesGained)
+          .map(([type, amount]) => `+${amount} ${getResourceEmoji(type)}`)
+          .join(', ');
+        socket.emit('notification', `Podadora de Precisão: ${extraMessage}!`);
+      }
+      
       // Atualizar informações de visibilidade das sementes
       const updatedSeeds = { ...gameState.gardenSeeds };
       Object.keys(updatedSeeds).forEach(seedId => {
@@ -1019,6 +1061,17 @@ function serializeGardenUpgrades() {
   });
   
   return gardenUpgrades;
+}
+
+// Adicionar esta função perto das outras funções auxiliares
+function getResourceEmoji(resourceType) {
+  switch(resourceType) {
+    case 'sunflower': return '🌻';
+    case 'tulip': return '🌷';
+    case 'mushroom': return '🍄';
+    case 'crystal': return '💎';
+    default: return '';
+  }
 }
 
 const port = process.env.PORT || 3000;

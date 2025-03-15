@@ -74,6 +74,18 @@ export const GARDEN_UPGRADES = {
         mushroom: Math.floor(3 * Math.pow(2, level))
       })
     },
+    prunerPrecision: {
+      id: 'pruner-precision',
+      name: 'Podadora de Precisão',
+      description: '20% de chance de dropar recurso extra.',
+      baseCost: { sunflower: 10, crystal: 5 },
+      maxLevel: 5,
+      getEffect: (level) => level > 0 ? (level * 0.2) : 0, // 20% de chance quando ativada
+      getCost: (level) => ({
+        sunflower: 10,
+        crystal: 5
+      })
+    },
     slot: {
       id: 'garden-slot',
       name: 'Novo Canteiro',
