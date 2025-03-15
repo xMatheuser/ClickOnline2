@@ -13,7 +13,8 @@ export let laboratoryData = {
     upgrades: {}
   },
   seeds: {}, // Will be populated from server
-  gardenUpgrades: {} // Will be populated from server
+  gardenUpgrades: {}, // Will be populated from server
+  storeItems: {} // Will be populated from server
 };
 
 // Listen for garden updates from server
@@ -24,17 +25,16 @@ socket.on('gardenUpdate', (garden) => {
   };
   updateGardenSlots();
   updateLabResources();
-  updateSlotCost();
-  updateCrystalCost();
-  updateFertilizerCost();
+  updateStoreItems(); // Atualizar os itens da loja
   updateHarvestAllButton();
   updateGardenBadge();
   renderSeedOptions();
 });
 
 // Listen for initial garden data
-socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
+socket.on('gardenInit', ({ seeds, upgrades, garden, storeItems }) => {
   laboratoryData.seeds = seeds;
+  laboratoryData.storeItems = storeItems || {}; // Armazenar os itens da loja
   
   // Reconstruir as funções a partir das strings
   laboratoryData.gardenUpgrades = {};
@@ -70,6 +70,7 @@ socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
   console.log('[Jardim] Dados iniciais recebidos:', {
     seeds: Object.keys(seeds),
     upgrades: Object.keys(laboratoryData.gardenUpgrades),
+    storeItems: Object.keys(laboratoryData.storeItems),
     garden: {
       unlockedSlots: garden.unlockedSlots,
       crystalUnlocked: garden.crystalUnlocked,
@@ -80,9 +81,7 @@ socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
   
   updateGardenSlots();
   updateLabResources();
-  updateSlotCost();
-  updateCrystalCost();
-  updateFertilizerCost();
+  updateStoreItems(); // Renderizar os itens da loja
   updateHarvestAllButton();
   renderSeedOptions();
 });
@@ -98,44 +97,19 @@ export function initLaboratory() {
   }
 
   openLabButton.addEventListener('click', () => {
-    laboratoryOverlay.classList.add('active');
-    
-    // Atualiza a interface do jardim
+    laboratoryOverlay.style.display = 'flex';
     updateGardenSlots();
     updateLabResources();
-    updateSlotCost();
-    updateCrystalCost();
-    updateFertilizerCost();
+    updateStoreItems(); // Atualizar os itens da loja quando abrir o laboratório
     updateHarvestAllButton();
-    checkGardenProgress();
     renderSeedOptions();
-    
-    // Resetar o contador de plantas prontas quando o overlay é aberto
-    readyPlantsCount = 0;
-    updateGardenBadge();
-    
-    console.log('Laboratório aberto');
   });
 
   closeLabButton.addEventListener('click', () => {
-    laboratoryOverlay.classList.remove('active');
-    console.log('Laboratório fechado');
+    laboratoryOverlay.style.display = 'none';
   });
 
-  laboratoryOverlay.addEventListener('click', (e) => {
-    if (e.target === laboratoryOverlay) laboratoryOverlay.classList.remove('active');
-  });
-
-  // Inicializa o jardim
   initLaboratoryGarden();
-  
-  // Solicita dados atualizados do servidor
-  socket.emit('requestGardenUpdate');
-  
-  // Inicializa o badge do jardim
-  updateGardenBadge();
-  
-  console.log('Laboratório inicializado');
 }
 
 function initLaboratoryGarden() {
@@ -173,45 +147,63 @@ function initLaboratoryGarden() {
   // Atualiza o badge do jardim a cada 5 segundos (caso o servidor não envie atualizações)
   setInterval(updateGardenBadge, 5000);
 
-  // Add tooltip events for store items
-  document.querySelectorAll('.store-item').forEach(item => {
-    const desc = item.querySelector('.store-item-desc').textContent;
-    
-    item.addEventListener('mousemove', (e) => {
-      const tooltip = document.getElementById('tooltip');
-      if (!tooltip) return;
+  // Adiciona tooltip para os itens da loja
+  setupTooltips();
+}
+
+// Função para configurar tooltips
+function setupTooltips() {
+  // Cria o elemento de tooltip se não existir
+  let tooltip = document.getElementById('tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'tooltip';
+    tooltip.className = 'tooltip';
+    document.body.appendChild(tooltip);
+  }
+  
+  // Adiciona eventos de tooltip para os itens da loja
+  document.addEventListener('mouseover', (e) => {
+    const storeItem = e.target.closest('.store-item');
+    if (storeItem) {
+      const desc = storeItem.querySelector('.store-item-desc')?.textContent;
+      if (!desc) return;
       
       tooltip.textContent = desc;
       tooltip.style.display = 'block';
       
-      // Position tooltip next to cursor
-      const x = e.pageX + 10;
-      const y = e.pageY + 10;
+      // Posiciona o tooltip próximo ao cursor
+      const updateTooltipPosition = (e) => {
+        // Position tooltip next to cursor
+        const x = e.pageX + 10;
+        const y = e.pageY + 10;
+        
+        // Keep tooltip within viewport
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (x + tooltipRect.width > viewportWidth) {
+          tooltip.style.left = (x - tooltipRect.width - 20) + 'px';
+        } else {
+          tooltip.style.left = x + 'px';
+        }
+        
+        if (y + tooltipRect.height > viewportHeight) {
+          tooltip.style.top = (y - tooltipRect.height - 20) + 'px';
+        } else {
+          tooltip.style.top = y + 'px';
+        }
+      };
       
-      // Keep tooltip within viewport
-      const tooltipRect = tooltip.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+      updateTooltipPosition(e);
+      storeItem.addEventListener('mousemove', updateTooltipPosition);
       
-      if (x + tooltipRect.width > viewportWidth) {
-        tooltip.style.left = (x - tooltipRect.width - 20) + 'px';
-      } else {
-        tooltip.style.left = x + 'px';
-      }
-      
-      if (y + tooltipRect.height > viewportHeight) {
-        tooltip.style.top = (y - tooltipRect.height - 20) + 'px';
-      } else {
-        tooltip.style.top = y + 'px';
-      }
-    });
-    
-    item.addEventListener('mouseleave', () => {
-      const tooltip = document.getElementById('tooltip');
-      if (tooltip) {
+      storeItem.addEventListener('mouseleave', () => {
         tooltip.style.display = 'none';
-      }
-    });
+        storeItem.removeEventListener('mousemove', updateTooltipPosition);
+      }, { once: true });
+    }
   });
 }
 
@@ -543,7 +535,7 @@ function renderSeedOptions() {
   });
 }
 
-// Adicionar esta nova função
+// Função para atualizar o custo do slot
 function updateSlotCost() {
   const slotElement = document.querySelector('[data-item="slot"]');
   if (!slotElement) return;
@@ -554,27 +546,31 @@ function updateSlotCost() {
   if (!costElement || !buyButton) return;
   
   const garden = laboratoryData.garden;
+  const storeItem = laboratoryData.storeItems.slot;
   
-  // Se atingiu o máximo de slots
-  if (garden.unlockedSlots >= 10) {
-    costElement.textContent = 'Máximo de slots atingido';
+  // Se já atingiu o número máximo de slots
+  if (garden.unlockedSlots >= (storeItem?.maxSlots || 10)) {
+    costElement.textContent = 'Máximo de Slots';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
+    slotElement.classList.add('purchased');
     return;
   } else {
     buyButton.disabled = false;
     buyButton.textContent = 'Comprar';
+    slotElement.classList.remove('purchased');
   }
   
+  // Calcular o custo do próximo slot
   const nextSlotNumber = garden.unlockedSlots + 1;
-  const cost = getSlotUnlockCost(nextSlotNumber);
+  const cost = storeItem?.getBaseCost ? storeItem.getBaseCost(nextSlotNumber) : { sunflower: 5, tulip: 3 };
   
-  // Verifica se o jogador tem recursos suficientes
+  // Verificar se o jogador tem recursos suficientes
   const hasEnoughResources = 
     garden.resources.sunflower >= cost.sunflower &&
     garden.resources.tulip >= cost.tulip;
   
-  // Atualiza o visual do botão com base nos recursos
+  // Atualizar o visual do botão com base nos recursos
   if (!hasEnoughResources) {
     buyButton.classList.add('insufficient');
   } else {
@@ -582,10 +578,6 @@ function updateSlotCost() {
   }
   
   costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
-  
-  // Atualiza o custo do crystal e fertilizante
-  updateCrystalCost();
-  updateFertilizerCost();
 }
 
 // Função para atualizar o custo do crystal
@@ -599,6 +591,7 @@ function updateCrystalCost() {
   if (!costElement || !buyButton) return;
   
   const garden = laboratoryData.garden;
+  const storeItem = laboratoryData.storeItems.crystal;
   
   // Se já tem o crystal desbloqueado
   if (garden.crystalUnlocked) {
@@ -614,7 +607,7 @@ function updateCrystalCost() {
   }
   
   // Definir custo do crystal
-  const cost = {
+  const cost = storeItem?.baseCost || {
     sunflower: 50,
     tulip: 30,
     mushroom: 20
@@ -648,10 +641,21 @@ function updateFertilizerCost() {
   if (!costElement || !titleElement || !buyButton) return;
   
   const garden = laboratoryData.garden;
-  const currentLevel = garden.upgrades?.fertilizer || 0;
+  const storeItem = laboratoryData.storeItems.fertilizer;
+  const upgradeRef = storeItem?.upgradeRef;
+  
+  // Se não tiver referência para o upgrade, usar valores padrão
+  if (!upgradeRef || !laboratoryData.gardenUpgrades[upgradeRef]) {
+    costElement.textContent = 'Erro: Upgrade não encontrado';
+    buyButton.disabled = true;
+    return;
+  }
+  
+  const upgrade = laboratoryData.gardenUpgrades[upgradeRef];
+  const currentLevel = garden.upgrades?.[upgradeRef] || 0;
   
   // Atualiza o título para mostrar o nível atual
-  titleElement.textContent = `Fertilizante Superior ${currentLevel > 0 ? `Nível ${currentLevel}` : ''}`;
+  titleElement.textContent = `${storeItem.name} ${currentLevel > 0 ? `Nível ${currentLevel}` : ''}`;
   
   // Adiciona classe visual para indicar que o upgrade foi comprado
   if (currentLevel > 0) {
@@ -661,7 +665,7 @@ function updateFertilizerCost() {
   }
   
   // Se atingiu o nível máximo
-  if (currentLevel >= 5) {
+  if (currentLevel >= upgrade.maxLevel) {
     costElement.textContent = 'Nível Máximo';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
@@ -672,19 +676,12 @@ function updateFertilizerCost() {
   }
   
   // Calcula o custo para o próximo nível
-  const nextLevel = currentLevel + 1;
-  const baseCost = { sunflower: 10, tulip: 8, mushroom: 5 };
-  const cost = {
-    sunflower: Math.floor(baseCost.sunflower * Math.pow(1.5, currentLevel)),
-    tulip: Math.floor(baseCost.tulip * Math.pow(1.5, currentLevel)),
-    mushroom: Math.floor(baseCost.mushroom * Math.pow(1.5, currentLevel))
-  };
+  const cost = upgrade.getCost(currentLevel);
   
   // Verifica se o jogador tem recursos suficientes
-  const hasEnoughResources = 
-    garden.resources.sunflower >= cost.sunflower &&
-    garden.resources.tulip >= cost.tulip &&
-    garden.resources.mushroom >= cost.mushroom;
+  const hasEnoughResources = Object.entries(cost).every(([resource, amount]) => 
+    garden.resources[resource] >= amount
+  );
   
   // Atualiza o visual do botão com base nos recursos
   if (!hasEnoughResources) {
@@ -693,55 +690,46 @@ function updateFertilizerCost() {
     buyButton.classList.remove('insufficient');
   }
   
-  costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷, ${cost.mushroom} 🍄`;
-}
-
-// Novo sistema de custos para slots
-function getSlotUnlockCost(nextSlotNumber) {
-  return {
-    sunflower: 5 * nextSlotNumber,
-    tulip: 3 * nextSlotNumber
-  };
+  // Formatar o texto de custo
+  const costText = Object.entries(cost)
+    .map(([resource, amount]) => {
+      const icon = resource === 'sunflower' ? '🌻' : 
+                  resource === 'tulip' ? '🌷' : 
+                  resource === 'mushroom' ? '🍄' : 
+                  resource === 'crystal' ? '💎' : '';
+      return `${amount} ${icon}`;
+    })
+    .join(', ');
+  
+  costElement.textContent = `Custo: ${costText}`;
 }
 
 function getSeedIcon(seedId) {
   return laboratoryData.seeds[seedId]?.icon || '❓';
 }
 
-// Função para calcular o tempo de crescimento ajustado
+// Função para calcular o tempo de crescimento ajustado com base nos upgrades
 function calculateAdjustedGrowthTime(baseTime) {
   const garden = laboratoryData.garden;
   const upgrades = garden.upgrades || {};
   
-  // Calcular multiplicador de velocidade
+  // Obter os upgrades relevantes
+  const gardenUpgrades = laboratoryData.gardenUpgrades;
+  
+  // Calcular o multiplicador de velocidade de crescimento
   let speedMultiplier = 1;
-  const speedLevel = upgrades.growthSpeed || 0;
-  if (speedLevel > 0 && laboratoryData.gardenUpgrades?.growthSpeed?.getEffect) {
-    try {
-      speedMultiplier = laboratoryData.gardenUpgrades.growthSpeed.getEffect(speedLevel);
-    } catch (error) {
-      console.error('[Jardim] Erro ao calcular efeito de velocidade:', error);
-      // Fallback para cálculo manual
-      speedMultiplier = 1 - (speedLevel * 0.1);
-    }
+  if (upgrades.growthSpeed && gardenUpgrades.growthSpeed) {
+    speedMultiplier = gardenUpgrades.growthSpeed.getEffect(upgrades.growthSpeed);
   }
   
-  // Calcular multiplicador de fertilizante
+  // Calcular o multiplicador do fertilizante
   let fertilizerMultiplier = 1;
-  const fertilizerLevel = upgrades.fertilizer || 0;
-  if (fertilizerLevel > 0 && laboratoryData.gardenUpgrades?.fertilizer?.getEffect) {
-    try {
-      fertilizerMultiplier = laboratoryData.gardenUpgrades.fertilizer.getEffect(fertilizerLevel);
-    } catch (error) {
-      console.error('[Jardim] Erro ao calcular efeito de fertilizante:', error);
-      // Fallback para cálculo manual
-      fertilizerMultiplier = 1 - (fertilizerLevel * 0.2);
-    }
+  if (upgrades.fertilizer && gardenUpgrades.fertilizer) {
+    fertilizerMultiplier = gardenUpgrades.fertilizer.getEffect(upgrades.fertilizer);
   }
   
-  // Calcular tempo ajustado
-  const totalMultiplier = speedMultiplier * fertilizerMultiplier;
-  const adjustedTime = baseTime * totalMultiplier;
+  // Calcular o tempo de crescimento ajustado
+  const adjustedTime = baseTime * speedMultiplier * fertilizerMultiplier;
   
   return adjustedTime;
 }
@@ -775,4 +763,69 @@ function updateGardenBadge() {
   } else if (existingBadge) {
     existingBadge.remove();
   }
+}
+
+// Função para renderizar dinamicamente os itens da loja
+function updateStoreItems() {
+  const storeGrid = document.querySelector('.store-grid');
+  if (!storeGrid) return;
+  
+  // Limpar a grade da loja
+  storeGrid.innerHTML = '';
+  
+  // Obter os itens da loja do servidor
+  const { storeItems } = laboratoryData;
+  
+  // Verificar se temos itens da loja
+  if (!storeItems || Object.keys(storeItems).length === 0) {
+    console.warn('[Jardim] Nenhum item de loja disponível');
+    return;
+  }
+  
+  // Renderizar cada item da loja
+  Object.entries(storeItems).forEach(([itemId, item]) => {
+    // Criar o elemento do item da loja
+    const storeItem = document.createElement('div');
+    storeItem.className = 'store-item';
+    storeItem.dataset.item = itemId;
+    
+    // Adicionar título
+    const titleElement = document.createElement('div');
+    titleElement.className = 'store-item-title';
+    titleElement.textContent = item.name;
+    storeItem.appendChild(titleElement);
+    
+    // Adicionar descrição
+    const descElement = document.createElement('div');
+    descElement.className = 'store-item-desc';
+    descElement.textContent = item.description;
+    storeItem.appendChild(descElement);
+    
+    // Adicionar elemento de custo (será preenchido depois)
+    const costElement = document.createElement('div');
+    costElement.className = 'store-item-cost';
+    costElement.textContent = 'Carregando...';
+    storeItem.appendChild(costElement);
+    
+    // Adicionar botão de compra
+    const buyButton = document.createElement('button');
+    buyButton.className = 'buy-button';
+    buyButton.id = `buy-lab-${itemId}`;
+    buyButton.textContent = 'Comprar';
+    storeItem.appendChild(buyButton);
+    
+    // Adicionar o item à grade
+    storeGrid.appendChild(storeItem);
+    
+    // Configurar o evento de clique do botão
+    buyButton.addEventListener('click', () => {
+      // Enviar solicitação para o servidor
+      socket.emit('buyGardenUpgrade', { upgradeId: itemId });
+    });
+  });
+  
+  // Atualizar os custos e estados dos itens
+  updateSlotCost();
+  updateCrystalCost();
+  updateFertilizerCost();
 }

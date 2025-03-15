@@ -89,6 +89,44 @@ export const GARDEN_UPGRADES = {
     }
 };
 
+// Definição centralizada dos itens da loja do jardim
+export const STORE_ITEMS = {
+  slot: {
+    id: 'slot',
+    name: 'Novo Canteiro',
+    description: 'Desbloqueie um novo slot para plantar mais recursos.',
+    getBaseCost: (nextSlotNumber) => {
+      // Custo base aumenta com o número de slots
+      const baseSunflower = 5;
+      const baseTulip = 3;
+      const multiplier = Math.pow(1.5, nextSlotNumber - 2);
+      
+      return {
+        sunflower: Math.floor(baseSunflower * multiplier),
+        tulip: Math.floor(baseTulip * multiplier)
+      };
+    },
+    maxSlots: 10
+  },
+  crystal: {
+    id: 'crystal',
+    name: 'Cristal',
+    description: 'Desbloqueie a planta de cristal para colher recursos raros.',
+    baseCost: {
+      sunflower: 50,
+      tulip: 30,
+      mushroom: 20
+    }
+  },
+  fertilizer: {
+    id: 'fertilizer',
+    name: 'Fertilizante Superior',
+    description: 'Reduz em 20% o tempo de crescimento de todas as plantas',
+    // Usa o mesmo upgrade definido em GARDEN_UPGRADES
+    upgradeRef: 'fertilizer'
+  }
+};
+
 export const SEED_PROGRESSION = ['sunflower', 'tulip', 'mushroom', 'crystal'];
 
 export const UNLOCK_COSTS = {

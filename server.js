@@ -7,7 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
-const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
+const { SEEDS, GARDEN_UPGRADES, STORE_ITEMS, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,6 +70,7 @@ let gameState = {
   },
   gardenSeeds: SEEDS,
   gardenUpgrades: GARDEN_UPGRADES,
+  gardenStoreItems: STORE_ITEMS,
 };
 
 let lastTotalCPS = 0;
@@ -252,7 +253,8 @@ io.on('connection', (socket) => {
   socket.emit('gardenInit', {
     seeds: gameState.gardenSeeds,
     upgrades: gameState.gardenUpgrades,
-    garden: gameState.gardens.sharedGarden
+    garden: gameState.gardens.sharedGarden,
+    storeItems: gameState.gardenStoreItems
   });
 
   socket.on('addPlayer', (playerData) => {
@@ -599,7 +601,8 @@ io.on('connection', (socket) => {
     io.emit('gardenInit', {
       seeds: updatedSeeds,
       upgrades: gameState.gardenUpgrades,
-      garden: garden
+      garden: garden,
+      storeItems: gameState.gardenStoreItems
     });
   });
 
@@ -640,7 +643,8 @@ io.on('connection', (socket) => {
       io.emit('gardenInit', {
         seeds: updatedSeeds,
         upgrades: gameState.gardenUpgrades,
-        garden: garden
+        garden: garden,
+        storeItems: gameState.gardenStoreItems
       });
       
       socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
@@ -652,145 +656,172 @@ io.on('connection', (socket) => {
   socket.on('buyGardenUpgrade', ({ upgradeId }) => {
     const garden = gameState.gardens.sharedGarden;
     if (!garden) return;
-
-    if (upgradeId === 'slot') {
-      if (garden.unlockedSlots >= 10) {
-        socket.emit('notification', 'Máximo de slots atingido!');
-        return;
-      }
-      
-      // Calcular custo do próximo slot
-      const nextSlotNumber = garden.unlockedSlots + 1;
-      const cost = {
-        sunflower: 5 * nextSlotNumber,
-        tulip: 3 * nextSlotNumber
-      };
-      
-      // Verificar se tem recursos suficientes
-      if (garden.resources.sunflower < cost.sunflower || 
-          garden.resources.tulip < cost.tulip) {
-        socket.emit('notification', 'Recursos insuficientes para comprar um novo slot!');
-        return;
-      }
-      
-      // Deduzir recursos
-      garden.resources.sunflower -= cost.sunflower;
-      garden.resources.tulip -= cost.tulip;
-      
-      // Aumentar número de slots
-      garden.unlockedSlots++;
-      socket.emit('notification', 'Novo slot de plantação desbloqueado!');
-    } else if (upgradeId === 'crystal') {
-      // Verificar se já tem o crystal desbloqueado
-      if (garden.crystalUnlocked) {
-        socket.emit('notification', 'Cristal já está desbloqueado!');
-        return;
-      }
-      
-      // Definir custo do crystal
-      const cost = {
-        sunflower: 50,
-        tulip: 30,
-        mushroom: 20,
-        crystal: 0
-      };
-      
-      // Verificar se tem recursos suficientes
-      if (garden.resources.sunflower < cost.sunflower || 
-          garden.resources.tulip < cost.tulip || 
-          garden.resources.mushroom < cost.mushroom) {
-        socket.emit('notification', 'Recursos insuficientes para desbloquear o Cristal!');
-        return;
-      }
-      
-      // Deduzir recursos
-      garden.resources.sunflower -= cost.sunflower;
-      garden.resources.tulip -= cost.tulip;
-      garden.resources.mushroom -= cost.mushroom;
-      
-      // Desbloquear o crystal
-      garden.crystalUnlocked = true;
-    } else if (upgradeId.startsWith('unlock_')) {
-      const seedId = upgradeId.replace('unlock_', '');
-      if (processSeedUnlock(garden, seedId)) {
-        // Atualizar informações de visibilidade das sementes
-        const updatedSeeds = { ...gameState.gardenSeeds };
-        Object.keys(updatedSeeds).forEach(seedId => {
-          updatedSeeds[seedId] = {
-            ...updatedSeeds[seedId],
-            visible: isSeedVisible(garden, seedId),
-            unlockCost: getSeedUnlockCost(seedId)
-          };
-        });
-        
-        // Enviar atualização completa incluindo novas sementes visíveis
-        io.emit('gardenInit', {
-          seeds: updatedSeeds,
-          upgrades: gameState.gardenUpgrades,
-          garden: garden
-        });
-        
-        // Enviar notificação com o nome correto da semente
-        const seedName = gameState.gardenSeeds[seedId].name;
-        socket.emit('notification', `Semente de ${seedName} desbloqueada com sucesso!`);
-      } else {
-        socket.emit('notification', 'Não foi possível desbloquear esta semente. Recursos insuficientes!');
-      }
-    } else if (upgradeId === 'fertilizer') {
-      // Verificar se já tem o upgrade e se está no nível máximo
-      if (!garden.upgrades.fertilizer) {
-        garden.upgrades.fertilizer = 0;
-      }
-      
-      if (garden.upgrades.fertilizer >= gameState.gardenUpgrades.fertilizer.maxLevel) {
-        socket.emit('notification', 'Fertilizante já está no nível máximo!');
-        return;
-      }
-      
-      // Verificar se tem recursos suficientes
-      const nextLevel = garden.upgrades.fertilizer + 1;
-      const cost = gameState.gardenUpgrades.fertilizer.getCost(garden.upgrades.fertilizer);
-      
-      if (garden.resources.sunflower < cost.sunflower || 
-          garden.resources.tulip < cost.tulip || 
-          garden.resources.mushroom < cost.mushroom) {
-        socket.emit('notification', 'Recursos insuficientes para comprar o Fertilizante!');
-        return;
-      }
-      
-      // Deduzir recursos
-      garden.resources.sunflower -= cost.sunflower;
-      garden.resources.tulip -= cost.tulip;
-      garden.resources.mushroom -= cost.mushroom;
-      
-      // Aumentar nível do fertilizante
-      garden.upgrades.fertilizer++;
-      
-      // Recalcular o tempo de crescimento de todas as plantas existentes
-      for (const slotId in garden.plants) {
-        const plant = garden.plants[slotId];
-        if (plant && !plant.ready) {
-          // Calcular o progresso atual em porcentagem
-          const elapsed = Date.now() - plant.plantedAt;
-          const progressPercent = elapsed / plant.growthTime;
-          
-          // Recalcular o tempo de crescimento com o novo nível de fertilizante
-          const newGrowthTime = calculateGrowthTime(
-            getSeedGrowthTime(plant.type),
-            garden.upgrades
-          );
-          
-          // Atualizar o tempo de plantio para manter o mesmo progresso percentual
-          const newElapsed = progressPercent * newGrowthTime;
-          plant.plantedAt = Date.now() - newElapsed;
-          plant.growthTime = newGrowthTime;
-        }
-      }
-      
-      socket.emit('notification', `Fertilizante Superior melhorado para nível ${garden.upgrades.fertilizer}!`);
+    
+    const storeItem = gameState.gardenStoreItems[upgradeId];
+    if (!storeItem) {
+      console.error(`[Jardim] Item de loja não encontrado: ${upgradeId}`);
+      return;
     }
-
-    // Broadcast updates to all players
+    
+    // Lógica específica para cada tipo de item
+    switch (upgradeId) {
+      case 'slot':
+        // Verificar se já atingiu o máximo de slots
+        if (garden.unlockedSlots >= storeItem.maxSlots) {
+          socket.emit('notification', {
+            message: 'Você já atingiu o número máximo de canteiros!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Calcular o custo do próximo slot
+        const nextSlotNumber = garden.unlockedSlots + 1;
+        const cost = storeItem.getBaseCost(nextSlotNumber);
+        
+        // Verificar se tem recursos suficientes
+        if (garden.resources.sunflower < cost.sunflower ||
+            garden.resources.tulip < cost.tulip) {
+          socket.emit('notification', {
+            message: 'Recursos insuficientes para comprar um novo canteiro!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Deduzir os recursos
+        garden.resources.sunflower -= cost.sunflower;
+        garden.resources.tulip -= cost.tulip;
+        
+        // Adicionar o slot
+        garden.unlockedSlots++;
+        
+        socket.emit('notification', {
+          message: `Novo canteiro desbloqueado! (${garden.unlockedSlots}/10)`,
+          type: 'success'
+        });
+        break;
+        
+      case 'crystal':
+        // Verificar se já tem o crystal desbloqueado
+        if (garden.crystalUnlocked) {
+          socket.emit('notification', {
+            message: 'Você já desbloqueou o Cristal!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        const crystalCost = storeItem.baseCost;
+        
+        // Verificar se tem recursos suficientes
+        if (garden.resources.sunflower < crystalCost.sunflower ||
+            garden.resources.tulip < crystalCost.tulip ||
+            garden.resources.mushroom < crystalCost.mushroom) {
+          socket.emit('notification', {
+            message: 'Recursos insuficientes para desbloquear o Cristal!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Deduzir os recursos
+        garden.resources.sunflower -= crystalCost.sunflower;
+        garden.resources.tulip -= crystalCost.tulip;
+        garden.resources.mushroom -= crystalCost.mushroom;
+        
+        // Desbloquear o crystal
+        garden.crystalUnlocked = true;
+        
+        // Desbloquear a semente de crystal
+        const seedId = 'crystal';
+        if (processSeedUnlock(garden, seedId)) {
+          // Atualizar as sementes visíveis
+          const updatedSeeds = { ...gameState.gardenSeeds };
+          Object.keys(updatedSeeds).forEach(id => {
+            updatedSeeds[id] = {
+              ...updatedSeeds[id],
+              visible: isSeedVisible(garden, id),
+              unlocked: garden[`${id}Unlocked`] || false
+            };
+          });
+          
+          // Enviar dados atualizados para todos os clientes
+          io.emit('gardenInit', {
+            seeds: updatedSeeds,
+            upgrades: gameState.gardenUpgrades,
+            garden: garden,
+            storeItems: gameState.gardenStoreItems
+          });
+          
+          socket.emit('notification', {
+            message: `${gameState.gardenSeeds[seedId].name} desbloqueado!`,
+            type: 'success'
+          });
+        }
+        break;
+        
+      case 'fertilizer':
+        const upgradeRef = storeItem.upgradeRef;
+        if (!upgradeRef || !gameState.gardenUpgrades[upgradeRef]) {
+          socket.emit('notification', {
+            message: 'Upgrade não encontrado!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Inicializar o upgrade se necessário
+        if (!garden.upgrades[upgradeRef]) {
+          garden.upgrades[upgradeRef] = 0;
+        }
+        
+        // Verificar se já atingiu o nível máximo
+        if (garden.upgrades[upgradeRef] >= gameState.gardenUpgrades[upgradeRef].maxLevel) {
+          socket.emit('notification', {
+            message: 'Você já atingiu o nível máximo deste upgrade!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Calcular o custo para o próximo nível
+        const nextLevel = garden.upgrades[upgradeRef] + 1;
+        const fertilizerCost = gameState.gardenUpgrades[upgradeRef].getCost(garden.upgrades[upgradeRef]);
+        
+        // Verificar se tem recursos suficientes
+        const hasEnoughResources = Object.entries(fertilizerCost).every(([resource, amount]) => 
+          garden.resources[resource] >= amount
+        );
+        
+        if (!hasEnoughResources) {
+          socket.emit('notification', {
+            message: 'Recursos insuficientes para comprar este upgrade!',
+            type: 'error'
+          });
+          return;
+        }
+        
+        // Deduzir os recursos
+        Object.entries(fertilizerCost).forEach(([resource, amount]) => {
+          garden.resources[resource] -= amount;
+        });
+        
+        // Aumentar o nível do upgrade
+        garden.upgrades[upgradeRef]++;
+        
+        socket.emit('notification', {
+          message: `${storeItem.name} melhorado para o nível ${garden.upgrades[upgradeRef]}!`,
+          type: 'success'
+        });
+        break;
+        
+      default:
+        console.error(`[Jardim] Tipo de upgrade desconhecido: ${upgradeId}`);
+        return;
+    }
+    
+    // Enviar dados atualizados para todos os clientes
     io.emit('gardenUpdate', garden);
   });
 
@@ -826,7 +857,8 @@ io.on('connection', (socket) => {
     socket.emit('gardenInit', {
       seeds,
       upgrades: GARDEN_UPGRADES,
-      garden
+      garden,
+      storeItems: gameState.gardenStoreItems
     });
 
     console.log(`[Jardim] Enviando atualização para ${socket.id}`);
