@@ -52,7 +52,7 @@ export const SEEDS = {
 export const GARDEN_UPGRADES = {
     growthSpeed: {
       id: 'growth-speed',
-      name: 'Velocidade de Crescimento',
+      name: 'Fertilizante',
       description: 'Reduz o tempo de crescimento das plantas em 10%',
       baseCost: { sunflower: 10, tulip: 5 },
       maxLevel: 10,
@@ -92,18 +92,6 @@ export const GARDEN_UPGRADES = {
           tulip: Math.floor(baseTulip * multiplier)
         };
       }
-    },
-    fertilizer: {
-      id: 'fertilizer',
-      name: 'Fertilizante',
-      description: 'Reduz o tempo de crescimento das plantas em 20%',
-      baseCost: { tulip: 10, mushroom: 5 },
-      maxLevel: 5,
-      getEffect: (level) => 1 - (level * 0.2), // 20% reduction per level
-      getCost: (level) => ({
-        tulip: Math.floor(10 * Math.pow(1.7, level)),
-        mushroom: Math.floor(5 * Math.pow(1.7, level))
-      })
     }
 };
 
