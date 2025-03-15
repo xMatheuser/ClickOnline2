@@ -3,7 +3,7 @@ export const SEEDS = {
       id: 'sunflower',
       name: 'Girassol',
       icon: '🌻',
-      growthTime: 1000, // 30 segundos
+      growthTime: 10000, // 30 segundos
       difficulty: '⭐',
       unlockedByDefault: true,
       reward: {
@@ -73,30 +73,38 @@ export const GARDEN_UPGRADES = {
         tulip: Math.floor(8 * Math.pow(2, level)),
         mushroom: Math.floor(3 * Math.pow(2, level))
       })
-    }
-    
-};
-
-// Definição centralizada dos itens da loja do jardim
-export const STORE_ITEMS = {
-  slot: {
-    id: 'slot',
-    name: 'Novo Canteiro',
-    description: 'Desbloqueie um novo slot para plantar mais recursos.',
-    getBaseCost: (nextSlotNumber) => {
-      // Custo base aumenta com o número de slots
-      const baseSunflower = 5;
-      const baseTulip = 3;
-      const multiplier = Math.pow(1.5, nextSlotNumber - 2);
-      
-      return {
-        sunflower: Math.floor(baseSunflower * multiplier),
-        tulip: Math.floor(baseTulip * multiplier)
-      };
     },
-    maxSlots: 10
-  },
-  
+    slot: {
+      id: 'garden-slot',
+      name: 'Novo Canteiro',
+      description: 'Desbloqueie um novo slot para plantar mais recursos.',
+      baseCost: { sunflower: 5, tulip: 3 },
+      maxLevel: 10, // Equivalente ao maxSlots de antes
+      getEffect: (level) => level, // O nível representa o número de slots
+      getCost: (level) => {
+        // Custo base aumenta com o número de slots
+        const baseSunflower = 5;
+        const baseTulip = 3;
+        const multiplier = Math.pow(1.5, level);
+        
+        return {
+          sunflower: Math.floor(baseSunflower * multiplier),
+          tulip: Math.floor(baseTulip * multiplier)
+        };
+      }
+    },
+    fertilizer: {
+      id: 'fertilizer',
+      name: 'Fertilizante',
+      description: 'Reduz o tempo de crescimento das plantas em 20%',
+      baseCost: { tulip: 10, mushroom: 5 },
+      maxLevel: 5,
+      getEffect: (level) => 1 - (level * 0.2), // 20% reduction per level
+      getCost: (level) => ({
+        tulip: Math.floor(10 * Math.pow(1.7, level)),
+        mushroom: Math.floor(5 * Math.pow(1.7, level))
+      })
+    }
 };
 
 export const SEED_PROGRESSION = ['sunflower', 'tulip', 'mushroom', 'crystal'];

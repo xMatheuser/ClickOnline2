@@ -7,7 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
-const { SEEDS, GARDEN_UPGRADES, STORE_ITEMS, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
+const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,7 +70,6 @@ let gameState = {
   },
   gardenSeeds: SEEDS,
   gardenUpgrades: GARDEN_UPGRADES,
-  gardenStoreItems: STORE_ITEMS,
 };
 
 let lastTotalCPS = 0;
@@ -254,7 +253,6 @@ io.on('connection', (socket) => {
     seeds: gameState.gardenSeeds,
     upgrades: serializeGardenUpgrades(),
     garden: gameState.gardens.sharedGarden,
-    storeItems: gameState.gardenStoreItems
   });
 
   socket.on('addPlayer', (playerData) => {
@@ -602,7 +600,6 @@ io.on('connection', (socket) => {
       seeds: updatedSeeds,
       upgrades: serializeGardenUpgrades(),
       garden: garden,
-      storeItems: gameState.gardenStoreItems
     });
   });
 
@@ -644,7 +641,6 @@ io.on('connection', (socket) => {
         seeds: updatedSeeds,
         upgrades: serializeGardenUpgrades(),
         garden: garden,
-        storeItems: gameState.gardenStoreItems
       });
       
       socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
@@ -675,8 +671,7 @@ io.on('connection', (socket) => {
         io.emit('gardenInit', {
           seeds: updatedSeeds,
           upgrades: serializeGardenUpgrades(),
-          garden: garden,
-          storeItems: gameState.gardenStoreItems
+          garden: garden
         });
         
         socket.emit('notification', {
@@ -692,18 +687,23 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Se não for um comando de desbloqueio de semente, verificar se é um item da loja
-    const storeItem = gameState.gardenStoreItems[upgradeId];
-    if (!storeItem) {
-      console.error(`[Jardim] Item de loja não encontrado: ${upgradeId}`);
+    // Verificar se o upgrade existe
+    const upgrade = gameState.gardenUpgrades[upgradeId];
+    if (!upgrade) {
+      console.error(`[Jardim] Upgrade não encontrado: ${upgradeId}`);
       return;
     }
     
-    // Lógica específica para cada tipo de item
+    // Lógica específica para cada tipo de upgrade
     switch (upgradeId) {
       case 'slot':
+        // Inicializar o upgrade se necessário
+        if (!garden.upgrades[upgradeId]) {
+          garden.upgrades[upgradeId] = 0;
+        }
+        
         // Verificar se já atingiu o máximo de slots
-        if (garden.unlockedSlots >= storeItem.maxSlots) {
+        if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
           socket.emit('notification', {
             message: 'Você já atingiu o número máximo de canteiros!',
             type: 'error'
@@ -711,13 +711,18 @@ io.on('connection', (socket) => {
           return;
         }
         
-        // Calcular o custo do próximo slot
-        const nextSlotNumber = garden.unlockedSlots + 1;
-        const cost = storeItem.getBaseCost(nextSlotNumber);
+        // Calcular o próximo nível (próximo número de slot)
+        const nextSlotLevel = garden.upgrades[upgradeId] + 1;
+        
+        // Calcular o custo para o próximo nível
+        const cost = upgrade.getCost(garden.upgrades[upgradeId]);
         
         // Verificar se tem recursos suficientes
-        if (garden.resources.sunflower < cost.sunflower ||
-            garden.resources.tulip < cost.tulip) {
+        const hasSlotResources = Object.entries(cost).every(([resource, amount]) => 
+          garden.resources[resource] >= amount
+        );
+        
+        if (!hasSlotResources) {
           socket.emit('notification', {
             message: 'Recursos insuficientes para comprar um novo canteiro!',
             type: 'error'
@@ -726,35 +731,30 @@ io.on('connection', (socket) => {
         }
         
         // Deduzir os recursos
-        garden.resources.sunflower -= cost.sunflower;
-        garden.resources.tulip -= cost.tulip;
+        Object.entries(cost).forEach(([resource, amount]) => {
+          garden.resources[resource] -= amount;
+        });
         
-        // Adicionar o slot
-        garden.unlockedSlots++;
+        // Aumentar o nível do upgrade
+        garden.upgrades[upgradeId]++;
+        
+        // Atualizar o número de slots desbloqueados
+        garden.unlockedSlots = upgrade.getEffect(garden.upgrades[upgradeId]);
         
         socket.emit('notification', {
-          message: `Novo canteiro desbloqueado! (${garden.unlockedSlots}/10)`,
+          message: `Novo canteiro desbloqueado! (${garden.unlockedSlots}/${upgrade.maxLevel})`,
           type: 'success'
         });
         break;
         
       case 'fertilizer':
-        const upgradeRef = storeItem.upgradeRef;
-        if (!upgradeRef || !gameState.gardenUpgrades[upgradeRef]) {
-          socket.emit('notification', {
-            message: 'Upgrade não encontrado!',
-            type: 'error'
-          });
-          return;
-        }
-        
         // Inicializar o upgrade se necessário
-        if (!garden.upgrades[upgradeRef]) {
-          garden.upgrades[upgradeRef] = 0;
+        if (!garden.upgrades[upgradeId]) {
+          garden.upgrades[upgradeId] = 0;
         }
         
         // Verificar se já atingiu o nível máximo
-        if (garden.upgrades[upgradeRef] >= gameState.gardenUpgrades[upgradeRef].maxLevel) {
+        if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
           socket.emit('notification', {
             message: 'Você já atingiu o nível máximo deste upgrade!',
             type: 'error'
@@ -763,8 +763,8 @@ io.on('connection', (socket) => {
         }
         
         // Calcular o custo para o próximo nível
-        const nextLevel = garden.upgrades[upgradeRef] + 1;
-        const fertilizerCost = gameState.gardenUpgrades[upgradeRef].getCost(garden.upgrades[upgradeRef]);
+        const nextLevel = garden.upgrades[upgradeId] + 1;
+        const fertilizerCost = upgrade.getCost(garden.upgrades[upgradeId]);
         
         // Verificar se tem recursos suficientes
         const hasEnoughResources = Object.entries(fertilizerCost).every(([resource, amount]) => 
@@ -785,10 +785,10 @@ io.on('connection', (socket) => {
         });
         
         // Aumentar o nível do upgrade
-        garden.upgrades[upgradeRef]++;
+        garden.upgrades[upgradeId]++;
         
         socket.emit('notification', {
-          message: `${storeItem.name} melhorado para o nível ${garden.upgrades[upgradeRef]}!`,
+          message: `${upgrade.name} melhorado para o nível ${garden.upgrades[upgradeId]}!`,
           type: 'success'
         });
         break;
@@ -835,7 +835,6 @@ io.on('connection', (socket) => {
       seeds,
       upgrades: serializeGardenUpgrades(),
       garden,
-      storeItems: gameState.gardenStoreItems
     });
 
     console.log(`[Jardim] Enviando atualização para ${socket.id}`);
