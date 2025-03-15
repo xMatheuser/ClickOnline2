@@ -694,109 +694,53 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Lógica específica para cada tipo de upgrade
-    switch (upgradeId) {
-      case 'slot':
-        // Inicializar o upgrade se necessário
-        if (!garden.upgrades[upgradeId]) {
-          garden.upgrades[upgradeId] = 0;
-        }
-        
-        // Verificar se já atingiu o máximo de slots
-        if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
-          socket.emit('notification', {
-            message: 'Você já atingiu o número máximo de canteiros!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Calcular o próximo nível (próximo número de slot)
-        const nextSlotLevel = garden.upgrades[upgradeId] + 1;
-        
-        // Calcular o custo para o próximo nível
-        const cost = upgrade.getCost(garden.upgrades[upgradeId]);
-        
-        // Verificar se tem recursos suficientes
-        const hasSlotResources = Object.entries(cost).every(([resource, amount]) => 
-          garden.resources[resource] >= amount
-        );
-        
-        if (!hasSlotResources) {
-          socket.emit('notification', {
-            message: 'Recursos insuficientes para comprar um novo canteiro!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Deduzir os recursos
-        Object.entries(cost).forEach(([resource, amount]) => {
-          garden.resources[resource] -= amount;
-        });
-        
-        // Aumentar o nível do upgrade
-        garden.upgrades[upgradeId]++;
-        
-        // Atualizar o número de slots desbloqueados
-        garden.unlockedSlots = upgrade.getEffect(garden.upgrades[upgradeId]);
-        
-        socket.emit('notification', {
-          message: `Novo canteiro desbloqueado! (${garden.unlockedSlots}/${upgrade.maxLevel})`,
-          type: 'success'
-        });
-        break;
-        
-      case 'fertilizer':
-        // Inicializar o upgrade se necessário
-        if (!garden.upgrades[upgradeId]) {
-          garden.upgrades[upgradeId] = 0;
-        }
-        
-        // Verificar se já atingiu o nível máximo
-        if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
-          socket.emit('notification', {
-            message: 'Você já atingiu o nível máximo deste upgrade!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Calcular o custo para o próximo nível
-        const nextLevel = garden.upgrades[upgradeId] + 1;
-        const fertilizerCost = upgrade.getCost(garden.upgrades[upgradeId]);
-        
-        // Verificar se tem recursos suficientes
-        const hasEnoughResources = Object.entries(fertilizerCost).every(([resource, amount]) => 
-          garden.resources[resource] >= amount
-        );
-        
-        if (!hasEnoughResources) {
-          socket.emit('notification', {
-            message: 'Recursos insuficientes para comprar este upgrade!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Deduzir os recursos
-        Object.entries(fertilizerCost).forEach(([resource, amount]) => {
-          garden.resources[resource] -= amount;
-        });
-        
-        // Aumentar o nível do upgrade
-        garden.upgrades[upgradeId]++;
-        
-        socket.emit('notification', {
-          message: `${upgrade.name} melhorado para o nível ${garden.upgrades[upgradeId]}!`,
-          type: 'success'
-        });
-        break;
-        
-      default:
-        console.error(`[Jardim] Tipo de upgrade desconhecido: ${upgradeId}`);
-        return;
+    // Inicializar o upgrade se necessário
+    if (!garden.upgrades[upgradeId]) {
+      garden.upgrades[upgradeId] = 0;
     }
+    
+    // Verificar se já atingiu o nível máximo
+    if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
+      socket.emit('notification', {
+        message: `Você já atingiu o nível máximo de ${upgrade.name}!`,
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Calcular o custo para o próximo nível
+    const cost = upgrade.getCost(garden.upgrades[upgradeId]);
+    
+    // Verificar se tem recursos suficientes
+    const hasResources = Object.entries(cost).every(([resource, amount]) => 
+      garden.resources[resource] >= amount
+    );
+    
+    if (!hasResources) {
+      socket.emit('notification', {
+        message: 'Recursos insuficientes para comprar este upgrade!',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Deduzir os recursos
+    Object.entries(cost).forEach(([resource, amount]) => {
+      garden.resources[resource] -= amount;
+    });
+    
+    // Aumentar o nível do upgrade
+    garden.upgrades[upgradeId]++;
+    
+    // Processar efeitos especiais baseados no tipo do upgrade
+    if (upgradeId === 'slot') {
+      garden.unlockedSlots = upgrade.getEffect(garden.upgrades[upgradeId]);
+    }
+    
+    socket.emit('notification', {
+      message: `${upgrade.name} melhorado para o nível ${garden.upgrades[upgradeId]}!`,
+      type: 'success'
+    });
     
     // Enviar dados atualizados para todos os clientes
     io.emit('gardenUpdate', garden);
