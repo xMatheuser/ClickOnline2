@@ -19,6 +19,14 @@ export let laboratoryData = {
 
 // Listen for garden updates from server
 socket.on('gardenUpdate', (garden) => {
+  console.log('[Jardim] Recebendo atualização do jardim:', {
+    garden: {
+      unlockedSlots: garden.unlockedSlots,
+      resources: garden.resources,
+      upgrades: garden.upgrades
+    }
+  });
+  
   laboratoryData.garden = {
     ...laboratoryData.garden,
     ...garden
@@ -35,6 +43,17 @@ socket.on('gardenUpdate', (garden) => {
 socket.on('gardenInit', ({ seeds, upgrades, garden, storeItems }) => {
   laboratoryData.seeds = seeds;
   laboratoryData.storeItems = storeItems || {}; // Armazenar os itens da loja
+  
+  console.log('[Jardim] Recebendo dados iniciais:', {
+    seeds: Object.keys(seeds),
+    upgrades: Object.keys(upgrades),
+    upgradesWithFunctions: Object.entries(upgrades).map(([key, upgrade]) => ({
+      key,
+      hasGetEffectStr: !!upgrade.getEffectStr,
+      hasGetCostStr: !!upgrade.getCostStr
+    })),
+    storeItems: storeItems ? Object.keys(storeItems) : []
+  });
   
   // Reconstruir as funções a partir das strings
   laboratoryData.gardenUpgrades = {};
@@ -54,6 +73,11 @@ socket.on('gardenInit', ({ seeds, upgrades, garden, storeItems }) => {
         getEffect: getEffectFn,
         getCost: getCostFn
       };
+      
+      console.log(`[Jardim] Reconstruiu funções para upgrade ${key}:`, {
+        getEffectFn: getEffectFn.toString(),
+        getCostFn: getCostFn.toString()
+      });
     } catch (error) {
       console.error(`[Jardim] Erro ao reconstruir funções para upgrade ${key}:`, error);
       // Fallback para funções padrão
@@ -126,14 +150,6 @@ function initLaboratoryGarden() {
       laboratoryData.garden.selectedSeed = option.dataset.seed;
     });
   });
-  
-  document.getElementById('buy-lab-slot').addEventListener('click', buyLabSlot);
-  
-  // Adiciona event listener para o botão do fertilizante
-  const buyFertilizerButton = document.getElementById('buy-lab-fertilizer');
-  if (buyFertilizerButton) {
-    buyFertilizerButton.addEventListener('click', buyLabFertilizer);
-  }
   
   // Adiciona event listener para o botão "Colher Tudo"
   const harvestAllButton = document.getElementById('harvest-all-button');
@@ -370,16 +386,8 @@ function harvestAllPlants() {
   }
 }
 
-function buyLabSlot() {
-  socket.emit('buyGardenUpgrade', { upgradeId: 'slot' });
-}
-
 function unlockSeed(seedId) {
   socket.emit('buyGardenUpgrade', { upgradeId: `unlock_${seedId}` });
-}
-
-function buyLabFertilizer() {
-  socket.emit('buyGardenUpgrade', { upgradeId: 'fertilizer' });
 }
 
 function checkGardenProgress() {
@@ -580,55 +588,6 @@ function updateSlotCost() {
   costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷`;
 }
 
-// Função para atualizar o custo do crystal
-function updateCrystalCost() {
-  const crystalElement = document.querySelector('[data-item="crystal"]');
-  if (!crystalElement) return;
-  
-  const costElement = crystalElement.querySelector('.store-item-cost');
-  const buyButton = crystalElement.querySelector('.buy-button');
-  
-  if (!costElement || !buyButton) return;
-  
-  const garden = laboratoryData.garden;
-  const storeItem = laboratoryData.storeItems.crystal;
-  
-  // Se já tem o crystal desbloqueado
-  if (garden.crystalUnlocked) {
-    costElement.textContent = 'Desbloqueado';
-    buyButton.disabled = true;
-    buyButton.textContent = 'Desbloqueado';
-    crystalElement.classList.add('purchased');
-    return;
-  } else {
-    buyButton.disabled = false;
-    buyButton.textContent = 'Comprar';
-    crystalElement.classList.remove('purchased');
-  }
-  
-  // Definir custo do crystal
-  const cost = storeItem?.baseCost || {
-    sunflower: 50,
-    tulip: 30,
-    mushroom: 20
-  };
-  
-  // Verifica se o jogador tem recursos suficientes
-  const hasEnoughResources = 
-    garden.resources.sunflower >= cost.sunflower &&
-    garden.resources.tulip >= cost.tulip &&
-    garden.resources.mushroom >= cost.mushroom;
-  
-  // Atualiza o visual do botão com base nos recursos
-  if (!hasEnoughResources) {
-    buyButton.classList.add('insufficient');
-  } else {
-    buyButton.classList.remove('insufficient');
-  }
-  
-  costElement.textContent = `Custo: ${cost.sunflower} 🌻, ${cost.tulip} 🌷, ${cost.mushroom} 🍄`;
-}
-
 // Função para atualizar o custo e nível do fertilizante
 function updateFertilizerCost() {
   const fertilizerElement = document.querySelector('[data-item="fertilizer"]');
@@ -643,6 +602,13 @@ function updateFertilizerCost() {
   const garden = laboratoryData.garden;
   const storeItem = laboratoryData.storeItems.fertilizer;
   const upgradeRef = storeItem?.upgradeRef;
+  
+  console.log('[Jardim] Atualizando custo do fertilizante:', {
+    upgradeRef,
+    gardenUpgrades: Object.keys(laboratoryData.gardenUpgrades),
+    hasUpgrade: upgradeRef && laboratoryData.gardenUpgrades[upgradeRef],
+    upgrade: upgradeRef ? laboratoryData.gardenUpgrades[upgradeRef] : null
+  });
   
   // Se não tiver referência para o upgrade, usar valores padrão
   if (!upgradeRef || !laboratoryData.gardenUpgrades[upgradeRef]) {
@@ -676,32 +642,40 @@ function updateFertilizerCost() {
   }
   
   // Calcula o custo para o próximo nível
-  const cost = upgrade.getCost(currentLevel);
-  
-  // Verifica se o jogador tem recursos suficientes
-  const hasEnoughResources = Object.entries(cost).every(([resource, amount]) => 
-    garden.resources[resource] >= amount
-  );
-  
-  // Atualiza o visual do botão com base nos recursos
-  if (!hasEnoughResources) {
-    buyButton.classList.add('insufficient');
-  } else {
-    buyButton.classList.remove('insufficient');
+  try {
+    const cost = upgrade.getCost(currentLevel);
+    console.log('[Jardim] Custo calculado:', cost);
+    
+    // Verifica se o jogador tem recursos suficientes
+    const hasEnoughResources = Object.entries(cost).every(([resource, amount]) => 
+      garden.resources[resource] >= amount
+    );
+    
+    // Atualiza o visual do botão com base nos recursos
+    if (!hasEnoughResources) {
+      buyButton.classList.add('insufficient');
+    } else {
+      buyButton.classList.remove('insufficient');
+    }
+    
+    // Formatar o texto de custo
+    const costText = Object.entries(cost)
+      .map(([resource, amount]) => {
+        const icon = resource === 'sunflower' ? '🌻' : 
+                    resource === 'tulip' ? '🌷' : 
+                    resource === 'mushroom' ? '🍄' : 
+                    resource === 'crystal' ? '💎' : '';
+        return `${amount} ${icon}`;
+      })
+      .join(', ');
+    
+    console.log('[Jardim] Texto de custo:', costText);
+    costElement.textContent = `Custo: ${costText}`;
+  } catch (error) {
+    console.error('[Jardim] Erro ao calcular custo do fertilizante:', error);
+    costElement.textContent = 'Erro ao calcular custo';
+    buyButton.disabled = true;
   }
-  
-  // Formatar o texto de custo
-  const costText = Object.entries(cost)
-    .map(([resource, amount]) => {
-      const icon = resource === 'sunflower' ? '🌻' : 
-                  resource === 'tulip' ? '🌷' : 
-                  resource === 'mushroom' ? '🍄' : 
-                  resource === 'crystal' ? '💎' : '';
-      return `${amount} ${icon}`;
-    })
-    .join(', ');
-  
-  costElement.textContent = `Custo: ${costText}`;
 }
 
 function getSeedIcon(seedId) {
@@ -768,7 +742,14 @@ function updateGardenBadge() {
 // Função para renderizar dinamicamente os itens da loja
 function updateStoreItems() {
   const storeGrid = document.querySelector('.store-grid');
-  if (!storeGrid) return;
+  if (!storeGrid) {
+    console.error('[Jardim] Elemento .store-grid não encontrado');
+    return;
+  }
+  
+  console.log('[Jardim] Atualizando itens da loja:', {
+    storeItems: laboratoryData.storeItems ? Object.keys(laboratoryData.storeItems) : []
+  });
   
   // Limpar a grade da loja
   storeGrid.innerHTML = '';
@@ -784,6 +765,8 @@ function updateStoreItems() {
   
   // Renderizar cada item da loja
   Object.entries(storeItems).forEach(([itemId, item]) => {
+    console.log(`[Jardim] Renderizando item da loja: ${itemId}`, item);
+    
     // Criar o elemento do item da loja
     const storeItem = document.createElement('div');
     storeItem.className = 'store-item';
@@ -824,8 +807,9 @@ function updateStoreItems() {
     });
   });
   
+  console.log('[Jardim] Itens da loja renderizados, atualizando custos...');
+  
   // Atualizar os custos e estados dos itens
   updateSlotCost();
-  updateCrystalCost();
   updateFertilizerCost();
 }

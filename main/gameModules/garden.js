@@ -73,20 +73,8 @@ export const GARDEN_UPGRADES = {
         tulip: Math.floor(8 * Math.pow(2, level)),
         mushroom: Math.floor(3 * Math.pow(2, level))
       })
-    },
-    fertilizer: {
-      id: 'fertilizer',
-      name: 'Fertilizante Superior',
-      description: 'Reduz em 20% o tempo de crescimento de todas as plantas',
-      baseCost: { sunflower: 10, tulip: 8, mushroom: 5 },
-      maxLevel: 5,
-      getEffect: (level) => 1 - (level * 0.2), // 20% reduction per level
-      getCost: (level) => ({
-        sunflower: Math.floor(10 * Math.pow(1.5, level)),
-        tulip: Math.floor(8 * Math.pow(1.5, level)),
-        mushroom: Math.floor(5 * Math.pow(1.5, level))
-      })
     }
+    
 };
 
 // Definição centralizada dos itens da loja do jardim
@@ -108,23 +96,7 @@ export const STORE_ITEMS = {
     },
     maxSlots: 10
   },
-  crystal: {
-    id: 'crystal',
-    name: 'Cristal',
-    description: 'Desbloqueie a planta de cristal para colher recursos raros.',
-    baseCost: {
-      sunflower: 50,
-      tulip: 30,
-      mushroom: 20
-    }
-  },
-  fertilizer: {
-    id: 'fertilizer',
-    name: 'Fertilizante Superior',
-    description: 'Reduz em 20% o tempo de crescimento de todas as plantas',
-    // Usa o mesmo upgrade definido em GARDEN_UPGRADES
-    upgradeRef: 'fertilizer'
-  }
+  
 };
 
 export const SEED_PROGRESSION = ['sunflower', 'tulip', 'mushroom', 'crystal'];

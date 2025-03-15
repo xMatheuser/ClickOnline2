@@ -63,7 +63,7 @@ let gameState = {
     sharedGarden: {
       unlockedSlots: 1,
       sunflowerUnlocked: true, // Adicionar esta linha
-      resources: { sunflower: 9, tulip: 0, mushroom: 0, crystal: 0 },
+      resources: { sunflower: 100, tulip: 100, mushroom: 100, crystal: 100 },
       plants: {},
       upgrades: {}
     }
@@ -252,7 +252,7 @@ io.on('connection', (socket) => {
   // Send garden data on initial connection
   socket.emit('gardenInit', {
     seeds: gameState.gardenSeeds,
-    upgrades: gameState.gardenUpgrades,
+    upgrades: serializeGardenUpgrades(),
     garden: gameState.gardens.sharedGarden,
     storeItems: gameState.gardenStoreItems
   });
@@ -600,7 +600,7 @@ io.on('connection', (socket) => {
     // Enviar atualização completa incluindo novas sementes visíveis
     io.emit('gardenInit', {
       seeds: updatedSeeds,
-      upgrades: gameState.gardenUpgrades,
+      upgrades: serializeGardenUpgrades(),
       garden: garden,
       storeItems: gameState.gardenStoreItems
     });
@@ -642,7 +642,7 @@ io.on('connection', (socket) => {
       // Enviar atualização completa incluindo novas sementes visíveis
       io.emit('gardenInit', {
         seeds: updatedSeeds,
-        upgrades: gameState.gardenUpgrades,
+        upgrades: serializeGardenUpgrades(),
         garden: garden,
         storeItems: gameState.gardenStoreItems
       });
@@ -657,6 +657,42 @@ io.on('connection', (socket) => {
     const garden = gameState.gardens.sharedGarden;
     if (!garden) return;
     
+    // Verificar se é um comando para desbloquear uma semente
+    if (upgradeId.startsWith('unlock_')) {
+      const seedId = upgradeId.replace('unlock_', '');
+      if (processSeedUnlock(garden, seedId)) {
+        // Atualizar as sementes visíveis
+        const updatedSeeds = { ...gameState.gardenSeeds };
+        Object.keys(updatedSeeds).forEach(id => {
+          updatedSeeds[id] = {
+            ...updatedSeeds[id],
+            visible: isSeedVisible(garden, id),
+            unlocked: garden[`${id}Unlocked`] || false
+          };
+        });
+        
+        // Enviar dados atualizados para todos os clientes
+        io.emit('gardenInit', {
+          seeds: updatedSeeds,
+          upgrades: serializeGardenUpgrades(),
+          garden: garden,
+          storeItems: gameState.gardenStoreItems
+        });
+        
+        socket.emit('notification', {
+          message: `${gameState.gardenSeeds[seedId].name} desbloqueado!`,
+          type: 'success'
+        });
+      } else {
+        socket.emit('notification', {
+          message: 'Recursos insuficientes para desbloquear esta semente!',
+          type: 'error'
+        });
+      }
+      return;
+    }
+    
+    // Se não for um comando de desbloqueio de semente, verificar se é um item da loja
     const storeItem = gameState.gardenStoreItems[upgradeId];
     if (!storeItem) {
       console.error(`[Jardim] Item de loja não encontrado: ${upgradeId}`);
@@ -700,65 +736,6 @@ io.on('connection', (socket) => {
           message: `Novo canteiro desbloqueado! (${garden.unlockedSlots}/10)`,
           type: 'success'
         });
-        break;
-        
-      case 'crystal':
-        // Verificar se já tem o crystal desbloqueado
-        if (garden.crystalUnlocked) {
-          socket.emit('notification', {
-            message: 'Você já desbloqueou o Cristal!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        const crystalCost = storeItem.baseCost;
-        
-        // Verificar se tem recursos suficientes
-        if (garden.resources.sunflower < crystalCost.sunflower ||
-            garden.resources.tulip < crystalCost.tulip ||
-            garden.resources.mushroom < crystalCost.mushroom) {
-          socket.emit('notification', {
-            message: 'Recursos insuficientes para desbloquear o Cristal!',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Deduzir os recursos
-        garden.resources.sunflower -= crystalCost.sunflower;
-        garden.resources.tulip -= crystalCost.tulip;
-        garden.resources.mushroom -= crystalCost.mushroom;
-        
-        // Desbloquear o crystal
-        garden.crystalUnlocked = true;
-        
-        // Desbloquear a semente de crystal
-        const seedId = 'crystal';
-        if (processSeedUnlock(garden, seedId)) {
-          // Atualizar as sementes visíveis
-          const updatedSeeds = { ...gameState.gardenSeeds };
-          Object.keys(updatedSeeds).forEach(id => {
-            updatedSeeds[id] = {
-              ...updatedSeeds[id],
-              visible: isSeedVisible(garden, id),
-              unlocked: garden[`${id}Unlocked`] || false
-            };
-          });
-          
-          // Enviar dados atualizados para todos os clientes
-          io.emit('gardenInit', {
-            seeds: updatedSeeds,
-            upgrades: gameState.gardenUpgrades,
-            garden: garden,
-            storeItems: gameState.gardenStoreItems
-          });
-          
-          socket.emit('notification', {
-            message: `${gameState.gardenSeeds[seedId].name} desbloqueado!`,
-            type: 'success'
-          });
-        }
         break;
         
       case 'fertilizer':
@@ -856,7 +833,7 @@ io.on('connection', (socket) => {
     // Envia dados atualizados do jardim para o cliente
     socket.emit('gardenInit', {
       seeds,
-      upgrades: GARDEN_UPGRADES,
+      upgrades: serializeGardenUpgrades(),
       garden,
       storeItems: gameState.gardenStoreItems
     });
@@ -1083,6 +1060,23 @@ setInterval(() => {
     io.emit('gardenUpdate', garden);
   }
 }, 1000);
+
+// Função auxiliar para serializar os upgrades do jardim
+function serializeGardenUpgrades() {
+  const gardenUpgrades = {};
+  
+  // Copiar os métodos e propriedades dos upgrades
+  Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
+    gardenUpgrades[key] = {
+      ...upgrade,
+      // Converter as funções em strings para serem reconstruídas no cliente
+      getEffectStr: upgrade.getEffect.toString(),
+      getCostStr: upgrade.getCost.toString()
+    };
+  });
+  
+  return gardenUpgrades;
+}
 
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
