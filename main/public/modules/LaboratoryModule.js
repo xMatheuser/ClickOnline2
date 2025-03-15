@@ -418,32 +418,10 @@ function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
   if (!seedSelector) return;
   
-  seedSelector.innerHTML = Object.values(laboratoryData.seeds).map(seed => {
-    // Calcular o tempo real de crescimento com os upgrades
-    const baseTime = seed.growthTime / 1000; // Converter para segundos
-    const adjustedTime = Math.round(calculateAdjustedGrowthTime(seed.growthTime) / 1000);
-    
-    // Formatar o tempo para exibição
-    const timeDisplay = adjustedTime < baseTime ? 
-      `<span class="time-reduced">${adjustedTime}s</span> <span class="time-original">(${baseTime}s)</span>` : 
-      `${adjustedTime}s`;
-    
-    return `
-      <div class="seed-option ${seed.id === laboratoryData.garden.selectedSeed ? 'selected' : ''} 
-                           ${!seed.unlockedByDefault && !laboratoryData.garden.crystalUnlocked ? 'locked' : ''}"
-           data-seed="${seed.id}">
-        <span class="seed-icon">${seed.icon}</span>
-        <div>
-          <div>${seed.name}</div>
-          <div class="time-info">${timeDisplay} • ${seed.difficulty}</div>
-        </div>
-      </div>
-    `;
-  }).join('');
   const garden = laboratoryData.garden;
   
   seedSelector.innerHTML = Object.values(laboratoryData.seeds)
-    .filter(seed => seed.visible) // Servidor controla quais sementes são visíveis
+    .filter(seed => seed.visible || garden[`${seed.id}Unlocked`]) // Mostrar se visível ou desbloqueada
     .map(seed => {
       const isLocked = !garden[`${seed.id}Unlocked`];
       const unlockButton = isLocked && seed.unlockCost ? `

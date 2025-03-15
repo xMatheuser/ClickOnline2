@@ -63,7 +63,7 @@ let gameState = {
     sharedGarden: {
       unlockedSlots: 1,
       sunflowerUnlocked: true, // Adicionar esta linha
-      resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
+      resources: { sunflower: 9, tulip: 0, mushroom: 0, crystal: 0 },
       plants: {},
       upgrades: {}
     }

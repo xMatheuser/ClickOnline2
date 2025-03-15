@@ -113,11 +113,13 @@ export function isSeedVisible(garden, seedId) {
   // Girassol sempre visível
   if (seedId === 'sunflower') return true;
   
+  // Se a semente já foi desbloqueada, mantenha visível
+  if (garden[`${seedId}Unlocked`]) return true;
+  
   const index = SEED_PROGRESSION.indexOf(seedId);
   if (index <= 0) return false;
   
   const previousSeed = SEED_PROGRESSION[index - 1];
-  // Mostra a próxima semente se tiver pelo menos 1 do recurso anterior
   return garden.resources[previousSeed] > 0;
 }
 
