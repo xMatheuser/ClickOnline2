@@ -157,6 +157,47 @@ function initLaboratoryGarden() {
   }
   
   setInterval(checkGardenProgress, 1000);
+
+  // Add tooltip events for store items
+  document.querySelectorAll('.store-item').forEach(item => {
+    const desc = item.querySelector('.store-item-desc').textContent;
+    
+    item.addEventListener('mousemove', (e) => {
+      const tooltip = document.getElementById('tooltip');
+      if (!tooltip) return;
+      
+      tooltip.textContent = desc;
+      tooltip.style.display = 'block';
+      
+      // Position tooltip next to cursor
+      const x = e.pageX + 10;
+      const y = e.pageY + 10;
+      
+      // Keep tooltip within viewport
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      if (x + tooltipRect.width > viewportWidth) {
+        tooltip.style.left = (x - tooltipRect.width - 20) + 'px';
+      } else {
+        tooltip.style.left = x + 'px';
+      }
+      
+      if (y + tooltipRect.height > viewportHeight) {
+        tooltip.style.top = (y - tooltipRect.height - 20) + 'px';
+      } else {
+        tooltip.style.top = y + 'px';
+      }
+    });
+    
+    item.addEventListener('mouseleave', () => {
+      const tooltip = document.getElementById('tooltip');
+      if (tooltip) {
+        tooltip.style.display = 'none';
+      }
+    });
+  });
 }
 
 function updateGardenSlots() {

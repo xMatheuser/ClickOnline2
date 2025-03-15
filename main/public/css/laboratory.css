@@ -339,35 +339,17 @@
   gap: 0.5rem;
   position: relative;
   transition: all 0.3s ease;
-}
-
-.store-item-title {
-  font-weight: bold;
-  color: #4CAF50;
-}
-
-.store-item-desc {
-  font-size: 0.8rem;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  background: rgba(30, 41, 59, 0.95);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  z-index: 10;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  display: none;
-  pointer-events: none;
-}
-
-.store-item:hover .store-item-desc {
-  display: block;
+  cursor: pointer;
 }
 
 .store-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Remove old store-item-desc styles and use tooltip styles */
+.store-item-desc {
+  display: none;
 }
 
 .store-item.purchased {
