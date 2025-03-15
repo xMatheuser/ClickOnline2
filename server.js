@@ -713,10 +713,29 @@ io.on('connection', (socket) => {
     } else if (upgradeId.startsWith('unlock_')) {
       const seedId = upgradeId.replace('unlock_', '');
       if (processSeedUnlock(garden, seedId)) {
-        // Envia atualização para todos os jogadores
-        io.emit('gardenUpdate', garden);
+        // Atualizar informações de visibilidade das sementes
+        const updatedSeeds = { ...gameState.gardenSeeds };
+        Object.keys(updatedSeeds).forEach(seedId => {
+          updatedSeeds[seedId] = {
+            ...updatedSeeds[seedId],
+            visible: isSeedVisible(garden, seedId),
+            unlockCost: getSeedUnlockCost(seedId)
+          };
+        });
+        
+        // Enviar atualização completa incluindo novas sementes visíveis
+        io.emit('gardenInit', {
+          seeds: updatedSeeds,
+          upgrades: gameState.gardenUpgrades,
+          garden: garden
+        });
+        
+        // Enviar notificação com o nome correto da semente
+        const seedName = gameState.gardenSeeds[seedId].name;
+        socket.emit('notification', `Semente de ${seedName} desbloqueada com sucesso!`);
+      } else {
+        socket.emit('notification', 'Não foi possível desbloquear esta semente. Recursos insuficientes!');
       }
-      socket.emit('notification', 'Cristal desbloqueado! Novas sementes disponíveis.');
     } else if (upgradeId === 'fertilizer') {
       // Verificar se já tem o upgrade e se está no nível máximo
       if (!garden.upgrades.fertilizer) {

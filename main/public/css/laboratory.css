@@ -527,6 +527,25 @@ body.dark-mode .close-achievements {
   transform: translateY(-1px);
 }
 
+.unlock-seed-button.insufficient {
+  background: #999;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.unlock-seed-button.can-unlock {
+  background: linear-gradient(to bottom, #66BB6A, #43A047);
+  border: 1px solid #A5D6A7;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  animation: pulse-glow 2s infinite;
+}
+
+.seed-option.locked.can-unlock {
+  opacity: 0.8;
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
 .seed-option.locked .unlock-seed-button {
   opacity: 0.9;
 }

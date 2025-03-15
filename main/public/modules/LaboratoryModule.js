@@ -432,8 +432,17 @@ function renderSeedOptions() {
     .filter(seed => seed.visible || garden[`${seed.id}Unlocked`]) // Mostrar se visível ou desbloqueada
     .map(seed => {
       const isLocked = !garden[`${seed.id}Unlocked`];
+      
+      // Verificar se tem recursos suficientes para desbloquear
+      let hasEnoughResources = false;
+      if (isLocked && seed.unlockCost) {
+        hasEnoughResources = Object.entries(seed.unlockCost).every(([resource, amount]) => 
+          garden.resources[resource] >= amount
+        );
+      }
+      
       const unlockButton = isLocked && seed.unlockCost ? `
-        <button class="unlock-seed-button" data-seed="${seed.id}">
+        <button class="unlock-seed-button ${hasEnoughResources ? 'can-unlock' : 'insufficient'}" data-seed="${seed.id}">
           (${Object.entries(seed.unlockCost)
             .map(([res, amt]) => `${amt} ${laboratoryData.seeds[res].icon}`)
             .join(', ')})
@@ -442,7 +451,8 @@ function renderSeedOptions() {
 
       return `
         <div class="seed-option ${seed.id === garden.selectedSeed ? 'selected' : ''} 
-                               ${isLocked ? 'locked' : ''}"
+                               ${isLocked ? 'locked' : ''} 
+                               ${isLocked && hasEnoughResources ? 'can-unlock' : ''}"
              data-seed="${seed.id}">
           <span class="seed-icon">${seed.icon}</span>
           <div>
