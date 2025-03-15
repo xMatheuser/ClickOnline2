@@ -50,7 +50,7 @@ export const SEEDS = {
 };
 
 export const GARDEN_UPGRADES = {
-    growthSpeed: {
+    growthSpeed: { // PROIBIDO APAGAR
       id: 'growth-speed',
       name: 'Fertilizante',
       description: 'Reduz o tempo de crescimento das plantas em 10%',

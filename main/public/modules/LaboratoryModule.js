@@ -238,6 +238,28 @@ function updateGardenSlots() {
       const existingPlant = laboratoryData.garden.plants[i];
       
       if (existingPlant) {
+        // Calcula os tempos de crescimento para esta planta
+        const seedInfo = laboratoryData.seeds[existingPlant.type];
+        const originalTime = seedInfo ? seedInfo.growthTime / 1000 : 30;
+        const adjustedTime = existingPlant.growthTime / 1000;
+        
+        // Cria o elemento de informação de tempo
+        let timeInfo = '';
+        if (adjustedTime < originalTime) {
+          timeInfo = `
+            <div class="plant-time-info">
+              <span class="time-original">${originalTime}s</span> → 
+              <span class="time-reduced">${adjustedTime.toFixed(1)}s</span>
+            </div>
+          `;
+        } else {
+          timeInfo = `
+            <div class="plant-time-info">
+              <span>${originalTime}s</span>
+            </div>
+          `;
+        }
+        
         // Atualiza planta existente
         let plantElement = slot.querySelector('.plant');
         const progressBar = slot.querySelector('.progress-bar');
@@ -247,12 +269,23 @@ function updateGardenSlots() {
         if (!plantElement) {
           slot.innerHTML = `
             <div class="plant">${getSeedIcon(existingPlant.type)}</div>
+            ${timeInfo}
             <div class="progress-bar"></div>
             <div class="ready-indicator" style="display: ${existingPlant.ready ? 'block' : 'none'}">Pronto!</div>
           `;
           setupGardenSlot(slot);
         } else {
           plantElement.textContent = getSeedIcon(existingPlant.type);
+          
+          // Atualiza ou adiciona a informação de tempo
+          let timeInfoElement = slot.querySelector('.plant-time-info');
+          if (!timeInfoElement) {
+            const progressBarElement = slot.querySelector('.progress-bar');
+            if (progressBarElement) {
+              progressBarElement.insertAdjacentHTML('beforebegin', timeInfo);
+            }
+          }
+          
           if (readyIndicator) {
             readyIndicator.style.display = existingPlant.ready ? 'block' : 'none';
           }
@@ -285,8 +318,31 @@ function updateGardenSlots() {
       const existingPlant = laboratoryData.garden.plants[i];
       
       if (existingPlant) {
+        // Calcula os tempos de crescimento para esta planta
+        const seedInfo = laboratoryData.seeds[existingPlant.type];
+        const originalTime = seedInfo ? seedInfo.growthTime / 1000 : 30;
+        const adjustedTime = existingPlant.growthTime / 1000;
+        
+        // Cria o elemento de informação de tempo
+        let timeInfo = '';
+        if (adjustedTime < originalTime) {
+          timeInfo = `
+            <div class="plant-time-info">
+              <span class="time-original">${originalTime}s</span> → 
+              <span class="time-reduced">${adjustedTime.toFixed(1)}s</span>
+            </div>
+          `;
+        } else {
+          timeInfo = `
+            <div class="plant-time-info">
+              <span>${originalTime}s</span>
+            </div>
+          `;
+        }
+        
         slot.innerHTML = `
           <div class="plant">${getSeedIcon(existingPlant.type)}</div>
+          ${timeInfo}
           <div class="progress-bar"></div>
           <div class="ready-indicator" style="display: ${existingPlant.ready ? 'block' : 'none'}">Pronto!</div>
         `;
@@ -340,12 +396,37 @@ function setupGardenSlot(slot) {
 
 function plantSeed(slotId) {
   const seedType = laboratoryData.garden.selectedSeed;
+  const seedInfo = laboratoryData.seeds[seedType];
+  
+  if (!seedInfo) return;
+  
+  // Calcular os tempos de crescimento
+  const originalTime = seedInfo.growthTime / 1000;
+  const adjustedTime = calculateAdjustedGrowthTime(seedInfo.growthTime) / 1000;
   
   // Atualiza localmente para feedback imediato
   const slot = document.querySelector(`.garden-slot[data-slot="${slotId}"]`);
   if (slot) {
+    // Criar uma string de tooltip que mostre os tempos
+    let timeInfo = '';
+    if (adjustedTime < originalTime) {
+      timeInfo = `
+        <div class="plant-time-info">
+          <span class="time-original">${originalTime}s</span> → 
+          <span class="time-reduced">${adjustedTime.toFixed(1)}s</span>
+        </div>
+      `;
+    } else {
+      timeInfo = `
+        <div class="plant-time-info">
+          <span>${originalTime}s</span>
+        </div>
+      `;
+    }
+    
     slot.innerHTML = `
       <div class="plant">${getSeedIcon(seedType)}</div>
+      ${timeInfo}
       <div class="progress-bar" style="width: 0%"></div>
       <div class="ready-indicator" style="display: none">Pronto!</div>
     `;
@@ -503,6 +584,24 @@ function renderSeedOptions() {
         </button>
       ` : '';
 
+      // Calcular tempo ajustado se houver upgrades
+      const originalTime = seed.growthTime / 1000;
+      const hasUpgrades = garden.upgrades && (garden.upgrades.growthSpeed > 0 || (garden.upgrades.fertilizer && garden.upgrades.fertilizer > 0));
+      const adjustedTime = hasUpgrades ? calculateAdjustedGrowthTime(seed.growthTime) / 1000 : originalTime;
+      
+      // Construir a exibição do tempo
+      let timeDisplay = '';
+      if (hasUpgrades && adjustedTime < originalTime) {
+        timeDisplay = `
+          <span class="time-info">
+            <span class="time-original">${originalTime}s</span> → 
+            <span class="time-reduced">${adjustedTime.toFixed(1)}s</span> • ${seed.difficulty}
+          </span>
+        `;
+      } else {
+        timeDisplay = `<span class="time-info">${originalTime}s • ${seed.difficulty}</span>`;
+      }
+
       return `
         <div class="seed-option ${seed.id === garden.selectedSeed ? 'selected' : ''} 
                                ${isLocked ? 'locked' : ''} 
@@ -511,7 +610,7 @@ function renderSeedOptions() {
           <span class="seed-icon">${seed.icon}</span>
           <div>
             <div>${seed.name}</div>
-            <div class="time-info">${seed.growthTime/1000}s • ${seed.difficulty}</div>
+            ${timeDisplay}
             ${unlockButton}
           </div>
         </div>
