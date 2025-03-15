@@ -38,6 +38,23 @@
   border-bottom: 1px solid #4CAF50;
 }
 
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.laboratory-header h2 {
+  margin: 0;
+}
+
+.laboratory-header #harvest-all-button {
+  margin: 0;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  height: auto;
+}
+
 .close-laboratory {
   background: none;
   border: none;

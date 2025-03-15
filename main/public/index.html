@@ -193,7 +193,12 @@
   <div class="laboratory-overlay" id="laboratory-overlay">
     <div class="laboratory-popup nes-container is-rounded">
       <div class="laboratory-header">
-        <h2>🌻 Jardim</h2>
+        <div class="header-content">
+          <h2>🌻 Jardim</h2>
+          <button id="harvest-all-button" class="rpgui-button golden" title="Colhe todas as plantas prontas de uma vez">
+            <span class="harvest-icon">🌿</span> Colher Tudo
+          </button>
+        </div>
         <button class="close-laboratory" id="close-laboratory">×</button>
       </div>
       <div class="laboratory-content">
@@ -220,12 +225,6 @@
         
         <div class="seed-selector">
           <!-- Isso será gerado dinamicamente pelo JavaScript usando as informações do GardenModule -->
-        </div>
-
-        <div class="garden-controls">
-          <button id="harvest-all-button" class="rpgui-button golden" title="Colhe todas as plantas prontas de uma vez">
-            <span class="harvest-icon">🌿</span> Colher Tudo
-          </button>
         </div>
 
         <div class="garden-grid" id="laboratory-garden">
