@@ -12,6 +12,26 @@
   z-index: 2000;
 }
 
+/* Garden Badge Style */
+.garden-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #4CAF50;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  animation: pulse-glow 1.5s infinite;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+  z-index: 1;
+}
+
 .laboratory-overlay.active {
   display: flex;
 }

@@ -1,5 +1,8 @@
 import socket from './SocketManager.js';
 
+// Adicionar variável para rastrear plantas prontas para colheita
+let readyPlantsCount = 0;
+
 export let laboratoryData = {
   garden: {
     selectedSeed: 'sunflower',
@@ -25,6 +28,7 @@ socket.on('gardenUpdate', (garden) => {
   updateCrystalCost();
   updateFertilizerCost();
   updateHarvestAllButton();
+  updateGardenBadge();
   renderSeedOptions();
 });
 
@@ -106,6 +110,10 @@ export function initLaboratory() {
     checkGardenProgress();
     renderSeedOptions();
     
+    // Resetar o contador de plantas prontas quando o overlay é aberto
+    readyPlantsCount = 0;
+    updateGardenBadge();
+    
     console.log('Laboratório aberto');
   });
 
@@ -123,6 +131,9 @@ export function initLaboratory() {
   
   // Solicita dados atualizados do servidor
   socket.emit('requestGardenUpdate');
+  
+  // Inicializa o badge do jardim
+  updateGardenBadge();
   
   console.log('Laboratório inicializado');
 }
@@ -156,7 +167,11 @@ function initLaboratoryGarden() {
     harvestAllButton.addEventListener('click', harvestAllPlants);
   }
   
+  // Verifica o progresso das plantas a cada segundo
   setInterval(checkGardenProgress, 1000);
+  
+  // Atualiza o badge do jardim a cada 5 segundos (caso o servidor não envie atualizações)
+  setInterval(updateGardenBadge, 5000);
 
   // Add tooltip events for store items
   document.querySelectorAll('.store-item').forEach(item => {
@@ -339,6 +354,7 @@ function plantSeed(slotId) {
 
 function harvestPlant(slotId) {
   socket.emit('harvestPlant', slotId);
+  // Atualizar o badge após a colheita será feito quando o servidor enviar a atualização do jardim
 }
 
 function harvestAllPlants() {
@@ -356,7 +372,7 @@ function harvestAllPlants() {
   if (readyPlantsFound) {
     socket.emit('harvestAllPlants');
     console.log('Solicitação para colher todas as plantas enviada');
-    // O botão será atualizado quando o servidor enviar a atualização do jardim
+    // O botão e o badge serão atualizados quando o servidor enviar a atualização do jardim
   } else {
     console.log('Não há plantas prontas para colher');
   }
@@ -409,6 +425,7 @@ function checkGardenProgress() {
   if (updated) {
     updateGardenSlots();
     updateHarvestAllButton();
+    updateGardenBadge(); // Atualiza o badge quando uma planta fica pronta
   }
 }
 
@@ -727,4 +744,35 @@ function calculateAdjustedGrowthTime(baseTime) {
   const adjustedTime = baseTime * totalMultiplier;
   
   return adjustedTime;
+}
+
+// Função para atualizar o badge no botão do Jardim
+function updateGardenBadge() {
+  const openLabButton = document.getElementById('open-laboratory');
+  if (!openLabButton) return;
+  
+  // Conta quantas plantas estão prontas para colheita
+  readyPlantsCount = 0;
+  const garden = laboratoryData.garden;
+  
+  for (const slotId in garden.plants) {
+    if (garden.plants[slotId].ready) {
+      readyPlantsCount++;
+    }
+  }
+  
+  // Atualiza o badge
+  const existingBadge = openLabButton.querySelector('.garden-badge');
+  if (readyPlantsCount > 0) {
+    if (existingBadge) {
+      existingBadge.textContent = readyPlantsCount;
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'garden-badge';
+      badge.textContent = readyPlantsCount;
+      openLabButton.appendChild(badge);
+    }
+  } else if (existingBadge) {
+    existingBadge.remove();
+  }
 }
