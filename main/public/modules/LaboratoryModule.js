@@ -143,7 +143,6 @@ function initLaboratoryGarden() {
   });
   
   document.getElementById('buy-lab-slot').addEventListener('click', buyLabSlot);
-  document.getElementById('buy-lab-crystal').addEventListener('click', buyLabCrystal);
   
   // Adiciona event listener para o botão do fertilizante
   const buyFertilizerButton = document.getElementById('buy-lab-fertilizer');
@@ -324,11 +323,6 @@ function harvestAllPlants() {
 
 function buyLabSlot() {
   socket.emit('buyGardenUpgrade', { upgradeId: 'slot' });
-}
-
-// Replace buyLabCrystal function with unlockSeed
-function buyLabCrystal() {
-  // Remove this function completely
 }
 
 function unlockSeed(seedId) {
