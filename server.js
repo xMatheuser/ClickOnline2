@@ -63,7 +63,7 @@ let gameState = {
     sharedGarden: {
       unlockedSlots: 1,
       sunflowerUnlocked: true, // Adicionar esta linha
-      resources: { sunflower: 100, tulip: 100, mushroom: 100, crystal: 100 },
+      resources: { sunflower: 0, tulip: 0, mushroom: 0, crystal: 0 },
       plants: {},
       upgrades: {}
     }
@@ -626,39 +626,23 @@ io.on('connection', (socket) => {
     }
 
     if (plantsHarvested) {
-      // Envia atualização para todos os jogadores
-      io.emit('gardenUpdate', garden);
-      socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
-    } else {
-      socket.emit('notification', 'Não há plantas prontas para colher!');
-    }
-  });
+      // Atualizar informações de visibilidade das sementes
+      const updatedSeeds = { ...gameState.gardenSeeds };
+      Object.keys(updatedSeeds).forEach(seedId => {
+        updatedSeeds[seedId] = {
+          ...updatedSeeds[seedId],
+          visible: isSeedVisible(garden, seedId),
+          unlockCost: getSeedUnlockCost(seedId)
+        };
+      });
 
-  socket.on('harvestAllPlants', () => {
-    const garden = gameState.gardens.sharedGarden;
-    if (!garden) return;
-
-    let plantsHarvested = false;
-
-    // Percorre todas as plantas e colhe as que estão prontas
-    for (const slotId in garden.plants) {
-      const plant = garden.plants[slotId];
-      if (plant && plant.ready) {
-        const harvestAmount = calculateHarvestYield(
-          gameState.gardenSeeds[plant.type].reward.amount,
-          garden.upgrades
-        );
-
-        // Adiciona recursos ao inventário compartilhado
-        garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
-        delete garden.plants[slotId];
-        plantsHarvested = true;
-      }
-    }
-
-    if (plantsHarvested) {
-      // Envia atualização para todos os jogadores
-      io.emit('gardenUpdate', garden);
+      // Enviar atualização completa incluindo novas sementes visíveis
+      io.emit('gardenInit', {
+        seeds: updatedSeeds,
+        upgrades: gameState.gardenUpgrades,
+        garden: garden
+      });
+      
       socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
     } else {
       socket.emit('notification', 'Não há plantas prontas para colher!');
