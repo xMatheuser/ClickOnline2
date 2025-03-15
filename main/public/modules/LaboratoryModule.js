@@ -406,7 +406,15 @@ function updateLabResources() {
   
   // Atualiza cada contador de recurso usando os recursos compartilhados
   Object.entries(garden.resources).forEach(([type, amount]) => {
-    const counter = document.getElementById(`lab-${type}-count`);
+    const resourceItem = document.querySelector(`[data-resource="${type}"]`);
+    if (!resourceItem) return;
+    
+    // Aplica a mesma lógica de visibilidade das sementes
+    const isVisible = laboratoryData.seeds[type].visible || garden[`${type}Unlocked`];
+    resourceItem.style.display = isVisible ? 'flex' : 'none';
+    
+    // Atualiza o contador se o recurso estiver visível
+    const counter = resourceItem.querySelector('.resource-count');
     if (counter) {
       counter.textContent = amount;
     }
