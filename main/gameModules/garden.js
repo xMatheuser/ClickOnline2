@@ -65,10 +65,10 @@ export const GARDEN_UPGRADES = {
     harvestYield: {
       id: 'harvest-yield',
       name: 'Rendimento da Colheita',
-      description: 'Aumenta a quantidade de recursos colhidos em 25%',
+      description: 'Aumenta a quantidade de recursos em 1',
       baseCost: { tulip: 8, mushroom: 3 },
       maxLevel: 5,
-      getEffect: (level) => 1 + (level * 0.25), // 25% increase per level
+      getEffect: (level) => 1 + (level * 1), // 25% increase per level
       getCost: (level) => ({
         tulip: Math.floor(8 * Math.pow(2, level)),
         mushroom: Math.floor(3 * Math.pow(2, level))
