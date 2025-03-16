@@ -862,77 +862,55 @@ function updateStoreItems() {
     return;
   }
   
-  console.log('[Jardim] Atualizando itens da loja:', {
-    gardenUpgrades: laboratoryData.gardenUpgrades ? Object.keys(laboratoryData.gardenUpgrades) : []
-  });
-  
-  // Limpar a grade da loja
   storeGrid.innerHTML = '';
   
-  // Obter os upgrades do jardim
   const { gardenUpgrades } = laboratoryData;
+  const garden = laboratoryData.garden;
   
-  // Verificar se temos upgrades do jardim
   if (!gardenUpgrades || Object.keys(gardenUpgrades).length === 0) {
     console.warn('[Jardim] Nenhum upgrade disponível');
     return;
   }
   
-  // Renderizar todos os upgrades disponíveis em GARDEN_UPGRADES
   Object.entries(gardenUpgrades).forEach(([upgradeId, upgrade]) => {
-    console.log(`[Jardim] Renderizando upgrade na loja: ${upgradeId}`, upgrade);
+    const currentLevel = garden.upgrades?.[upgradeId] || 0;
     
-    // Criar o elemento do item da loja
     const storeItem = document.createElement('div');
     storeItem.className = 'store-item';
     storeItem.dataset.item = upgradeId;
     
-    // Adicionar título
     const titleElement = document.createElement('div');
     titleElement.className = 'store-item-title';
-    titleElement.textContent = upgrade.name;
+    titleElement.textContent = currentLevel > 0 ? 
+      `${upgrade.name} Nível ${currentLevel}` : 
+      upgrade.name;
     storeItem.appendChild(titleElement);
     
-    // Adicionar descrição
     const descElement = document.createElement('div');
     descElement.className = 'store-item-desc';
     descElement.textContent = upgrade.description;
     storeItem.appendChild(descElement);
     
-    // Adicionar elemento de custo (será preenchido depois)
     const costElement = document.createElement('div');
     costElement.className = 'store-item-cost';
     costElement.textContent = 'Carregando...';
     storeItem.appendChild(costElement);
     
-    // Adicionar botão de compra
     const buyButton = document.createElement('button');
     buyButton.className = 'buy-button';
     buyButton.id = `buy-lab-${upgradeId}`;
     buyButton.textContent = 'Comprar';
     storeItem.appendChild(buyButton);
     
-    // Adicionar o item à grade
     storeGrid.appendChild(storeItem);
     
-    // Configurar o evento de clique do botão
     buyButton.addEventListener('click', () => {
-      // Enviar solicitação para o servidor
       socket.emit('buyGardenUpgrade', { upgradeId });
     });
   });
-  
-  console.log('[Jardim] Itens da loja renderizados, atualizando custos individuais...');
-  
-  // Atualizar os custos e estados dos itens específicos
-  if (gardenUpgrades.slot) updateSlotCost();
-  if (gardenUpgrades.fertilizer) updateFertilizerCost();
-  
-  // Atualizar custos e estados de todos os outros upgrades
+
   Object.keys(gardenUpgrades).forEach(upgradeId => {
-    if (upgradeId !== 'slot' && upgradeId !== 'fertilizer') {
-      updateGenericUpgradeCost(upgradeId);
-    }
+    updateGenericUpgradeCost(upgradeId);
   });
 }
 
@@ -950,7 +928,6 @@ function updateGenericUpgradeCost(upgradeId) {
   const garden = laboratoryData.garden;
   const upgrade = laboratoryData.gardenUpgrades[upgradeId];
   
-  // Se o upgrade não estiver disponível
   if (!upgrade) {
     costElement.textContent = 'Erro: Upgrade não encontrado';
     buyButton.disabled = true;
@@ -959,57 +936,45 @@ function updateGenericUpgradeCost(upgradeId) {
   
   const currentLevel = garden.upgrades?.[upgradeId] || 0;
   
-  // Atualiza o título para mostrar o nível atual
-  titleElement.textContent = `${upgrade.name} ${currentLevel > 0 ? `Nível ${currentLevel}` : ''}`;
+  titleElement.textContent = currentLevel > 0 ? 
+    `${upgrade.name} Nível ${currentLevel}` : 
+    upgrade.name;
   
-  // Adiciona classe visual para indicar que o upgrade foi comprado
   if (currentLevel > 0) {
     upgradeElement.classList.add('purchased');
   } else {
     upgradeElement.classList.remove('purchased');
   }
   
-  // Se atingiu o nível máximo
   if (currentLevel >= upgrade.maxLevel) {
     costElement.textContent = 'Nível Máximo';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
     return;
-  } else {
-    buyButton.disabled = false;
-    buyButton.textContent = 'Comprar';
   }
   
-  // Calcula o custo para o próximo nível
+  buyButton.disabled = false;
+  buyButton.textContent = 'Comprar';
+  
   try {
     const cost = upgrade.getCost(currentLevel);
-    
-    // Verifica se o jogador tem recursos suficientes
     const hasEnoughResources = Object.entries(cost).every(([resource, amount]) => 
       garden.resources[resource] >= amount
     );
     
-    // Atualiza o visual do botão com base nos recursos
-    if (!hasEnoughResources) {
-      buyButton.classList.add('insufficient');
-    } else {
-      buyButton.classList.remove('insufficient');
-    }
+    buyButton.classList.toggle('insufficient', !hasEnoughResources);
     
-    // Formatar o texto de custo
-    let costText = 'Custo: ';
-    Object.entries(cost).forEach(([resource, amount], index) => {
-      if (index > 0) costText += ', ';
-      
-      const emoji = resource === 'sunflower' ? '🌻' : 
-                   resource === 'tulip' ? '🌷' : 
-                   resource === 'mushroom' ? '🍄' : 
-                   resource === 'crystal' ? '💎' : '';
-      
-      costText += `${amount} ${emoji}`;
-    });
+    const costText = Object.entries(cost)
+      .map(([resource, amount]) => {
+        const emoji = resource === 'sunflower' ? '🌻' : 
+                     resource === 'tulip' ? '🌷' : 
+                     resource === 'mushroom' ? '🍄' : 
+                     resource === 'crystal' ? '💎' : '';
+        return `${amount} ${emoji}`;
+      })
+      .join(', ');
     
-    costElement.textContent = costText;
+    costElement.textContent = `Custo: ${costText}`;
   } catch (error) {
     console.error(`[Jardim] Erro ao calcular custo do upgrade ${upgradeId}:`, error);
     costElement.textContent = 'Erro ao calcular custo';
