@@ -679,12 +679,13 @@ function updateSlotCost() {
   
   // Se já atingiu o número máximo de slots
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.textContent = 'Máximo de Slots';
+    costElement.style.display = 'none'; // Hide cost element instead of showing "Máximo de Slots"
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
     slotElement.classList.add('purchased');
     return;
   } else {
+    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
     buyButton.disabled = false;
     buyButton.textContent = 'Comprar';
     slotElement.classList.remove('purchased');
@@ -756,11 +757,11 @@ function updateFertilizerCost() {
   
   // Se atingiu o nível máximo
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.textContent = 'Nível Máximo';
+    costElement.style.display = 'none'; // Hide cost element instead of showing "Nível Máximo"
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
-    return;
   } else {
+    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
     buyButton.disabled = false;
     buyButton.textContent = 'Comprar';
   }
@@ -1037,10 +1038,12 @@ function updateGenericUpgradeCost(upgradeId) {
   }
   
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.textContent = 'Nível Máximo';
+    costElement.style.display = 'none'; // Hide cost element instead of showing "Nível Máximo"
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
     return;
+  } else {
+    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
   }
   
   buyButton.disabled = false;
