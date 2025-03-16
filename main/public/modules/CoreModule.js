@@ -9,7 +9,20 @@ import { loadGameState } from './PersistenceModule.js';
 import { initTheme } from './ThemeModule.js';
 
 const socket = io();
-let gameState = { players: [] };
+let gameState = { 
+  players: [],
+  gardens: {
+    sharedGarden: {
+      unlockedSlots: 1,
+      resources: {},
+      plants: {},
+      upgrades: {},
+      unlockedResources: {
+        sunflower: true
+      }
+    }
+  }
+};
 let lastReceivedState = {};
 
 export { socket, gameState };
@@ -86,8 +99,14 @@ export function initSocket() {
       Object.assign(gameState, update);
       lastReceivedState = {...gameState};
     } else {
+      // Preserve garden data
+      const savedGardens = gameState.gardens;
       // Atualização completa
       gameState = update;
+      // Restore garden data if not present in update
+      if (!gameState.gardens) {
+        gameState.gardens = savedGardens;
+      }
       lastReceivedState = {...update};
     }
 

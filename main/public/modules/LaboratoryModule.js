@@ -1,4 +1,4 @@
-import socket from './SocketManager.js';
+import { socket, gameState } from './CoreModule.js';
 
 // Adicionar variável para rastrear plantas prontas para colheita
 let readyPlantsCount = 0;
@@ -16,8 +16,46 @@ export let laboratoryData = {
   gardenUpgrades: {} // Will be populated from server
 };
 
-// Listen for garden updates from server
-socket.on('gardenUpdate', (garden) => {
+export function initLaboratory() {
+  const openLabButton = document.getElementById('open-laboratory');
+  const closeLabButton = document.getElementById('close-laboratory');
+  const laboratoryOverlay = document.getElementById('laboratory-overlay');
+
+  console.log('[Laboratory] Initializing with gameState:', {
+    hasGardens: !!gameState.gardens,
+    gardenData: gameState.gardens?.sharedGarden,
+    laboratoryData: laboratoryData
+  });
+
+  if (!openLabButton || !closeLabButton || !laboratoryOverlay) {
+    console.error('Elementos do laboratório não encontrados');
+    return;
+  }
+
+  // Setup socket listeners
+  socket.on('gardenUpdate', handleGardenUpdate);
+  socket.on('gardenInit', handleGardenInit);
+
+  // Request initial garden data
+  socket.emit('requestGardenUpdate');
+
+  openLabButton.addEventListener('click', () => {
+    laboratoryOverlay.style.display = 'flex';
+    updateGardenSlots();
+    updateLabResources();
+    updateStoreItems();
+    updateHarvestAllButton();
+    renderSeedOptions();
+  });
+
+  closeLabButton.addEventListener('click', () => {
+    laboratoryOverlay.style.display = 'none';
+  });
+
+  initLaboratoryGarden();
+}
+
+function handleGardenUpdate(garden) {
   console.log('[Jardim] Recebendo atualização do jardim:', {
     garden: {
       unlockedSlots: garden.unlockedSlots,
@@ -32,104 +70,66 @@ socket.on('gardenUpdate', (garden) => {
   };
   updateGardenSlots();
   updateLabResources();
-  updateStoreItems(); // Atualizar os itens da loja
+  updateStoreItems();
   updateHarvestAllButton();
   updateGardenBadge();
   renderSeedOptions();
-});
+}
 
-// Listen for initial garden data
-socket.on('gardenInit', ({ seeds, upgrades, garden }) => {
+function handleGardenInit({ seeds, upgrades, garden }) {
+  console.log('[Laboratory] Received garden init:', {
+    seedsCount: Object.keys(seeds || {}).length,
+    upgradesCount: Object.keys(upgrades || {}).length,
+    garden: garden
+  });
+
+  // Primeiro atualizar laboratoryData.seeds
   laboratoryData.seeds = seeds;
-  
-  console.log('[Jardim] Recebendo dados iniciais:', {
-    seeds: Object.keys(seeds),
-    upgrades: Object.keys(upgrades),
-    upgradesWithFunctions: Object.entries(upgrades).map(([key, upgrade]) => ({
-      key,
-      hasGetEffectStr: !!upgrade.getEffectStr,
-      hasGetCostStr: !!upgrade.getCostStr
-    }))
-  });
-  
-  // Reconstruir as funções a partir das strings
+
+  // Depois reconstruir os upgrades com as funções
   laboratoryData.gardenUpgrades = {};
-  Object.entries(upgrades).forEach(([key, upgrade]) => {
-    try {
-      // Reconstruir as funções getEffect e getCost
-      const getEffectFn = upgrade.getEffectStr ? 
-        new Function('return ' + upgrade.getEffectStr)() : 
-        (level) => 1; // Função padrão
-      
-      const getCostFn = upgrade.getCostStr ? 
-        new Function('return ' + upgrade.getCostStr)() : 
-        (level) => ({}); // Função padrão
-      
-      laboratoryData.gardenUpgrades[key] = {
-        ...upgrade,
-        getEffect: getEffectFn,
-        getCost: getCostFn
-      };
-      
-      console.log(`[Jardim] Reconstruiu funções para upgrade ${key}:`, {
-        getEffectFn: getEffectFn.toString(),
-        getCostFn: getCostFn.toString()
-      });
-    } catch (error) {
-      console.error(`[Jardim] Erro ao reconstruir funções para upgrade ${key}:`, error);
-      // Fallback para funções padrão
-      laboratoryData.gardenUpgrades[key] = {
-        ...upgrade,
-        getEffect: (level) => 1,
-        getCost: (level) => ({})
-      };
-    }
-  });
-  
-  laboratoryData.garden = garden;
-  
-  console.log('[Jardim] Dados iniciais recebidos:', {
-    seeds: Object.keys(seeds),
-    upgrades: Object.keys(laboratoryData.gardenUpgrades),
-    garden: {
-      unlockedSlots: garden.unlockedSlots,
-      crystalUnlocked: garden.crystalUnlocked,
-      resources: garden.resources,
-      upgrades: garden.upgrades
-    }
-  });
-  
-  updateGardenSlots();
-  updateLabResources();
-  updateStoreItems(); // Renderizar os itens da loja
-  updateHarvestAllButton();
-  renderSeedOptions();
-});
+  if (upgrades) {
+    Object.entries(upgrades).forEach(([key, upgrade]) => {
+      try {
+        // Adicionar log para debug das funções
+        console.log(`[Jardim Debug] Reconstruindo upgrade ${key}:`, {
+          getEffectStr: upgrade.getEffectStr,
+          getCostStr: upgrade.getCostStr
+        });
 
-export function initLaboratory() {
-  const openLabButton = document.getElementById('open-laboratory');
-  const closeLabButton = document.getElementById('close-laboratory');
-  const laboratoryOverlay = document.getElementById('laboratory-overlay');
-
-  if (!openLabButton || !closeLabButton || !laboratoryOverlay) {
-    console.error('Elementos do laboratório não encontrados');
-    return;
+        const getEffectFn = upgrade.getEffectStr ? 
+          new Function('return ' + upgrade.getEffectStr)() : 
+          (level) => 1;
+        
+        const getCostFn = upgrade.getCostStr ? 
+          new Function('return ' + upgrade.getCostStr)() : 
+          (level) => ({});
+        
+        laboratoryData.gardenUpgrades[key] = {
+          ...upgrade,
+          getEffect: getEffectFn,
+          getCost: getCostFn
+        };
+      } catch (error) {
+        console.error(`[Jardim] Erro ao reconstruir funções para upgrade ${key}:`, error);
+        laboratoryData.gardenUpgrades[key] = {
+          ...upgrade,
+          getEffect: (level) => 1,
+          getCost: (level) => ({})
+        };
+      }
+    });
   }
 
-  openLabButton.addEventListener('click', () => {
-    laboratoryOverlay.style.display = 'flex';
-    updateGardenSlots();
-    updateLabResources();
-    updateStoreItems(); // Atualizar os itens da loja quando abrir o laboratório
-    updateHarvestAllButton();
-    renderSeedOptions();
-  });
+  // Por fim, atualizar o estado do jardim
+  laboratoryData.garden = garden;
 
-  closeLabButton.addEventListener('click', () => {
-    laboratoryOverlay.style.display = 'none';
-  });
-
-  initLaboratoryGarden();
+  // Forçar uma atualização completa da interface
+  updateGardenSlots();
+  updateLabResources();
+  updateStoreItems();
+  updateHarvestAllButton();
+  renderSeedOptions();
 }
 
 function initLaboratoryGarden() {
@@ -539,16 +539,16 @@ function updateHarvestAllButton() {
 function updateLabResources() {
   const garden = laboratoryData.garden;
   
-  // Atualiza cada contador de recurso usando os recursos compartilhados
   Object.entries(garden.resources).forEach(([type, amount]) => {
     const resourceItem = document.querySelector(`[data-resource="${type}"]`);
     if (!resourceItem) return;
     
-    // Aplica a mesma lógica de visibilidade das sementes
-    const isVisible = laboratoryData.seeds[type].visible || garden[`${type}Unlocked`];
+    // Use gameState.gardens for visibility check
+    const sharedGarden = gameState.gardens?.sharedGarden;
+    const isVisible = sharedGarden?.unlockedResources?.[type] || garden[`${type}Unlocked`];
+    
     resourceItem.style.display = isVisible ? 'flex' : 'none';
     
-    // Atualiza o contador se o recurso estiver visível
     const counter = resourceItem.querySelector('.resource-count');
     if (counter) {
       counter.textContent = amount;
@@ -859,6 +859,11 @@ function updateStoreItems() {
   const storeGrid = document.querySelector('.store-grid');
   if (!storeGrid) {
     console.error('[Jardim] Elemento .store-grid não encontrado');
+    return;
+  }
+
+  if (!laboratoryData.gardenUpgrades || Object.keys(laboratoryData.gardenUpgrades).length === 0) {
+    socket.emit('requestGardenUpdate');
     return;
   }
   

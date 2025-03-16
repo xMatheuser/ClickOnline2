@@ -65,7 +65,13 @@ let gameState = {
       sunflowerUnlocked: true, // Adicionar esta linha
       resources: { sunflower: 10000, tulip: 10000, mushroom: 10000, crystal: 10000 },
       plants: {},
-      upgrades: {}
+      upgrades: {},
+      unlockedResources: {
+        sunflower: true, // Sunflower always starts unlocked
+        tulip: false,
+        mushroom: false,
+        crystal: false
+      }
     }
   },
   gardenSeeds: SEEDS,
@@ -220,6 +226,16 @@ function applyOfflineClicks(totalClicks) {
 
 io.on('connection', (socket) => {
   console.log('[Conexão] Novo jogador conectado:', socket.id);
+
+  // Prepare garden data
+  const gardenInit = {
+    seeds: gameState.gardenSeeds,
+    upgrades: serializeGardenUpgrades(),
+    garden: gameState.gardens.sharedGarden,
+  };
+
+  // Send initial garden data
+  socket.emit('gardenInit', gardenInit);
 
   if (gameState.players.length === 0) {
     const timeDiff = (Date.now() - gameState.lastActiveTime) / 1000;
@@ -581,8 +597,9 @@ io.on('connection', (socket) => {
       garden.upgrades
     );
 
-    // Add resources to shared inventory
+    // Add resources and mark as unlocked when first harvested
     garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+    garden.unlockedResources[plant.type] = true;
     
     // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
     if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
@@ -802,8 +819,6 @@ io.on('connection', (socket) => {
       upgrades: serializeGardenUpgrades(),
       garden,
     });
-
-    console.log(`[Jardim] Enviando atualização para ${socket.id}`);
   });
 
   socket.on('disconnect', () => {
@@ -1030,15 +1045,17 @@ setInterval(() => {
 function serializeGardenUpgrades() {
   const gardenUpgrades = {};
   
-  // Copiar os métodos e propriedades dos upgrades
-  Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
-    gardenUpgrades[key] = {
-      ...upgrade,
-      // Converter as funções em strings para serem reconstruídas no cliente
-      getEffectStr: upgrade.getEffect.toString(),
-      getCostStr: upgrade.getCost.toString()
-    };
-  });
+  try {
+    Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
+      gardenUpgrades[key] = {
+        ...upgrade,
+        getEffectStr: upgrade.getEffect.toString(),
+        getCostStr: upgrade.getCost.toString()
+      };
+    });
+  } catch (error) {
+    console.error('[Jardim Server] Erro ao serializar upgrades:', error);
+  }
   
   return gardenUpgrades;
 }
