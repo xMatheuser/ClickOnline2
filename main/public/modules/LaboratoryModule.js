@@ -165,7 +165,6 @@ function initLaboratoryGarden() {
 
 // Função para configurar tooltips
 function setupTooltips() {
-  // Cria o elemento de tooltip se não existir
   let tooltip = document.getElementById('tooltip');
   if (!tooltip) {
     tooltip = document.createElement('div');
@@ -174,23 +173,33 @@ function setupTooltips() {
     document.body.appendChild(tooltip);
   }
   
-  // Adiciona eventos de tooltip para os itens da loja
   document.addEventListener('mouseover', (e) => {
     const storeItem = e.target.closest('.store-item');
     if (storeItem) {
       const desc = storeItem.querySelector('.store-item-desc')?.textContent;
-      if (!desc) return;
+      const upgradeId = storeItem.dataset.item;
+      if (!desc || !upgradeId) return;
       
-      tooltip.textContent = desc;
+      // Get upgrade info
+      const upgrade = laboratoryData.gardenUpgrades[upgradeId];
+      const currentLevel = laboratoryData.garden.upgrades?.[upgradeId] || 0;
+      
+      // Create tooltip content with level info
+      const levelInfo = upgrade ? 
+        `<div class="tooltip-level">Nível ${currentLevel}</div>` : '';
+      
+      tooltip.innerHTML = `
+        ${levelInfo}
+        <div class="tooltip-desc">${desc}</div>
+      `;
+      
       tooltip.style.display = 'block';
       
-      // Posiciona o tooltip próximo ao cursor
+      // Rest of positioning logic remains the same
       const updateTooltipPosition = (e) => {
-        // Position tooltip next to cursor
         const x = e.pageX + 10;
         const y = e.pageY + 10;
         
-        // Keep tooltip within viewport
         const tooltipRect = tooltip.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
