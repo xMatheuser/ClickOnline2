@@ -586,13 +586,12 @@ io.on('connection', (socket) => {
     
     // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
     if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
-      // Obter a chance real do efeito da podadora usando getEffect
-      const prunerChance = gameState.gardenUpgrades.prunerPrecision.getEffect(garden.upgrades.prunerPrecision);
+      // Calcular a diferença entre o que foi colhido e o que seria colhido sem bônus
+      const baseYield = gameState.gardenSeeds[plant.type].reward.amount;
+      const totalYield = calculateHarvestYield(baseYield, garden.upgrades);
+      const extraAmount = totalYield - Math.floor(baseYield * GARDEN_UPGRADES.harvestYield.getEffect(garden.upgrades.harvestYield || 0));
       
-      // Aplicar a chance de acordo com o efeito
-      if (Math.random() < prunerChance) {
-        const extraAmount = 1; // Quantidade extra fixa de 1
-        garden.resources[plant.type] += extraAmount;
+      if (extraAmount > 0) {
         socket.emit('notification', `Podadora de Precisão: +${extraAmount} ${getResourceEmoji(plant.type)}!`);
       }
     }
@@ -622,35 +621,24 @@ io.on('connection', (socket) => {
     if (!garden) return;
 
     let plantsHarvested = false;
-    let extraResourcesGained = {}; // Para rastrear recursos extras obtidos com a podadora
 
     // Percorre todas as plantas e colhe as que estão prontas
     for (const slotId in garden.plants) {
       const plant = garden.plants[slotId];
       if (plant && plant.ready) {
-        const harvestAmount = calculateHarvestYield(
-          gameState.gardenSeeds[plant.type].reward.amount,
-          garden.upgrades
-        );
+        const baseYield = gameState.gardenSeeds[plant.type].reward.amount;
+        const harvestAmount = calculateHarvestYield(baseYield, garden.upgrades);
 
         // Adiciona recursos ao inventário compartilhado
         garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
         
-        // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
+        // Verifica se houve bônus extra do Podador de Precisão
         if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
-          // Obter a chance real do efeito da podadora usando getEffect
-          const prunerChance = gameState.gardenUpgrades.prunerPrecision.getEffect(garden.upgrades.prunerPrecision);
+          const baseAmount = Math.floor(baseYield * GARDEN_UPGRADES.harvestYield.getEffect(garden.upgrades.harvestYield || 0));
+          const extraAmount = harvestAmount - baseAmount;
           
-          // Aplicar a chance de acordo com o efeito
-          if (Math.random() < prunerChance) {
-            const extraAmount = 1; // Quantidade extra fixa de 1
-            garden.resources[plant.type] += extraAmount;
-            
-            // Acumula o total de recursos extras para mostrar na notificação
-            if (!extraResourcesGained[plant.type]) {
-              extraResourcesGained[plant.type] = 0;
-            }
-            extraResourcesGained[plant.type] += extraAmount;
+          if (extraAmount > 0) {
+            socket.emit('notification', `Podadora de Precisão: +${extraAmount} ${getResourceEmoji(plant.type)}!`);
           }
         }
         
@@ -660,14 +648,6 @@ io.on('connection', (socket) => {
     }
 
     if (plantsHarvested) {
-      // Enviar notificação sobre recursos extras obtidos com a podadora
-      if (Object.keys(extraResourcesGained).length > 0) {
-        const extraMessage = Object.entries(extraResourcesGained)
-          .map(([type, amount]) => `+${amount} ${getResourceEmoji(type)}`)
-          .join(', ');
-        socket.emit('notification', `Podadora de Precisão: ${extraMessage}!`);
-      }
-      
       // Atualizar informações de visibilidade das sementes
       const updatedSeeds = { ...gameState.gardenSeeds };
       Object.keys(updatedSeeds).forEach(seedId => {

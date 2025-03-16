@@ -104,6 +104,18 @@ export const GARDEN_UPGRADES = {
           tulip: Math.floor(baseTulip * multiplier)
         };
       }
+    },
+    advancedPruning: {
+      id: 'advanced-pruning',
+      name: 'Precisão Avançada',
+      description: 'Aumenta o retorno extra do Podador de Precisão em 1',
+      baseCost: { crystal: 3, mushroom: 5 },
+      maxLevel: 5,
+      getEffect: (level) => level, // Cada nível adiciona +1 ao retorno extra
+      getCost: (level) => ({
+        crystal: Math.floor(3 * Math.pow(2, level)),
+        mushroom: Math.floor(5 * Math.pow(2, level))
+      })
     }
 };
 
@@ -181,7 +193,17 @@ export function calculateGrowthTime(baseTime, upgradeLevels) {
   
 export function calculateHarvestYield(baseAmount, upgradeLevels) {
   const yieldMultiplier = GARDEN_UPGRADES.harvestYield.getEffect(upgradeLevels.harvestYield || 0);
-  return Math.floor(baseAmount * yieldMultiplier);
+  const prunerChance = GARDEN_UPGRADES.prunerPrecision.getEffect(upgradeLevels.prunerPrecision || 0);
+  const advancedPruningBonus = GARDEN_UPGRADES.advancedPruning.getEffect(upgradeLevels.advancedPruning || 0);
+  
+  let finalAmount = Math.floor(baseAmount * yieldMultiplier);
+  
+  // Verifica se tem nível em prunerPrecision antes de tentar ativar o efeito
+  if ((upgradeLevels.prunerPrecision || 0) > 0 && Math.random() < prunerChance) {
+    finalAmount += 1 + advancedPruningBonus;
+  }
+  
+  return finalAmount;
 }
   
 export function getSeedGrowthTime(seedId) {
