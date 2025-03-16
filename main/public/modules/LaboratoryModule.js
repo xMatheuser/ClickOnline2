@@ -872,7 +872,18 @@ function updateStoreItems() {
     return;
   }
   
-  Object.entries(gardenUpgrades).forEach(([upgradeId, upgrade]) => {
+  // Ordenar upgrades: primeiro os não maximizados, depois os maximizados
+  const sortedUpgrades = Object.entries(gardenUpgrades).sort(([idA, upgradeA], [idB, upgradeB]) => {
+    const levelA = garden.upgrades?.[idA] || 0;
+    const levelB = garden.upgrades?.[idB] || 0;
+    const isMaxA = levelA >= upgradeA.maxLevel;
+    const isMaxB = levelB >= upgradeB.maxLevel;
+    
+    if (isMaxA === isMaxB) return 0;
+    return isMaxA ? 1 : -1;
+  });
+  
+  sortedUpgrades.forEach(([upgradeId, upgrade]) => {
     const currentLevel = garden.upgrades?.[upgradeId] || 0;
     
     const storeItem = document.createElement('div');
@@ -909,7 +920,7 @@ function updateStoreItems() {
     });
   });
 
-  Object.keys(gardenUpgrades).forEach(upgradeId => {
+  sortedUpgrades.forEach(([upgradeId]) => {
     updateGenericUpgradeCost(upgradeId);
   });
 }
