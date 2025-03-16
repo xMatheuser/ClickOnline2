@@ -92,7 +92,7 @@ export const GARDEN_UPGRADES = {
       description: 'Desbloqueie um novo slot para plantar mais recursos.',
       baseCost: { sunflower: 5, tulip: 3 },
       maxLevel: 10, // Equivalente ao maxSlots de antes
-      getEffect: (level) => level, // O nível representa o número de slots
+      getEffect: (level) => level + 1,
       getCost: (level) => {
         // Custo base aumenta com o número de slots
         const baseSunflower = 5;
