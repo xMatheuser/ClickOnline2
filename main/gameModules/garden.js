@@ -205,6 +205,17 @@ export function calculateHarvestYield(baseAmount, upgradeLevels) {
   
   return finalAmount;
 }
+
+// Adicionar esta função perto das outras funções auxiliares
+export function getResourceEmoji(resourceType) {
+  switch(resourceType) {
+    // case 'sunflower': return '🌻';
+    case 'tulip': return '🌷';
+    case 'mushroom': return '🍄';
+    case 'crystal': return '💎';
+    default: return '';
+  }
+}
   
 export function getSeedGrowthTime(seedId) {
   return SEEDS[seedId]?.growthTime || 30000;

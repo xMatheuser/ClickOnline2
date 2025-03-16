@@ -7,7 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
-const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime } = require('./main/gameModules/garden.js');
+const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime, getResourceEmoji } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -1041,17 +1041,6 @@ function serializeGardenUpgrades() {
   });
   
   return gardenUpgrades;
-}
-
-// Adicionar esta função perto das outras funções auxiliares
-function getResourceEmoji(resourceType) {
-  switch(resourceType) {
-    case 'sunflower': return '🌻';
-    case 'tulip': return '🌷';
-    case 'mushroom': return '🍄';
-    case 'crystal': return '💎';
-    default: return '';
-  }
 }
 
 const port = process.env.PORT || 3000;
