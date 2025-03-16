@@ -745,7 +745,7 @@ function updateFertilizerCost() {
   const currentLevel = garden.upgrades?.fertilizer || 0;
   
   // Atualiza o título para mostrar o nível atual
-  titleElement.textContent = `${upgrade.name} ${currentLevel > 0 ? `Nível ${currentLevel}` : ''}`;
+  titleElement.textContent = upgrade.name;
   
   // Adiciona classe visual para indicar que o upgrade foi comprado
   if (currentLevel > 0) {
@@ -938,9 +938,8 @@ function updateStoreItems() {
       
       const titleElement = document.createElement('div');
       titleElement.className = 'store-item-title';
-      titleElement.textContent = currentLevel > 0 ? 
-        `${upgrade.name} Nível ${currentLevel}` : 
-        upgrade.name;
+      // Modified to show only upgrade name without level
+      titleElement.textContent = upgrade.name;
       storeItem.appendChild(titleElement);
       
       const descElement = document.createElement('div');
@@ -1028,9 +1027,8 @@ function updateGenericUpgradeCost(upgradeId) {
   
   const currentLevel = garden.upgrades?.[upgradeId] || 0;
   
-  titleElement.textContent = currentLevel > 0 ? 
-    `${upgrade.name} Nível ${currentLevel}` : 
-    upgrade.name;
+  // Modified to show only upgrade name without level
+  titleElement.textContent = upgrade.name;
   
   if (currentLevel > 0) {
     upgradeElement.classList.add('purchased');
