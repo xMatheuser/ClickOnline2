@@ -89,9 +89,9 @@ export const GARDEN_UPGRADES = {
     slot: {
       id: 'garden-slot',
       name: 'Novo Canteiro',
-      description: 'Desbloqueie um novo slot para plantar mais recursos.',
+      description: 'Desbloqueie um novo slot para plantar mais recursos',
       baseCost: { sunflower: 5, tulip: 3 },
-      maxLevel: 10, // Equivalente ao maxSlots de antes
+      maxLevel: 9, // Equivalente ao maxSlots de antes
       getEffect: (level) => level + 1,
       getCost: (level) => {
         // Custo base aumenta com o número de slots
