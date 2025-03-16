@@ -34,23 +34,96 @@ const startScreen = document.getElementById('start-screen');
 const startPlayerNameInput = document.getElementById('start-player-name');
 const startGameButton = document.getElementById('start-game-button');
 const startError = document.getElementById('start-error');
-const gameContainer = document.getElementById('game-container');
+const newPlayerSection = document.getElementById('new-player-section');
+const savedPlayersSection = document.getElementById('saved-players-section');
+const savedPlayersList = document.getElementById('saved-players-list');
+const newPlayerButton = document.getElementById('new-player-button');
+
+function loadSavedPlayers() {
+  const savedPlayers = JSON.parse(localStorage.getItem('savedPlayers') || '[]');
+  return savedPlayers;
+}
+
+function savePlayer(playerName) {
+  const savedPlayers = loadSavedPlayers();
+  if (!savedPlayers.includes(playerName)) {
+    savedPlayers.push(playerName);
+    localStorage.setItem('savedPlayers', JSON.stringify(savedPlayers));
+  }
+}
+
+function deletePlayer(playerName) {
+  const savedPlayers = loadSavedPlayers();
+  const index = savedPlayers.indexOf(playerName);
+  if (index > -1) {
+    savedPlayers.splice(index, 1);
+    localStorage.setItem('savedPlayers', JSON.stringify(savedPlayers));
+  }
+}
+
+function renderSavedPlayers() {
+  const savedPlayers = loadSavedPlayers();
+  if (savedPlayers.length > 0) {
+    savedPlayersSection.style.display = 'block';
+    newPlayerSection.style.display = 'none';
+    
+    savedPlayersList.innerHTML = savedPlayers
+      .map(player => `
+        <div class="saved-player-item">
+          <span>${player}</span>
+          <button class="delete-player" data-player="${player}">×</button>
+        </div>
+      `).join('');
+  } else {
+    savedPlayersSection.style.display = 'none';
+    newPlayerSection.style.display = 'block';
+  }
+}
 
 export function initStartScreen() {
   console.log('Initializing start screen...');
-  // Inicializa o tema antes de tudo
   initTheme();
   
-  const startScreen = document.getElementById('start-screen');
-  const startGameButton = document.getElementById('start-game-button');
-  const startPlayerNameInput = document.getElementById('start-player-name');
-  const startError = document.getElementById('start-error');
-  const gameContainer = document.getElementById('game-container');
-  
-  if (!startGameButton || !startPlayerNameInput || !startError || !gameContainer) {
+  if (!startGameButton || !startPlayerNameInput || !startError) {
     console.error('Failed to find required start screen elements');
     return;
   }
+
+  renderSavedPlayers();
+
+  savedPlayersList.addEventListener('click', (e) => {
+    const playerItem = e.target.closest('.saved-player-item');
+    const deleteButton = e.target.closest('.delete-player');
+    
+    if (deleteButton) {
+      const playerName = deleteButton.dataset.player;
+      deletePlayer(playerName);
+      renderSavedPlayers();
+    } else if (playerItem) {
+      const playerName = playerItem.querySelector('span').textContent;
+      startPlayerNameInput.value = playerName;
+      setUserInteraction(true);
+      startGame();
+    }
+  });
+
+  newPlayerButton.addEventListener('click', () => {
+    savedPlayersSection.style.display = 'none';
+    newPlayerSection.style.display = 'block';
+    startPlayerNameInput.value = '';
+    startPlayerNameInput.focus();
+  });
+
+  // Modificar o evento de início do jogo para salvar o jogador
+  startGameButton.addEventListener('click', () => {
+    console.log('Start button clicked');
+    const playerName = startPlayerNameInput.value.trim();
+    if (playerName) {
+      savePlayer(playerName);
+      setUserInteraction(true);
+      startGame();
+    }
+  });
 
   socket.on('connect', () => {
     console.log('Connected to server');
@@ -71,12 +144,8 @@ export function initStartScreen() {
   });
 
   startScreen.style.display = 'flex';
-  gameContainer.style.display = 'none';
-
-  startGameButton.addEventListener('click', () => {
-    console.log('Start button clicked');
-    setUserInteraction(true);
-    startGame();
+  document.querySelectorAll('.floating-window').forEach(window => {
+    window.style.display = 'none';
   });
 
   startPlayerNameInput.addEventListener('keypress', (event) => {
@@ -201,12 +270,7 @@ function broadcastGameState() {
 
 export function startGame() {
   console.log('Starting game...');
-  const startPlayerNameInput = document.getElementById('start-player-name');
-  const startError = document.getElementById('start-error');
-  const startScreen = document.getElementById('start-screen');
-  const gameContainer = document.getElementById('game-container');
-
-  if (!startPlayerNameInput || !startError || !startScreen || !gameContainer) {
+  if (!startPlayerNameInput || !startError || !startScreen) {
     console.error('Failed to find required game elements');
     return;
   }
@@ -219,17 +283,38 @@ export function startGame() {
   socket.emit('addPlayer', { name: playerName });
   
   startScreen.style.opacity = '0';
-  gameContainer.style.display = 'block';
+  document.querySelectorAll('.floating-window').forEach(window => {
+    window.style.display = 'block';
+  });
+  
+  // Exibir o split button
+  const splitButton = document.querySelector('.split-button');
+  if (splitButton) {
+    splitButton.style.display = 'flex';
+    
+    // Adicionar listener para o toggle do menu
+    const menuToggle = splitButton.querySelector('#layout-menu-toggle');
+    if (menuToggle) {
+      menuToggle.addEventListener('click', () => {
+        splitButton.classList.toggle('active');
+      });
+      
+      // Fechar menu ao clicar fora
+      document.addEventListener('click', (e) => {
+        if (!splitButton.contains(e.target)) {
+          splitButton.classList.remove('active');
+        }
+      });
+    }
+  }
   
   setTimeout(() => {
     startScreen.style.display = 'none';
-    gameContainer.style.opacity = '1';
+    document.querySelectorAll('.floating-window').forEach(window => {
+      window.style.opacity = '1';
+    });
     document.querySelector('.top-bar').classList.add('visible');
     initGame();
-    // Add initial UI render after game initialization
-    import('./UIModule.js').then(module => {
-      module.renderUpgrades();
-    });
   }, 500);
 }
 

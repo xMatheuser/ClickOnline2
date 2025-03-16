@@ -610,18 +610,11 @@ h3 {
 }
 
 .top-bar-title {
-  margin: 0;
   font-size: 1.2rem;
-  color: #2E7D32; /* Cor do texto para contraste com fundo branco */
+  color: #2E7D32;
   display: flex;
   align-items: center;
-  gap: 12px; /* Increased from 6px to better space the octocat */
-}
-
-/* Add style for the octocat */
-.top-bar-title .nes-octocat {
-  transform: scale(0.45); /* Make octocat a bit smaller */
-  margin-right: -8px; /* Adjust spacing */
+  gap: 12px;
 }
 
 /* Top Bar Buttons Group */

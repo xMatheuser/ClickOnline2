@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/background.css">
   <link rel="stylesheet" href="css/bossFight.css">
   <link rel="stylesheet" href="css/laboratory.css">
+  <link rel="stylesheet" href="css/dragAndDrop.css">
 </head>
 <body class="nes-container">
   <div class="animated-background"></div>
@@ -27,7 +28,6 @@
     <div class="top-bar-content">
       <div class="title-section">
         <h1 class="top-bar-title">
-          <i class="nes-octocat animate"></i>
           Coop 
           <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
           <button class="nes-btn" id="open-laboratory">🌻 Jardim</button>
@@ -86,67 +86,89 @@
 
   <div class="start-screen" id="start-screen">
     <div class="start-container">
-      <h1>Bem-vindo ao  Coop!</h1>
-      <p>Digite seu nome para começar:</p>
-      <input type="text" id="start-player-name" placeholder="Seu nome" class="player-input">
-      <button id="start-game-button" class="rpgui-button golden">Iniciar Jogo</button>
-      <div id="start-error" class="error-message"></div>
+      <h1>Bem-vindo ao Coop!</h1>
+      <div id="saved-players-section" style="display: none;">
+        <p>Selecione seu jogador:</p>
+        <div id="saved-players-list" class="saved-players-list"></div>
+        <button id="new-player-button" class="rpgui-button golden">Novo Jogador</button>
+      </div>
+      <div id="new-player-section">
+        <p>Digite seu nome para começar:</p>
+        <input type="text" id="start-player-name" placeholder="Seu nome" class="player-input">
+        <button id="start-game-button" class="rpgui-button golden">Iniciar Jogo</button>
+        <div id="start-error" class="error-message"></div>
+      </div>
     </div>
   </div>
 
-  <div class="game-container" id="game-container" style="display: none; opacity: 0;">
-    <div class="main-layout">
-      <div class="left-column nes-container is-rounded">
-        <section class="nes-container with-title">
-          <div class="section-header">
-            <h2 class="title">Upgrades</h2>
-            <button id="show-history" class="nes-btn is-error" title="Ver Histórico de Upgrades">
-              <i class="nes-icon trophy is-small"></i>
-            </button>
-          </div>
-          <div id="upgrades-container"></div>
-        </section>
-      </div>
-      <div class="center-column nes-container is-rounded">
-        <section class="nes-container with-title">
-          <h2 class="title">Jogadores</h2>
-          <div class="player-list" id="player-list"></div>
-        </section>
-        <section class="nes-container with-title">
-          <h2 class="title">Level: <span id="team-goal">1</span></h2>
-          <div class="progress-container">
-            <div class="team-shared-progress-bar" id="team-shared-progress-bar">
-              <span class="progress-percentage" id="progress-percentage">100/100 HP</span>
-            </div>
-          </div>
-          <div class="damage-container" id="damage-container"></div>
-          <div class="bonus-message" id="team-bonus-message">
-            Trabalhem juntos para ganhar bônus para toda a equipe!
-          </div>
-        </section>
-        <section class="nes-container with-title is-dark">
-          <h2 class="title">Estatísticas</h2>
-          <div class="stats">
-            <div class="stat-box nes-container is-rounded"><h3>Jogador</h3><div id="active-player">-</div></div>
-            <div class="stat-box nes-container is-rounded"><h3>Nível</h3><div id="level">1</div></div>
-            <div class="stat-box total-clicks nes-container is-rounded"><h3>Cliques Totais</h><div id="clicks">0</div></div>
-            <div class="stat-box clicks-per-second nes-container is-rounded"><h3>Cliques/s</h3><div id="target">0</div></div>
-            <div class="stat-box team-coins nes-container is-rounded"><h3>Moedas do Time</h3><div><span id="team-coins">0</span><span class="coin-icon"></span></div></div>
-            <div class="stat-box nes-container is-rounded"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
-          </div>
-        </section>
-        <section class="nes-container with-title">
-          <h2 class="title">Contribuição dos Jogadores</h2>
-          <div id="contribution-container"></div>
-        </section>
-        <section class="click-area nes-container is-rounded" id="click-area">
-          <div class="damage-container"></div>
-          Clique aqui ou pressione "P"!
-        </section>
+  <!-- Floating Windows -->
+  <div class="floating-window draggable" id="upgrades-window" style="display: none">
+    <div class="window-header">
+      <div class="section-header">
+        <h2 class="title">Upgrades</h2>
+        <button id="show-history" class="nes-btn is-error" title="Ver Histórico de Upgrades">
+          <i class="nes-icon trophy is-small"></i>
+        </button>
       </div>
     </div>
-    <button class="rpgui-button golden floating-powerup" id="activate-click-frenzy" style="display: none">Power Up!</button>
+    <div id="upgrades-container"></div>
   </div>
+
+  <div class="floating-window draggable" id="stats-window" style="display: none">
+    <div class="window-header">
+      <h2 class="title">Estatísticas</h2>
+    </div>
+    <div class="stats">
+      <div class="stat-box nes-container is-rounded"><h3>Jogador</h3><div id="active-player">-</div></div>
+      <div class="stat-box nes-container is-rounded"><h3>Nível</h3><div id="level">1</div></div>
+      <div class="stat-box total-clicks nes-container is-rounded"><h3>Cliques Totais</h><div id="clicks">0</div></div>
+      <div class="stat-box clicks-per-second nes-container is-rounded"><h3>Cliques/s</h3><div id="target">0</div></div>
+      <div class="stat-box team-coins nes-container is-rounded"><h3>Moedas do Time</h3><div><span id="team-coins">0</span><span class="coin-icon"></span></div></div>
+      <div class="stat-box nes-container is-rounded"><h3>Poder de Clique</h3><div id="click-power">1</div></div>
+    </div>
+  </div>
+
+  <div class="floating-window draggable" id="contribution-window" style="display: none">
+    <div class="window-header">
+      <h2 class="title">Contribuição dos Jogadores</h2>
+    </div>
+    <div id="contribution-container"></div>
+  </div>
+
+  <div class="floating-window draggable" id="players-window" style="display: none">
+    <div class="window-header">
+      <h2 class="title">Jogadores</h2>
+    </div>
+    <div class="player-list" id="player-list"></div>
+  </div>
+
+  <div class="floating-window draggable" id="level-window" style="display: none">
+    <div class="window-header">
+      <h2 class="title">Level: <span id="team-goal">1</span></h2>
+    </div>
+    <div class="progress-container">
+      <div class="team-shared-progress-bar" id="team-shared-progress-bar">
+        <span class="progress-percentage" id="progress-percentage">100/100 HP</span>
+      </div>
+    </div>
+    <div class="damage-container" id="damage-container"></div>
+    <div class="bonus-message" id="team-bonus-message">
+      Trabalhem juntos para ganhar bônus para toda a equipe!
+    </div>
+  </div>
+
+  <div class="floating-window draggable" id="click-window" style="display: none">
+    <div class="window-header">
+      <h2 class="title">Área de Clique</h2>
+    </div>
+    <div class="click-area nes-container is-rounded" id="click-area">
+      <div class="damage-container"></div>
+      Clique aqui ou pressione "P"!
+    </div>
+  </div>
+
+  <button class="rpgui-button golden floating-powerup" id="activate-click-frenzy" style="display: none">Power Up!</button>
+
   <div class="notification" id="notification"></div>
   <div class="powerup-notification" id="powerup-notification"></div>
   <div class="tooltip" id="tooltip"></div>
@@ -242,6 +264,15 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="split-button" style="display: none">
+    <button class="main-button" id="layout-menu-toggle">⚙️</button>
+    <div class="split-content">
+      <button class="editor-button" id="editor-toggle">🔧 Editor</button>
+      <button class="save-button" id="save-layout" disabled>💾 Salvar</button>
+      <button class="restore-button" id="restore-layout">🔄 Restaurar</button>
     </div>
   </div>
 

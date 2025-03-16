@@ -130,6 +130,8 @@ export function initUI() {
     // Inserir no início do container de upgrades
     upgradesContainer.insertAdjacentElement('beforebegin', bulkBuyContainer);
   }
+
+  initDraggableWindows();
 }
 
 export function handleGameStateUpdate(newState) {
@@ -750,4 +752,314 @@ function updateClicksPerSecond() {
   const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
+}
+
+let isEditMode = false;
+
+function initDraggableWindows() {
+  const draggables = document.querySelectorAll('.draggable');
+  const SNAP_THRESHOLD = 20;
+  const editorToggle = document.getElementById('editor-toggle');
+  const saveLayout = document.getElementById('save-layout');
+  const restoreLayout = document.getElementById('restore-layout');
+  
+  // Criar guias de alinhamento
+  const guides = {
+    vertical: document.createElement('div'),
+    horizontal: document.createElement('div')
+  };
+
+  guides.vertical.className = 'alignment-guide vertical';
+  guides.horizontal.className = 'alignment-guide horizontal';
+  document.body.appendChild(guides.vertical);
+  document.body.appendChild(guides.horizontal);
+
+  // Carregar layout salvo
+  loadWindowLayouts();
+
+  editorToggle.addEventListener('click', () => {
+    isEditMode = !isEditMode;
+    document.body.classList.toggle('edit-mode', isEditMode);
+    editorToggle.classList.toggle('active', isEditMode);
+    saveLayout.disabled = true;
+  });
+
+  saveLayout.addEventListener('click', () => {
+    saveWindowLayouts();
+    saveLayout.disabled = true;
+  });
+
+  // Add restore button handler
+  restoreLayout.addEventListener('click', () => {
+    setDefaultPositions();
+    saveLayout.disabled = false;
+    showNotification('Layout restaurado com sucesso!');
+  });
+
+  draggables.forEach(draggable => {
+    let isDragging = false;
+    let isResizing = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+    let initialWidth;
+    let initialHeight;
+    let initialLeft;
+    let initialTop;
+    let resizeDirection;
+
+    // Criar resizers para todos os lados e cantos
+    const directions = ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw'];
+    directions.forEach(dir => {
+      const resizer = document.createElement('div');
+      resizer.className = `resizer ${dir}`;
+      resizer.setAttribute('data-direction', dir);
+      draggable.appendChild(resizer);
+
+      resizer.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isResizing = true;
+        resizeDirection = dir;
+        initialWidth = draggable.offsetWidth;
+        initialHeight = draggable.offsetHeight;
+        initialLeft = draggable.offsetLeft;
+        initialTop = draggable.offsetTop;
+        initialX = e.clientX;
+        initialY = e.clientY;
+        draggable.classList.add('resizing');
+      });
+    });
+
+    // Evento para drag da janela
+    draggable.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('resizer')) return;
+      if (e.target.closest('button') || 
+          e.target.closest('input') || 
+          e.target.closest('.click-area') ||
+          e.target.closest('.upgrade-item') ||
+          e.target.closest('.contribution-bar')) return;
+      
+      isDragging = true;
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+      draggable.classList.add('dragging');
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isResizing) {
+        resize(e);
+      } else if (isDragging) {
+        drag(e);
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        draggable.classList.remove('dragging');
+        // Garantir que as guias sempre somem ao soltar
+        guides.vertical.style.display = 'none';
+        guides.horizontal.style.display = 'none';
+      }
+      if (isResizing) draggable.classList.remove('resizing');
+      isResizing = false;
+      isDragging = false;
+    });
+
+    function resize(e) {
+      if (!isEditMode || !isResizing) return;
+
+      const dx = e.clientX - initialX;
+      const dy = e.clientY - initialY;
+      
+      let newWidth = initialWidth;
+      let newHeight = initialHeight;
+      let newLeft = initialLeft;
+      let newTop = initialTop;
+
+      // Cálculos baseados na direção
+      switch (resizeDirection) {
+        case 'e':
+          newWidth = initialWidth + dx;
+          break;
+        case 'w':
+          newWidth = initialWidth - dx;
+          newLeft = initialLeft + dx;
+          break;
+        case 'n':
+          newHeight = initialHeight - dy;
+          newTop = initialTop + dy;
+          break;
+        case 's':
+          newHeight = initialHeight + dy;
+          break;
+        case 'se':
+          newWidth = initialWidth + dx;
+          newHeight = initialHeight + dy;
+          break;
+        case 'sw':
+          newWidth = initialWidth - dx;
+          newHeight = initialHeight + dy;
+          newLeft = initialLeft + dx;
+          break;
+        case 'ne':
+          newWidth = initialWidth + dx;
+          newHeight = initialHeight - dy;
+          newTop = initialTop + dy;
+          break;
+        case 'nw':
+          newWidth = initialWidth - dx;
+          newHeight = initialHeight - dy;
+          newLeft = initialLeft + dx;
+          newTop = initialTop + dy;
+          break;
+      }
+
+      // Aplicar limites mínimos e máximos
+      newWidth = Math.min(Math.max(200, newWidth), window.innerWidth * 0.9);
+      newHeight = Math.min(Math.max(150, newHeight), window.innerHeight * 0.9);
+
+      // Atualizar dimensões e posição
+      draggable.style.width = `${newWidth}px`;
+      draggable.style.height = `${newHeight}px`;
+      
+      // Atualizar posição apenas se mudou
+      if (newLeft !== initialLeft) {
+        draggable.style.left = `${newLeft}px`;
+      }
+      if (newTop !== initialTop) {
+        draggable.style.top = `${newTop}px`;
+      }
+      saveLayout.disabled = false;
+    }
+
+    function dragStart(e) {
+      if (!isEditMode || e.target.classList.contains('resizer')) return;
+      if (e.target.closest('button') || 
+          e.target.closest('input') || 
+          e.target.closest('.click-area') ||
+          e.target.closest('.upgrade-item') ||
+          e.target.closest('.contribution-bar')) return;
+
+      isDragging = true;
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+      draggable.classList.add('dragging');
+    }
+
+    function drag(e) {
+      if (!isEditMode || !isDragging) return;
+      
+      e.preventDefault();
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+
+      // Encontrar pontos de alinhamento
+      const rect = draggable.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      // Esconder guias inicialmente
+      guides.vertical.style.display = 'none';
+      guides.horizontal.style.display = 'none';
+
+      // Checar alinhamento com outras janelas
+      draggables.forEach(other => {
+        if (other === draggable) return;
+
+        const otherRect = other.getBoundingClientRect();
+        const otherCenterX = otherRect.left + otherRect.width / 2;
+        const otherCenterY = otherRect.top + otherRect.height / 2;
+
+        // Mostrar guias quando próximas do alinhamento
+        if (Math.abs(centerX - otherCenterX) < SNAP_THRESHOLD) {
+          guides.vertical.style.left = `${otherCenterX}px`;
+          guides.vertical.style.display = 'block';
+        }
+
+        if (Math.abs(centerY - otherCenterY) < SNAP_THRESHOLD) {
+          guides.horizontal.style.top = `${otherCenterY}px`;
+          guides.horizontal.style.display = 'block';
+        }
+      });
+
+      // Atualizar posição normalmente, sem snap
+      draggable.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      xOffset = currentX;
+      yOffset = currentY;
+      saveLayout.disabled = false;
+    }
+
+    function dragEnd() {
+      if (isDragging) {
+        draggable.classList.remove('dragging');
+        guides.vertical.style.display = 'none';
+        guides.horizontal.style.display = 'none';
+      }
+      isResizing = false;
+      isDragging = false;
+    }
+
+    function setTranslate(xPos, yPos, el) {
+      el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+    }
+  });
+}
+
+function saveWindowLayouts() {
+  const layouts = {};
+  document.querySelectorAll('.floating-window').forEach(window => {
+    const id = window.id;
+    layouts[id] = {
+      width: window.style.width,
+      height: window.style.height,
+      transform: window.style.transform,
+      left: window.style.left, 
+      top: window.style.top
+    };
+  });
+  localStorage.setItem('windowLayouts', JSON.stringify(layouts));
+  showNotification('Layout salvo com sucesso!');
+}
+
+function setDefaultPositions() {
+  const defaultPositions = {
+    'click-window': {width: "590px", height: "281px", transform: "translate(166px, -39px)", left: "1092px", top: "483px"},
+    'contribution-window': {width: "589px", height: "374px", transform: "translate(-13px, -479px)", top: "546px"},
+    'level-window': {width: "744px", height: "197px", transform: "translate(477px, 354px)", top: "172px"},
+    'players-window': {width: "1339px", height: "196px", transform: "translate(478px, 692px)", top: "36px"},
+    'stats-window': {width: "743px", height: "455px", transform: "translate(477px, 42px)"},
+    'upgrades-window': {width: "513px", height: "858.6px", transform: "translate(-39px, 41px)"}
+  };
+
+  Object.entries(defaultPositions).forEach(([id, style]) => {
+    const window = document.getElementById(id);
+    if (!window) return;
+    Object.entries(style).forEach(([prop, value]) => {
+      if (value) window.style[prop] = value;
+    });
+  });
+}
+
+function loadWindowLayouts() {
+  try {
+    const layouts = JSON.parse(localStorage.getItem('windowLayouts'));
+    if (!layouts) {
+      setDefaultPositions();
+      return;
+    }
+    Object.entries(layouts).forEach(([id, style]) => {
+      const window = document.getElementById(id);
+      if (!window) return;
+
+      Object.entries(style).forEach(([prop, value]) => {
+        if (value) window.style[prop] = value;
+      });
+    });
+  } catch (error) {
+    console.error('Erro ao carregar layouts:', error);
+    setDefaultPositions();
+  }
 }
