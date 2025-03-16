@@ -862,8 +862,15 @@ function updateStoreItems() {
     return;
   }
   
-  storeGrid.innerHTML = '';
-  
+  storeGrid.innerHTML = `
+    <div class="upgrades-container"></div>
+    <div class="carousel-navigation">
+      <button class="carousel-nav prev" disabled>&lt;</button>
+      <button class="carousel-nav next">&gt;</button>
+    </div>
+  `;
+
+  const upgradesContainer = storeGrid.querySelector('.upgrades-container');
   const { gardenUpgrades } = laboratoryData;
   const garden = laboratoryData.garden;
   
@@ -872,7 +879,6 @@ function updateStoreItems() {
     return;
   }
   
-  // Ordenar upgrades: primeiro os não maximizados, depois os maximizados
   const sortedUpgrades = Object.entries(gardenUpgrades).sort(([idA, upgradeA], [idB, upgradeB]) => {
     const levelA = garden.upgrades?.[idA] || 0;
     const levelB = garden.upgrades?.[idB] || 0;
@@ -882,44 +888,105 @@ function updateStoreItems() {
     if (isMaxA === isMaxB) return 0;
     return isMaxA ? 1 : -1;
   });
+
+  let currentPage = 0;
+  const itemsPerPage = 4; // Alterado para 4 itens por página
+  const totalPages = Math.ceil(sortedUpgrades.length / itemsPerPage);
   
-  sortedUpgrades.forEach(([upgradeId, upgrade]) => {
-    const currentLevel = garden.upgrades?.[upgradeId] || 0;
+  function updateCarousel(page) {
+    const start = page * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageUpgrades = sortedUpgrades.slice(start, end);
     
-    const storeItem = document.createElement('div');
-    storeItem.className = 'store-item';
-    storeItem.dataset.item = upgradeId;
+    upgradesContainer.innerHTML = '';
     
-    const titleElement = document.createElement('div');
-    titleElement.className = 'store-item-title';
-    titleElement.textContent = currentLevel > 0 ? 
-      `${upgrade.name} Nível ${currentLevel}` : 
-      upgrade.name;
-    storeItem.appendChild(titleElement);
+    // Preencher com slots vazios se necessário para manter o grid 2x2
+    const items = [...pageUpgrades];
+    while (items.length < itemsPerPage) {
+      items.push(null);
+    }
     
-    const descElement = document.createElement('div');
-    descElement.className = 'store-item-desc';
-    descElement.textContent = upgrade.description;
-    storeItem.appendChild(descElement);
-    
-    const costElement = document.createElement('div');
-    costElement.className = 'store-item-cost';
-    costElement.textContent = 'Carregando...';
-    storeItem.appendChild(costElement);
-    
-    const buyButton = document.createElement('button');
-    buyButton.className = 'buy-button';
-    buyButton.id = `buy-lab-${upgradeId}`;
-    buyButton.textContent = 'Comprar';
-    storeItem.appendChild(buyButton);
-    
-    storeGrid.appendChild(storeItem);
-    
-    buyButton.addEventListener('click', () => {
-      socket.emit('buyGardenUpgrade', { upgradeId });
+    items.forEach(item => {
+      if (!item) {
+        // Criar um slot vazio para manter o grid
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'store-item empty';
+        upgradesContainer.appendChild(emptyItem);
+        return;
+      }
+
+      const [upgradeId, upgrade] = item;
+      const currentLevel = garden.upgrades?.[upgradeId] || 0;
+      
+      const storeItem = document.createElement('div');
+      storeItem.className = 'store-item';
+      storeItem.dataset.item = upgradeId;
+      
+      const titleElement = document.createElement('div');
+      titleElement.className = 'store-item-title';
+      titleElement.textContent = currentLevel > 0 ? 
+        `${upgrade.name} Nível ${currentLevel}` : 
+        upgrade.name;
+      storeItem.appendChild(titleElement);
+      
+      const descElement = document.createElement('div');
+      descElement.className = 'store-item-desc';
+      descElement.textContent = upgrade.description;
+      storeItem.appendChild(descElement);
+      
+      const costElement = document.createElement('div');
+      costElement.className = 'store-item-cost';
+      costElement.textContent = 'Carregando...';
+      storeItem.appendChild(costElement);
+      
+      const buyButton = document.createElement('button');
+      buyButton.className = 'buy-button';
+      buyButton.id = `buy-lab-${upgradeId}`;
+      buyButton.textContent = 'Comprar';
+      storeItem.appendChild(buyButton);
+      
+      upgradesContainer.appendChild(storeItem);
+      
+      buyButton.addEventListener('click', () => {
+        socket.emit('buyGardenUpgrade', { upgradeId });
+      });
     });
+
+    // Atualizar estado dos botões de navegação
+    const prevButton = storeGrid.querySelector('.carousel-nav.prev');
+    const nextButton = storeGrid.querySelector('.carousel-nav.next');
+    
+    prevButton.disabled = page === 0;
+    nextButton.disabled = page >= totalPages - 1;
+
+    // Atualizar os custos dos upgrades desta página
+    pageUpgrades.forEach(([upgradeId]) => {
+      updateGenericUpgradeCost(upgradeId);
+    });
+  }
+
+  // Configurar navegação do carrossel
+  const prevButton = storeGrid.querySelector('.carousel-nav.prev');
+  const nextButton = storeGrid.querySelector('.carousel-nav.next');
+  
+  prevButton.addEventListener('click', () => {
+    if (currentPage > 0) {
+      currentPage--;
+      updateCarousel(currentPage);
+    }
+  });
+  
+  nextButton.addEventListener('click', () => {
+    if (currentPage < totalPages - 1) {
+      currentPage++;
+      updateCarousel(currentPage);
+    }
   });
 
+  // Iniciar carrossel
+  updateCarousel(0);
+
+  // Atualizar custos
   sortedUpgrades.forEach(([upgradeId]) => {
     updateGenericUpgradeCost(upgradeId);
   });

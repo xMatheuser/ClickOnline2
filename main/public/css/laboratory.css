@@ -386,10 +386,14 @@
 }
 
 .store-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 1rem;
-  margin-top: 1.5rem;
+  padding: 1rem;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .store-item {
@@ -402,6 +406,11 @@
   position: relative;
   transition: all 0.3s ease;
   cursor: pointer;
+  min-width: 200px;
+  flex: 1;
+  min-height: 150px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .store-item:hover {
@@ -431,8 +440,36 @@
 }
 
 .store-item-cost {
-  margin-top: auto;
   font-size: 0.9rem;
+  margin-top: auto;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.store-item-title {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.store-item .buy-button {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: #4CAF50;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.store-item .buy-button:hover:not(:disabled) {
+  background: #45a049;
+  transform: translateY(-2px);
 }
 
 /* Dark mode support */
@@ -621,10 +658,56 @@ body.dark-mode .close-achievements {
 }
 
 .store-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.upgrades-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 1rem;
   width: 100%;
+  max-width: 800px;
+  aspect-ratio: 2/1;
+}
+
+.store-item.empty {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.carousel-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.carousel-nav {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.carousel-nav:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.carousel-nav:hover:not(:disabled) {
+  background: #34495e;
 }
 
 /* Ajuste para telas menores */
@@ -639,5 +722,9 @@ body.dark-mode .close-achievements {
 
   .store-grid {
     grid-template-columns: repeat(1, 1fr);
+  }
+
+  .upgrades-container {
+    grid-template-columns: 1fr;
   }
 }
