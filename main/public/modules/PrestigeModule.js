@@ -2,6 +2,7 @@ import { socket, gameState, isOwnPlayer } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
 import { formatNumber } from './UtilsModule.js';
 import { playSound, tickSound } from './AudioModule.js';
+import { updateGardenUnlockState } from './GardenModule.js';
 
 const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
@@ -82,8 +83,16 @@ export function initPrestige() {
         
         // Atualizar o cache do estado de prestígio
         updatePrestigeStateCache();
+        
+        // Se for o upgrade do jardim, atualizar o estado de desbloqueio imediatamente
+        if (upgrade.id === 'garden-unlock') {
+          updateGardenUnlockState();
+        }
       }
     }
+    
+    // Dispatch event for other modules
+    document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
     
     if (prestigeOverlay.classList.contains('active')) {
       // Forçar a renderização completa da árvore de habilidades
@@ -974,9 +983,6 @@ function updateSkillTreeNodes() {
             newStatus = 'unlocked';
             nodeIcon = '🔓';
           }
-        } else {
-          newStatus = 'locked';
-          nodeIcon = '🔒';
         }
       }
       // Verificar se este é o primeiro nível e ainda não foi comprado
@@ -989,9 +995,6 @@ function updateSkillTreeNodes() {
             newStatus = 'unlocked';
             nodeIcon = '🔓';
           }
-        } else {
-          newStatus = 'locked';
-          nodeIcon = '🔒';
         }
       }
       // Todos os outros níveis devem estar bloqueados até que o nível anterior seja comprado
@@ -1013,9 +1016,6 @@ function updateSkillTreeNodes() {
           newStatus = 'unlocked';
           nodeIcon = '🔓';
         }
-      } else {
-        newStatus = 'locked';
-        nodeIcon = '🔒';
       }
     }
     

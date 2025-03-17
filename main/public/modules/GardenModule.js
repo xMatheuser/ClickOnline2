@@ -26,8 +26,14 @@ export function initGarden() {
     return;
   }
 
+  // Initialize button as hidden by default
+  openGardenButton.style.display = 'none';
+  
   // Add locked class by default
   openGardenButton.classList.add('garden-button', 'locked');
+
+  // Update garden unlock state (will show button if upgrade is unlocked)
+  updateGardenUnlockState();
 
   // Create tooltip
   const tooltip = document.createElement('div');
@@ -113,6 +119,7 @@ export function initGarden() {
   });
 
   initGardenGarden();
+  initGardenStateListeners();
 }
 
 function isGardenUnlocked() {
@@ -126,10 +133,19 @@ export function updateGardenUnlockState() {
   if (!openGardenButton) return;
 
   if (isGardenUnlocked()) {
+    openGardenButton.style.display = 'inline-block';
     openGardenButton.classList.remove('locked');
   } else {
+    openGardenButton.style.display = 'none';
     openGardenButton.classList.add('locked');
   }
+}
+
+// Add a listener for game state updates to update garden unlock state
+export function initGardenStateListeners() {
+  document.addEventListener('gameStateUpdated', () => {
+    updateGardenUnlockState();
+  });
 }
 
 function handleGardenUpdate(garden) {
