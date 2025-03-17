@@ -612,8 +612,18 @@ function createSkillNode(data) {
 }
 
 function createConnection(fromNode, toNode) {
-  const dx = toNode.x - fromNode.x;
-  const dy = toNode.y - fromNode.y;
+  // Node size in pixels (from CSS)
+  const nodeSize = 80;
+  const nodeRadius = nodeSize / 2;
+
+  // Calculate center points of nodes
+  const fromX = fromNode.x + nodeRadius;
+  const fromY = fromNode.y + nodeRadius;
+  const toX = toNode.x + nodeRadius;
+  const toY = toNode.y + nodeRadius;
+  
+  const dx = toX - fromX;
+  const dy = toY - fromY;
   const distance = Math.sqrt(dx * dx + dy * dy);
   const angle = Math.atan2(dy, dx) * 180 / Math.PI;
   
@@ -629,8 +639,8 @@ function createConnection(fromNode, toNode) {
   
   // Position and rotate the connection
   connection.style.width = `${distance}px`;
-  connection.style.left = `${fromNode.x}px`;
-  connection.style.top = `${fromNode.y}px`;
+  connection.style.left = `${fromX}px`;
+  connection.style.top = `${fromY}px`;
   connection.style.transform = `rotate(${angle}deg)`;
   
   const connectionData = {
