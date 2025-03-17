@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/dragAndDrop.css">
   <link rel="stylesheet" href="css/skill-tree.css">
   <link rel="stylesheet" href="css/rpgui.css">
+  <link rel="stylesheet" href="css/character-selection.css">
 </head>
 <body class="nes-container">
   <div class="animated-background"></div>
@@ -35,6 +36,7 @@
           <button class="nes-btn" id="open-garden">🌻 Jardim</button>
           <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
           <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
+          <button class="nes-btn" id="open-character-selection">👤 Personagem</button>
         </h1>
       </div>
       <div class="top-bar-buttons">
@@ -286,6 +288,152 @@
       <button class="editor-button" id="editor-toggle">🔧 Editor</button>
       <button class="save-button" id="save-layout" disabled>💾 Salvar</button>
       <button class="restore-button" id="restore-layout">🔄 Restaurar</button>
+    </div>
+  </div>
+
+  <!-- Add Character Selection Overlay -->
+  <div class="character-selection-overlay" id="character-selection-overlay">
+    <div class="character-selection-popup nes-container is-rounded">
+      <div class="character-selection-header">
+        <h2>Seleção de Personagem</h2>
+        <button class="close-character-selection" id="close-character-selection">×</button>
+      </div>
+      <div class="character-selection-content" id="character-selection-content">
+        <div class="character-select-screen">
+          <div class="character-options">
+            <div class="character-card" data-character-type="warrior">
+              <div class="character-icon">⚔️</div>
+              <div class="character-name">Guerreiro</div>
+              <div class="character-description">Especialista em combate corpo a corpo, o Guerreiro tem alto poder de ataque.</div>
+              <div class="character-stats">
+                <div class="stat">
+                  <div class="stat-value">★★★</div>
+                  <div class="stat-label">Ataque</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★★☆</div>
+                  <div class="stat-label">Defesa</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★☆☆</div>
+                  <div class="stat-label">Magia</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="character-card" data-character-type="archer">
+              <div class="character-icon">🏹</div>
+              <div class="character-name">Arqueiro</div>
+              <div class="character-description">Especialista em ataques à distância, o Arqueiro tem alta precisão e velocidade.</div>
+              <div class="character-stats">
+                <div class="stat">
+                  <div class="stat-value">★★☆</div>
+                  <div class="stat-label">Ataque</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★☆☆</div>
+                  <div class="stat-label">Defesa</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★★★</div>
+                  <div class="stat-label">Agilidade</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="character-card" data-character-type="mage">
+              <div class="character-icon">🔮</div>
+              <div class="character-name">Mago</div>
+              <div class="character-description">Especialista em magias, o Mago tem alto poder mágico e conhecimento arcano.</div>
+              <div class="character-stats">
+                <div class="stat">
+                  <div class="stat-value">★☆☆</div>
+                  <div class="stat-label">Ataque</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★☆☆</div>
+                  <div class="stat-label">Defesa</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">★★★</div>
+                  <div class="stat-label">Magia</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="character-layout">
+            <div class="character-container" data-character-type="warrior">
+              <div class="character-title">Guerreiro</div>
+              <div class="equipment-layout">
+                <div class="equipment-slots-left">
+                  <div class="equipment-slot" data-slot="head"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="chest"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="hands"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="legs"><span class="empty-slot"></span></div>
+                </div>
+                <div class="character-portrait">⚔️</div>
+                <div class="equipment-slots-right">
+                  <div class="equipment-slot" data-slot="weapon"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="shield"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory1"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory2"><span class="empty-slot"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="character-container" data-character-type="archer">
+              <div class="character-title">Arqueiro</div>
+              <div class="equipment-layout">
+                <div class="equipment-slots-left">
+                  <div class="equipment-slot" data-slot="head"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="chest"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="hands"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="legs"><span class="empty-slot"></span></div>
+                </div>
+                <div class="character-portrait">🏹</div>
+                <div class="equipment-slots-right">
+                  <div class="equipment-slot" data-slot="weapon"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="quiver"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory1"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory2"><span class="empty-slot"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="character-container" data-character-type="mage">
+              <div class="character-title">Mago</div>
+              <div class="equipment-layout">
+                <div class="equipment-slots-left">
+                  <div class="equipment-slot" data-slot="head"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="chest"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="hands"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="legs"><span class="empty-slot"></span></div>
+                </div>
+                <div class="character-portrait">🔮</div>
+                <div class="equipment-slots-right">
+                  <div class="equipment-slot" data-slot="staff"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="spellbook"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory1"><span class="empty-slot"></span></div>
+                  <div class="equipment-slot" data-slot="accessory2"><span class="empty-slot"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="inventory-section">
+            <div class="inventory-header">
+              <div class="inventory-title">Inventário</div>
+              <button class="inventory-toggle" id="inventory-toggle">▼</button>
+            </div>
+            <div class="inventory-grid" id="inventory-grid">
+              <!-- Inventory slots will be generated dynamically -->
+            </div>
+          </div>
+
+          <button class="character-select-button" id="select-character-button">Selecionar Personagem</button>
+        </div>
+      </div>
     </div>
   </div>
 

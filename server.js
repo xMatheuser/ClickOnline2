@@ -225,7 +225,7 @@ function applyOfflineClicks(totalClicks) {
 }
 
 io.on('connection', (socket) => {
-  console.log('[Conexão] Novo jogador conectado:', socket.id);
+  console.log('User connected:', socket.id);
 
   // Prepare garden data
   const gardenInit = {
@@ -863,6 +863,42 @@ io.on('connection', (socket) => {
       upgrades: serializeGardenUpgrades(),
       garden,
     });
+  });
+
+  socket.on('updatePlayerCharacter', (data) => {
+    if (!isPlayerActive(socket.id)) {
+      return;
+    }
+    
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (player) {
+      player.characterType = data.characterType;
+      player.characterBonuses = data.characterBonuses || {};
+      
+      // Notify all clients about the character update
+      io.emit('playerCharacterUpdate', {
+        playerId: socket.id,
+        characterType: data.characterType
+      });
+      
+      socket.emit('notification', `Personagem atualizado para ${data.characterType}!`);
+      broadcastGameState();
+    }
+  });
+  
+  socket.on('updatePlayerData', (data) => {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (player) {
+      // Update character data
+      if (data.characterType) {
+        player.characterType = data.characterType;
+      }
+      if (data.characterBonuses) {
+        player.characterBonuses = data.characterBonuses;
+      }
+      
+      broadcastGameState();
+    }
   });
 
   socket.on('disconnect', () => {

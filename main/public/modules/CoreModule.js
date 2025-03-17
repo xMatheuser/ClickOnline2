@@ -347,8 +347,9 @@ export function updateGameState(newState) {
   const savedBoosts = gameState.achievementBoosts;
   const savedCategories = gameState.achievementCategories;
   const savedPrestige = {}; // Preservar dados de prestígio
+  const savedCharacterData = {}; // Preservar dados de personagem
   
-  // Salvar dados de prestígio para cada jogador
+  // Salvar dados de prestígio e personagem para cada jogador
   if (gameState.players) {
     gameState.players.forEach(player => {
       if (player.id) {
@@ -356,6 +357,14 @@ export function updateGameState(newState) {
           prestige: player.prestige || 0,
           prestigeMultiplier: player.prestigeMultiplier || 1
         };
+        
+        // Salvar dados de personagem
+        if (player.characterType) {
+          savedCharacterData[player.id] = {
+            characterType: player.characterType,
+            characterBonuses: player.characterBonuses || {}
+          };
+        }
       }
     });
   }
@@ -369,12 +378,21 @@ export function updateGameState(newState) {
   if (!gameState.achievementBoosts) gameState.achievementBoosts = savedBoosts;
   if (!gameState.achievementCategories) gameState.achievementCategories = savedCategories;
 
-  // Restaurar dados de prestígio para cada jogador
+  // Restaurar dados de prestígio e personagem para cada jogador
   if (gameState.players) {
     gameState.players.forEach(player => {
-      if (player.id && savedPrestige[player.id]) {
-        player.prestige = savedPrestige[player.id].prestige;
-        player.prestigeMultiplier = savedPrestige[player.id].prestigeMultiplier;
+      if (player.id) {
+        // Restaurar prestígio
+        if (savedPrestige[player.id]) {
+          player.prestige = savedPrestige[player.id].prestige;
+          player.prestigeMultiplier = savedPrestige[player.id].prestigeMultiplier;
+        }
+        
+        // Restaurar dados de personagem
+        if (savedCharacterData[player.id]) {
+          player.characterType = savedCharacterData[player.id].characterType;
+          player.characterBonuses = savedCharacterData[player.id].characterBonuses;
+        }
       }
     });
   }
