@@ -464,7 +464,8 @@ function renderSkillTree() {
 }
 
 function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode) {
-  const levelSpacing = 100; // Space between level nodes
+  // Increase the spacing between level nodes (was 80)
+  const levelSpacing = 120; // More space between level nodes
   const direction = {
     x: Math.cos(angle),
     y: Math.sin(angle)
@@ -474,8 +475,8 @@ function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode) {
   
   // Create a node for each level
   for (let level = 1; level <= upgrade.maxLevel; level++) {
-    const x = startX + direction.x * (level - 1) * 80;
-    const y = startY + direction.y * (level - 1) * 80;
+    const x = startX + direction.x * (level - 1) * levelSpacing;
+    const y = startY + direction.y * (level - 1) * levelSpacing;
     
     // Criar um objeto de upgrade específico para este nível
     const levelUpgrade = {
