@@ -3,7 +3,7 @@ import { socket, gameState } from './CoreModule.js';
 // Adicionar variável para rastrear plantas prontas para colheita
 let readyPlantsCount = 0;
 
-export let laboratoryData = {
+export let gardenData = {
   garden: {
     selectedSeed: 'sunflower',
     unlockedSlots: 1,
@@ -16,19 +16,19 @@ export let laboratoryData = {
   gardenUpgrades: {} // Will be populated from server
 };
 
-export function initLaboratory() {
-  const openLabButton = document.getElementById('open-laboratory');
-  const closeLabButton = document.getElementById('close-laboratory');
-  const laboratoryOverlay = document.getElementById('laboratory-overlay');
+export function initGarden() {
+  const openGardenButton = document.getElementById('open-garden');
+  const closeGardenButton = document.getElementById('close-garden');
+  const gardenOverlay = document.getElementById('garden-overlay');
 
-  console.log('[Laboratory] Initializing with gameState:', {
+  console.log('[Garden] Initializing with gameState:', {
     hasGardens: !!gameState.gardens,
     gardenData: gameState.gardens?.sharedGarden,
-    laboratoryData: laboratoryData
+    gardenData: gardenData
   });
 
-  if (!openLabButton || !closeLabButton || !laboratoryOverlay) {
-    console.error('Elementos do laboratório não encontrados');
+  if (!openGardenButton || !closeGardenButton || !gardenOverlay) {
+    console.error('Elementos do jardim não encontrados');
     return;
   }
 
@@ -39,20 +39,20 @@ export function initLaboratory() {
   // Request initial garden data
   socket.emit('requestGardenUpdate');
 
-  openLabButton.addEventListener('click', () => {
-    laboratoryOverlay.style.display = 'flex';
+  openGardenButton.addEventListener('click', () => {
+    gardenOverlay.style.display = 'flex';
     updateGardenSlots();
-    updateLabResources();
+    updateGardenResources();
     updateStoreItems();
     updateHarvestAllButton();
     renderSeedOptions();
   });
 
-  closeLabButton.addEventListener('click', () => {
-    laboratoryOverlay.style.display = 'none';
+  closeGardenButton.addEventListener('click', () => {
+    gardenOverlay.style.display = 'none';
   });
 
-  initLaboratoryGarden();
+  initGardenGarden();
 }
 
 function handleGardenUpdate(garden) {
@@ -64,12 +64,12 @@ function handleGardenUpdate(garden) {
     }
   });
   
-  laboratoryData.garden = {
-    ...laboratoryData.garden,
+  gardenData.garden = {
+    ...gardenData.garden,
     ...garden
   };
   updateGardenSlots();
-  updateLabResources();
+  updateGardenResources();
   updateStoreItems();
   updateHarvestAllButton();
   updateGardenBadge();
@@ -77,17 +77,17 @@ function handleGardenUpdate(garden) {
 }
 
 function handleGardenInit({ seeds, upgrades, garden }) {
-  console.log('[Laboratory] Received garden init:', {
+  console.log('[Garden] Received garden init:', {
     seedsCount: Object.keys(seeds || {}).length,
     upgradesCount: Object.keys(upgrades || {}).length,
     garden: garden
   });
 
-  // Primeiro atualizar laboratoryData.seeds
-  laboratoryData.seeds = seeds;
+  // Primeiro atualizar gardenData.seeds
+  gardenData.seeds = seeds;
 
   // Depois reconstruir os upgrades com as funções
-  laboratoryData.gardenUpgrades = {};
+  gardenData.gardenUpgrades = {};
   if (upgrades) {
     Object.entries(upgrades).forEach(([key, upgrade]) => {
       try {
@@ -105,14 +105,14 @@ function handleGardenInit({ seeds, upgrades, garden }) {
           new Function('return ' + upgrade.getCostStr)() : 
           (level) => ({});
         
-        laboratoryData.gardenUpgrades[key] = {
+        gardenData.gardenUpgrades[key] = {
           ...upgrade,
           getEffect: getEffectFn,
           getCost: getCostFn
         };
       } catch (error) {
         console.error(`[Jardim] Erro ao reconstruir funções para upgrade ${key}:`, error);
-        laboratoryData.gardenUpgrades[key] = {
+        gardenData.gardenUpgrades[key] = {
           ...upgrade,
           getEffect: (level) => 1,
           getCost: (level) => ({})
@@ -122,18 +122,18 @@ function handleGardenInit({ seeds, upgrades, garden }) {
   }
 
   // Por fim, atualizar o estado do jardim
-  laboratoryData.garden = garden;
+  gardenData.garden = garden;
 
   // Forçar uma atualização completa da interface
   updateGardenSlots();
-  updateLabResources();
+  updateGardenResources();
   updateStoreItems();
   updateHarvestAllButton();
   renderSeedOptions();
 }
 
-function initLaboratoryGarden() {
-  const gardenGrid = document.getElementById('laboratory-garden');
+function initGardenGarden() {
+  const gardenGrid = document.getElementById('garden-garden');
   const seedOptions = document.querySelectorAll('.seed-option');
   
   updateGardenSlots();
@@ -143,7 +143,7 @@ function initLaboratoryGarden() {
       if (option.classList.contains('locked')) return;
       seedOptions.forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
-      laboratoryData.garden.selectedSeed = option.dataset.seed;
+      gardenData.garden.selectedSeed = option.dataset.seed;
     });
   });
   
@@ -181,8 +181,8 @@ function setupTooltips() {
       if (!desc || !upgradeId) return;
       
       // Get upgrade info
-      const upgrade = laboratoryData.gardenUpgrades[upgradeId];
-      const currentLevel = laboratoryData.garden.upgrades?.[upgradeId] || 0;
+      const upgrade = gardenData.gardenUpgrades[upgradeId];
+      const currentLevel = gardenData.garden.upgrades?.[upgradeId] || 0;
       
       // Create tooltip content with level info
       const levelInfo = upgrade ? 
@@ -229,26 +229,26 @@ function setupTooltips() {
 }
 
 function updateGardenSlots() {
-  const gardenGrid = document.getElementById('laboratory-garden');
+  const gardenGrid = document.getElementById('garden-garden');
   const existingSlots = gardenGrid.children;
   
   // Número total máximo de slots (desbloqueados + 1 bloqueado)
-  const totalSlots = Math.min(laboratoryData.garden.unlockedSlots + 1, 10);
+  const totalSlots = Math.min(gardenData.garden.unlockedSlots + 1, 10);
   
   // Atualiza slots existentes
   for (let i = 0; i < existingSlots.length; i++) {
     const slot = existingSlots[i];
-    const isLocked = i >= laboratoryData.garden.unlockedSlots;
+    const isLocked = i >= gardenData.garden.unlockedSlots;
     
     // Atualiza classe locked
     slot.className = `garden-slot ${isLocked ? 'locked' : ''}`;
     
     if (!isLocked) {
-      const existingPlant = laboratoryData.garden.plants[i];
+      const existingPlant = gardenData.garden.plants[i];
       
       if (existingPlant) {
         // Calcula os tempos de crescimento para esta planta
-        const seedInfo = laboratoryData.seeds[existingPlant.type];
+        const seedInfo = gardenData.seeds[existingPlant.type];
         const originalTime = seedInfo ? seedInfo.growthTime / 1000 : 30;
         const adjustedTime = existingPlant.growthTime / 1000;
         
@@ -320,15 +320,15 @@ function updateGardenSlots() {
   // Adiciona novos slots se necessário
   for (let i = existingSlots.length; i < totalSlots; i++) {
     const slot = document.createElement('div');
-    slot.className = `garden-slot ${i >= laboratoryData.garden.unlockedSlots ? 'locked' : ''}`;
+    slot.className = `garden-slot ${i >= gardenData.garden.unlockedSlots ? 'locked' : ''}`;
     slot.dataset.slot = i;
     
-    if (i < laboratoryData.garden.unlockedSlots) {
-      const existingPlant = laboratoryData.garden.plants[i];
+    if (i < gardenData.garden.unlockedSlots) {
+      const existingPlant = gardenData.garden.plants[i];
       
       if (existingPlant) {
         // Calcula os tempos de crescimento para esta planta
-        const seedInfo = laboratoryData.seeds[existingPlant.type];
+        const seedInfo = gardenData.seeds[existingPlant.type];
         const originalTime = seedInfo ? seedInfo.growthTime / 1000 : 30;
         const adjustedTime = existingPlant.growthTime / 1000;
         
@@ -393,7 +393,7 @@ function setupGardenSlot(slot) {
   
   slot.addEventListener('click', () => {
     const slotId = slot.dataset.slot;
-    const garden = laboratoryData.garden;
+    const garden = gardenData.garden;
     
     if (garden.plants[slotId]?.ready) {
       harvestPlant(slotId);
@@ -404,8 +404,8 @@ function setupGardenSlot(slot) {
 }
 
 function plantSeed(slotId) {
-  const seedType = laboratoryData.garden.selectedSeed;
-  const seedInfo = laboratoryData.seeds[seedType];
+  const seedType = gardenData.garden.selectedSeed;
+  const seedInfo = gardenData.seeds[seedType];
   
   if (!seedInfo) return;
   
@@ -452,7 +452,7 @@ function harvestPlant(slotId) {
 }
 
 function harvestAllPlants() {
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   let readyPlantsFound = false;
   
   // Verifica se há plantas prontas para colher
@@ -477,7 +477,7 @@ function unlockSeed(seedId) {
 }
 
 function checkGardenProgress() {
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   let updated = false;
   
   for (const slotId in garden.plants) {
@@ -520,7 +520,7 @@ function updateHarvestAllButton() {
   const harvestAllButton = document.getElementById('harvest-all-button');
   if (!harvestAllButton) return;
   
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   let readyPlantsCount = 0;
   
   // Conta quantas plantas estão prontas para colheita
@@ -545,8 +545,8 @@ function updateHarvestAllButton() {
 }
 
 // Adicione esta função se ainda não existir
-function updateLabResources() {
-  const garden = laboratoryData.garden;
+function updateGardenResources() {
+  const garden = gardenData.garden;
   
   Object.entries(garden.resources).forEach(([type, amount]) => {
     const resourceItem = document.querySelector(`[data-resource="${type}"]`);
@@ -570,9 +570,9 @@ function renderSeedOptions() {
   const seedSelector = document.querySelector('.seed-selector');
   if (!seedSelector) return;
   
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   
-  seedSelector.innerHTML = Object.values(laboratoryData.seeds)
+  seedSelector.innerHTML = Object.values(gardenData.seeds)
     .filter(seed => seed.visible || garden[`${seed.id}Unlocked`]) // Mostrar se visível ou desbloqueada
     .map(seed => {
       const isLocked = !garden[`${seed.id}Unlocked`];
@@ -588,7 +588,7 @@ function renderSeedOptions() {
       const unlockButton = isLocked && seed.unlockCost ? `
         <button class="unlock-seed-button ${hasEnoughResources ? 'can-unlock' : 'insufficient'}" data-seed="${seed.id}">
           (${Object.entries(seed.unlockCost)
-            .map(([res, amt]) => `${amt} ${laboratoryData.seeds[res].icon}`)
+            .map(([res, amt]) => `${amt} ${gardenData.seeds[res].icon}`)
             .join(', ')})
         </button>
       ` : '';
@@ -658,8 +658,8 @@ function updateSlotCost() {
   
   if (!costElement || !titleElement || !buyButton) return;
   
-  const garden = laboratoryData.garden;
-  const upgrade = laboratoryData.gardenUpgrades.slot;
+  const garden = gardenData.garden;
+  const upgrade = gardenData.gardenUpgrades.slot;
   
   // Se o upgrade não estiver disponível
   if (!upgrade) {
@@ -679,13 +679,12 @@ function updateSlotCost() {
   
   // Se já atingiu o número máximo de slots
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.style.display = 'none'; // Hide cost element instead of showing "Máximo de Slots"
+    costElement.textContent = 'Máximo de Slots';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
     slotElement.classList.add('purchased');
     return;
   } else {
-    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
     buyButton.disabled = false;
     buyButton.textContent = 'Comprar';
     slotElement.classList.remove('purchased');
@@ -733,8 +732,8 @@ function updateFertilizerCost() {
   
   if (!costElement || !titleElement || !buyButton) return;
   
-  const garden = laboratoryData.garden;
-  const upgrade = laboratoryData.gardenUpgrades.fertilizer;
+  const garden = gardenData.garden;
+  const upgrade = gardenData.gardenUpgrades.fertilizer;
   
   // Se o upgrade não estiver disponível
   if (!upgrade) {
@@ -757,11 +756,11 @@ function updateFertilizerCost() {
   
   // Se atingiu o nível máximo
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.style.display = 'none'; // Hide cost element instead of showing "Nível Máximo"
+    costElement.textContent = 'Nível Máximo';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
+    return;
   } else {
-    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
     buyButton.disabled = false;
     buyButton.textContent = 'Comprar';
   }
@@ -804,16 +803,16 @@ function updateFertilizerCost() {
 }
 
 function getSeedIcon(seedId) {
-  return laboratoryData.seeds[seedId]?.icon || '❓';
+  return gardenData.seeds[seedId]?.icon || '❓';
 }
 
 // Função para calcular o tempo de crescimento ajustado com base nos upgrades
 function calculateAdjustedGrowthTime(baseTime) {
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   const upgrades = garden.upgrades || {};
   
   // Obter os upgrades relevantes
-  const gardenUpgrades = laboratoryData.gardenUpgrades;
+  const gardenUpgrades = gardenData.gardenUpgrades;
   
   // Calcular o multiplicador de velocidade de crescimento
   let speedMultiplier = 1;
@@ -835,12 +834,12 @@ function calculateAdjustedGrowthTime(baseTime) {
 
 // Função para atualizar o badge no botão do Jardim
 function updateGardenBadge() {
-  const openLabButton = document.getElementById('open-laboratory');
-  if (!openLabButton) return;
+  const openGardenButton = document.getElementById('open-garden');
+  if (!openGardenButton) return;
   
   // Conta quantas plantas estão prontas para colheita
   readyPlantsCount = 0;
-  const garden = laboratoryData.garden;
+  const garden = gardenData.garden;
   
   for (const slotId in garden.plants) {
     if (garden.plants[slotId].ready) {
@@ -849,7 +848,7 @@ function updateGardenBadge() {
   }
   
   // Atualiza o badge
-  const existingBadge = openLabButton.querySelector('.garden-badge');
+  const existingBadge = openGardenButton.querySelector('.garden-badge');
   if (readyPlantsCount > 0) {
     if (existingBadge) {
       existingBadge.textContent = readyPlantsCount;
@@ -857,7 +856,7 @@ function updateGardenBadge() {
       const badge = document.createElement('span');
       badge.className = 'garden-badge';
       badge.textContent = readyPlantsCount;
-      openLabButton.appendChild(badge);
+      openGardenButton.appendChild(badge);
     }
   } else if (existingBadge) {
     existingBadge.remove();
@@ -872,7 +871,7 @@ function updateStoreItems() {
     return;
   }
 
-  if (!laboratoryData.gardenUpgrades || Object.keys(laboratoryData.gardenUpgrades).length === 0) {
+  if (!gardenData.gardenUpgrades || Object.keys(gardenData.gardenUpgrades).length === 0) {
     socket.emit('requestGardenUpdate');
     return;
   }
@@ -886,8 +885,8 @@ function updateStoreItems() {
   `;
 
   const upgradesContainer = storeGrid.querySelector('.upgrades-container');
-  const { gardenUpgrades } = laboratoryData;
-  const garden = laboratoryData.garden;
+  const { gardenUpgrades } = gardenData;
+  const garden = gardenData.garden;
   
   if (!gardenUpgrades || Object.keys(gardenUpgrades).length === 0) {
     console.warn('[Jardim] Nenhum upgrade disponível');
@@ -955,7 +954,7 @@ function updateStoreItems() {
       
       const buyButton = document.createElement('button');
       buyButton.className = 'buy-button';
-      buyButton.id = `buy-lab-${upgradeId}`;
+      buyButton.id = `buy-garden-${upgradeId}`;
       buyButton.textContent = 'Comprar';
       storeItem.appendChild(buyButton);
       
@@ -1017,8 +1016,8 @@ function updateGenericUpgradeCost(upgradeId) {
   
   if (!costElement || !titleElement || !buyButton) return;
   
-  const garden = laboratoryData.garden;
-  const upgrade = laboratoryData.gardenUpgrades[upgradeId];
+  const garden = gardenData.garden;
+  const upgrade = gardenData.gardenUpgrades[upgradeId];
   
   if (!upgrade) {
     costElement.textContent = 'Erro: Upgrade não encontrado';
@@ -1038,12 +1037,10 @@ function updateGenericUpgradeCost(upgradeId) {
   }
   
   if (currentLevel >= upgrade.maxLevel) {
-    costElement.style.display = 'none'; // Hide cost element instead of showing "Nível Máximo"
+    costElement.textContent = 'Nível Máximo';
     buyButton.disabled = true;
     buyButton.textContent = 'Máximo';
     return;
-  } else {
-    costElement.style.display = 'block'; // Make sure cost is visible for non-maxed upgrades
   }
   
   buyButton.disabled = false;

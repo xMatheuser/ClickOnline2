@@ -1,5 +1,5 @@
 /* Jardim Base Styles */
-.laboratory-overlay {
+.garden-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -32,11 +32,11 @@
   z-index: 1;
 }
 
-.laboratory-overlay.active {
+.garden-overlay.active {
   display: flex;
 }
 
-.laboratory-popup {
+.garden-popup {
   background: rgba(255, 255, 255, 0.95);
   width: 95%;
   max-width: 1400px;
@@ -50,7 +50,7 @@
   color: #333;
 }
 
-.laboratory-header {
+.garden-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -64,18 +64,18 @@
   gap: 20px;
 }
 
-.laboratory-header h2 {
+.garden-header h2 {
   margin: 0;
 }
 
-.laboratory-header #harvest-all-button {
+.garden-header #harvest-all-button {
   margin: 0;
   font-size: 0.9rem;
   padding: 8px 16px;
   height: auto;
 }
 
-.close-laboratory {
+.close-garden {
   background: none;
   border: none;
   font-size: 24px;
@@ -83,7 +83,7 @@
   color: #666;
 }
 
-.laboratory-content {
+.garden-content {
   padding: 20px;
   overflow-y: auto;
   height: calc(90vh - 60px);
@@ -92,7 +92,7 @@
   gap: 20px;
 }
 
-.laboratory-resources {
+.garden-resources {
   background: #f5f5f5;
   padding: 15px;
   border-radius: 8px;
@@ -119,13 +119,13 @@
   font-size: 1.8em;
 }
 
-.laboratory-upgrades {
+.garden-upgrades {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 15px;
 }
 
-.laboratory-upgrade {
+.garden-upgrade {
   background: #fff;
   border: 2px solid #4CAF50;
   border-radius: 8px;
@@ -134,17 +134,17 @@
   transition: all 0.3s ease;
 }
 
-.laboratory-upgrade:hover {
+.garden-upgrade:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.laboratory-upgrade h3 {
+.garden-upgrade h3 {
   margin: 0 0 10px 0;
   font-size: 1em;
 }
 
-.laboratory-upgrade p {
+.garden-upgrade p {
   margin: 5px 0;
   font-size: 0.9em;
 }
@@ -473,21 +473,21 @@
 }
 
 /* Dark mode support */
-body.dark-mode .laboratory-popup {
+body.dark-mode .garden-popup {
   background: #2a2a2a;
   color: #e0e0e0;
 }
 
-body.dark-mode .laboratory-resources {
+body.dark-mode .garden-resources {
   background: #333;
 }
 
-body.dark-mode .laboratory-upgrade {
+body.dark-mode .garden-upgrade {
   background: #333;
   border-color: #4CAF50;
 }
 
-body.dark-mode .close-laboratory {
+body.dark-mode .close-garden {
   color: #999;
 }
 
@@ -527,19 +527,19 @@ body.dark-mode .store-item {
 
 /* Ajuste para telas menores */
 @media (max-width: 600px) {
-  .laboratory-popup {
+  .garden-popup {
     width: 98%;
     height: 95vh;
     margin: 10px;
   }
 
-  .laboratory-content {
+  .garden-content {
     height: calc(95vh - 60px);
     padding: 10px;
   }
 }
 
-.close-laboratory,
+.close-garden,
 .close-prestige,
 .close-bonus-stats,
 .close-history,
@@ -556,7 +556,7 @@ body.dark-mode .store-item {
   line-height: 1;
 }
 
-.close-laboratory:hover,
+.close-garden:hover,
 .close-prestige:hover,
 .close-bonus-stats:hover,
 .close-history:hover,
@@ -566,7 +566,7 @@ body.dark-mode .store-item {
   transform: scale(1.1);
 }
 
-body.dark-mode .close-laboratory,
+body.dark-mode .close-garden,
 body.dark-mode .close-prestige,
 body.dark-mode .close-bonus-stats,
 body.dark-mode .close-history,
@@ -574,7 +574,7 @@ body.dark-mode .close-achievements {
   color: #e0e0e0;
 }
 
-.laboratory-stats {
+.garden-stats {
   background: rgba(30, 41, 59, 0.8);
   padding: 1rem;
   border-radius: 0.5rem;
@@ -636,7 +636,7 @@ body.dark-mode .close-achievements {
   opacity: 0.9;
 }
 
-.laboratory-layout {
+.garden-layout {
   display: grid;
   grid-template-columns: 3fr 1fr;
   gap: 20px;
@@ -712,7 +712,7 @@ body.dark-mode .close-achievements {
 
 /* Ajuste para telas menores */
 @media (max-width: 768px) {
-  .laboratory-layout {
+  .garden-layout {
     grid-template-columns: 1fr;
   }
   

@@ -4,7 +4,7 @@ import { initAudio } from './AudioModule.js';
 import { initPrestige } from './PrestigeModule.js';
 import { initPowerUps } from './PowerUpModule.js';
 import { initBoss } from './BossModule.js';
-import { initLaboratory } from './LaboratoryModule.js';
+import { initGarden } from './GardenModule.js';
 import { loadGameState } from './PersistenceModule.js';
 import { initTheme } from './ThemeModule.js';
 
@@ -326,7 +326,7 @@ export function initGame() {
   initPrestige();
   initPowerUps();
   initBoss();
-  initLaboratory();
+  initGarden();
   initTheme();
 }
 

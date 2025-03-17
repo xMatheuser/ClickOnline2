@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="css/bonusStats.css">
   <link rel="stylesheet" href="css/background.css">
   <link rel="stylesheet" href="css/bossFight.css">
-  <link rel="stylesheet" href="css/laboratory.css">
+  <link rel="stylesheet" href="css/garden.css">
   <link rel="stylesheet" href="css/dragAndDrop.css">
 </head>
 <body class="nes-container">
@@ -30,7 +30,7 @@
         <h1 class="top-bar-title">
           Coop 
           <button class="nes-btn" id="open-prestige">⚡ Prestígio</button>
-          <button class="nes-btn" id="open-laboratory">🌻 Jardim</button>
+          <button class="nes-btn" id="open-garden">🌻 Jardim</button>
           <button class="nes-btn" id="open-achievements">🏆 Conquistas</button>
           <button class="nes-btn" id="open-bonus-stats">📊 Estatísticas</button>
         </h1>
@@ -212,46 +212,46 @@
     </div>
   </div>
 
-  <div class="laboratory-overlay" id="laboratory-overlay">
-    <div class="laboratory-popup nes-container is-rounded">
-      <div class="laboratory-header">
+  <div class="garden-overlay" id="garden-overlay">
+    <div class="garden-popup nes-container is-rounded">
+      <div class="garden-header">
         <div class="header-content">
           <h2>🌻 Jardim</h2>
           <button id="harvest-all-button" class="rpgui-button golden" title="Colhe todas as plantas prontas de uma vez">
             <span class="harvest-icon">🌿</span> Colher Tudo
           </button>
         </div>
-        <button class="close-laboratory" id="close-laboratory">×</button>
+        <button class="close-garden" id="close-garden">×</button>
       </div>
-      <div class="laboratory-content">
-        <div class="laboratory-resources">
+      <div class="garden-content">
+        <div class="garden-resources">
           <div class="resources-display">
             <div class="resource-item" data-resource="sunflower">
               <span class="resource-icon">🌻</span>
-              <span class="resource-count" id="lab-sunflower-count">0</span>
+              <span class="resource-count" id="garden-sunflower-count">0</span>
             </div>
             <div class="resource-item" data-resource="tulip">
               <span class="resource-icon">🌷</span>
-              <span class="resource-count" id="lab-tulip-count">0</span>
+              <span class="resource-count" id="garden-tulip-count">0</span>
             </div>
             <div class="resource-item" data-resource="mushroom">
               <span class="resource-icon">🍄</span>
-              <span class="resource-count" id="lab-mushroom-count">0</span>
+              <span class="resource-count" id="garden-mushroom-count">0</span>
             </div>
             <div class="resource-item" data-resource="crystal">
               <span class="resource-icon">💎</span>
-              <span class="resource-count" id="lab-crystal-count">0</span>
+              <span class="resource-count" id="garden-crystal-count">0</span>
             </div>
           </div>
         </div>
         
-        <div class="laboratory-layout">
+        <div class="garden-layout">
           <div class="garden-section">
             <div class="seed-selector">
               <!-- Isso será gerado dinamicamente pelo JavaScript -->
             </div>
 
-            <div class="garden-grid" id="laboratory-garden">
+            <div class="garden-grid" id="garden-garden">
               <!-- Slots serão adicionados dinamicamente -->
             </div>
           </div>

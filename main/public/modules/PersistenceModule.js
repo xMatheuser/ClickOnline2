@@ -1,9 +1,9 @@
-import { laboratoryData } from './LaboratoryModule.js';
+import { gardenData } from './GardenModule.js';
 import { showNotification } from './UIModule.js';
 
 export function saveGameState() {
   try {
-    localStorage.setItem('laboratoryData', JSON.stringify(laboratoryData));
+    localStorage.setItem('gardenData', JSON.stringify(gardenData));
     localStorage.setItem('lastSaveTime', Date.now().toString());
   } catch (e) {
     console.error('Error saving game state:', e);
@@ -12,9 +12,9 @@ export function saveGameState() {
 
 export function loadGameState() {
   try {
-    const savedLaboratoryData = localStorage.getItem('laboratoryData');
-    if (savedLaboratoryData) {
-      Object.assign(laboratoryData, JSON.parse(savedLaboratoryData));
+    const savedGardenData = localStorage.getItem('gardenData');
+    if (savedGardenData) {
+      Object.assign(gardenData, JSON.parse(savedGardenData));
     }
     const lastSaveTime = parseInt(localStorage.getItem('lastSaveTime') || '0');
     const timeDiff = Date.now() - lastSaveTime;
@@ -26,9 +26,9 @@ export function loadGameState() {
 
 function processOfflineProgress(timeDiff) {
   const seconds = Math.floor(timeDiff / 1000);
-  const pointsGained = laboratoryData.pointsPerSecond * seconds;
-  laboratoryData.researchPoints += pointsGained;
-  Object.entries(laboratoryData.garden.plants).forEach(([slotId, plant]) => {
+  const pointsGained = gardenData.pointsPerSecond * seconds;
+  gardenData.researchPoints += pointsGained;
+  Object.entries(gardenData.garden.plants).forEach(([slotId, plant]) => {
     if (!plant.ready && Date.now() - plant.plantedAt >= plant.growthTime) {
       plant.ready = true;
     }
