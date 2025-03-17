@@ -1,0 +1,18 @@
+// ...existing code...
+
+.tooltip {
+  // ...existing tooltip styles...
+}
+
+.tooltip-level {
+  font-size: 0.9em;
+  color: #4CAF50;
+  margin-bottom: 4px;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+}
+
+.tooltip-desc {
+  color: #fff;
+}

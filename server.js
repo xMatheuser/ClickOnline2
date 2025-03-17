@@ -7,6 +7,7 @@ const { achievements, achievementCategories } = require('./main/gameModules/achi
 const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
+const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime, getResourceEmoji } = require('./main/gameModules/garden.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -38,7 +39,7 @@ let gameState = {
   lastActiveTime: Date.now(),
   bonusStats: {
     clickPower: 0,
-    autoClicker: 0, 
+    autoClicker: 0,
     coinMultiplier: 0,
     progressBoost: 0,
     teamSynergy: 0,
@@ -57,7 +58,24 @@ let gameState = {
   activeBoss: null,
   nextBossLevel: 5, // Primeiro boss aparece no nível 5
   bossSpawnInterval: 10, // Intervalo de níveis entre cada boss
-  isInBossFight: false // Add flag for boss fight state
+  isInBossFight: false, // Add flag for boss fight state
+  gardens: {
+    sharedGarden: {
+      unlockedSlots: 1,
+      sunflowerUnlocked: true, // Adicionar esta linha
+      resources: { sunflower: 10000, tulip: 10000, mushroom: 10000, crystal: 10000 },
+      plants: {},
+      upgrades: {},
+      unlockedResources: {
+        sunflower: true, // Sunflower always starts unlocked
+        tulip: false,
+        mushroom: false,
+        crystal: false
+      }
+    }
+  },
+  gardenSeeds: SEEDS,
+  gardenUpgrades: GARDEN_UPGRADES,
 };
 
 let lastTotalCPS = 0;
@@ -81,7 +99,7 @@ let lastBroadcastState = {}; // Armazenar último estado enviado
 
 function getStateDelta(currentState, lastState) {
   const delta = {};
-  
+
   // Comparar apenas campos essenciais
   const fieldsToCheck = [
     'teamCoins', 'levelProgressRemaining', 'totalClicks',
@@ -111,7 +129,7 @@ function broadcastGameState(type = 'full') {
   gameState.players.forEach(player => {
     player.clickValue = calculateClickValue(player);
   });
-  
+
   if (type === 'autoclick') {
     const delta = getStateDelta(gameState, lastBroadcastState);
     if (Object.keys(delta).length > 0) {
@@ -133,13 +151,13 @@ function checkAchievements() {
       if (!achievement.unlockedLevels.includes(index) && level.requirement(gameState)) {
         achievement.unlockedLevels.push(index);
         applyAchievementBoost(level.boost);
-        
+
         // Emitir notificação específica para a conquista
         io.emit('notification', `🏆 Nova Conquista: ${achievement.name} Nível ${index + 1}!\n+${(level.boost.value * 100).toFixed(0)}% ${level.boost.type}`);
-        
+
         // Emitir evento para tocar o som e atualizar badge
         io.emit('achievementUnlocked');
-        
+
         console.log(`[Conquista] ${achievement.name} Nível ${index + 1} desbloqueada`);
         newUnlocks = true;
       }
@@ -181,7 +199,7 @@ function applyOfflineClicks(totalClicks) {
 
   while (remainingClicks > 0) {
     const currentLevelTarget = gameState.teamLevel * 100;
-    
+
     if (remainingClicks >= gameState.levelProgressRemaining) {
       remainingClicks -= gameState.levelProgressRemaining;
       levelsGained++;
@@ -208,7 +226,17 @@ function applyOfflineClicks(totalClicks) {
 
 io.on('connection', (socket) => {
   console.log('[Conexão] Novo jogador conectado:', socket.id);
-  
+
+  // Prepare garden data
+  const gardenInit = {
+    seeds: gameState.gardenSeeds,
+    upgrades: serializeGardenUpgrades(),
+    garden: gameState.gardens.sharedGarden,
+  };
+
+  // Send initial garden data
+  socket.emit('gardenInit', gardenInit);
+
   if (gameState.players.length === 0) {
     const timeDiff = (Date.now() - gameState.lastActiveTime) / 1000;
     const manualOfflineClicks = Math.floor(lastTotalCPS * timeDiff);
@@ -217,7 +245,7 @@ io.on('connection', (socket) => {
     const autoClicksPerSecond = autoClickerLevel * gameState.achievementBoosts.autoMultiplier;
     const autoOfflineClicks = Math.floor(autoClicksPerSecond * timeDiff);
     const totalOfflineClicks = manualOfflineClicks + autoOfflineClicks;
-    
+
     if (totalOfflineClicks > 0) {
       console.log(`[Progresso Offline] Calculando ${totalOfflineClicks} cliques (${manualOfflineClicks} manuais + ${autoOfflineClicks}) em ${timeDiff.toFixed(0)} segundos`);
       const progress = applyOfflineClicks(totalOfflineClicks);
@@ -235,6 +263,13 @@ io.on('connection', (socket) => {
 
   const preparedState = prepareGameStateForBroadcast(gameState);
   socket.emit('gameStateUpdate', preparedState);
+
+  // Send garden data on initial connection
+  socket.emit('gardenInit', {
+    seeds: gameState.gardenSeeds,
+    upgrades: serializeGardenUpgrades(),
+    garden: gameState.gardens.sharedGarden,
+  });
 
   socket.on('addPlayer', (playerData) => {
     try {
@@ -267,13 +302,13 @@ io.on('connection', (socket) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
       const clickValue = calculateClickValue(player);
-      
+
       if (gameState.isInBossFight) {
         // Only apply damage to boss during boss fight
         if (gameState.activeBoss) {
           const oldHealth = gameState.activeBoss.health;
           gameState.activeBoss.health -= clickValue;
-          
+
           io.emit('bossUpdate', {
             health: gameState.activeBoss.health,
             maxHealth: gameState.activeBoss.maxHealth,
@@ -289,14 +324,14 @@ io.on('connection', (socket) => {
             }
             gameState.teamCoins += boss.rewards.coins;
             gameState.isInBossFight = false; // Reset flag when boss is defeated
-            
+
             // Limpar o timer usando o ID armazenado
             if (boss.timerId) {
               clearTimeout(boss.timerId);
             }
 
             gameState.teamCoins += boss.rewards.coins;
-            
+
             // Aplicar buff temporário de poder de clique para todos
             gameState.players.forEach(p => {
               p.temporaryMultipliers = p.temporaryMultipliers || [];
@@ -308,14 +343,14 @@ io.on('connection', (socket) => {
               });
             });
 
-            io.emit('bossResult', { 
+            io.emit('bossResult', {
               victory: true,
               coins: boss.rewards.coins,
               multiplier: boss.rewards.clickPowerMultiplier,
               duration: boss.rewards.clickPowerDuration,
               killedBy: player.name
             });
-            
+
             gameState.activeBoss = null;
             broadcastGameState();
             return;
@@ -344,18 +379,18 @@ io.on('connection', (socket) => {
       socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
       return;
     }
-  
+
     const upgrade = gameState.upgrades.find(u => u.id === (typeof data === 'string' ? data : data.id));
     if (!upgrade) {
       socket.emit('notification', 'Upgrade não encontrado!');
       return;
     }
-  
+
     const amount = typeof data === 'string' ? 1 : (data.amount === 'max' ? Infinity : data.amount);
     let totalCost = 0;
     let levelsToAdd = 0;
     let currentLevel = upgrade.level;
-  
+
     while (levelsToAdd < amount && currentLevel < upgrade.maxLevel) {
       const nextPrice = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, currentLevel));
       if (gameState.teamCoins >= totalCost + nextPrice) {
@@ -366,18 +401,18 @@ io.on('connection', (socket) => {
         break;
       }
     }
-  
+
     if (levelsToAdd > 0) {
       gameState.teamCoins -= totalCost;
       upgrade.level += levelsToAdd;
-      
+
       // Existing shared rewards logic
       const sharedRewardBonus = getUpgradeEffect('shared-rewards');
       if (sharedRewardBonus > 0) {
         const sharedCoins = Math.round(totalCost * sharedRewardBonus);
         gameState.teamCoins += sharedCoins;
       }
-  
+
       broadcastGameState();
       checkAchievements();
       socket.emit('notification', `Upgrade ${upgrade.name} comprado ${levelsToAdd}x! Agora é nível ${upgrade.level}`);
@@ -392,35 +427,35 @@ io.on('connection', (socket) => {
       socket.emit('notification', 'Você só pode prestigiar quando for o jogador ativo!');
       return;
     }
-  
+
     if (player.level >= 2) {
       const fragmentMultiplier = gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.effect(gameState.prestigeUpgrades.find(u => u.id === 'fragment-multiplier')?.level) || 1;
       const baseFragments = Math.floor(Math.sqrt(player.level) * 2);
       const fragmentsToGain = Math.floor(baseFragments * fragmentMultiplier * gameState.achievementBoosts.prestigeCostReduction);
-      
+
       // Armazenar multiplicadores atuais
       const currentMultipliers = gameState.players.map(p => ({
         id: p.id,
         prestige: (p.prestige || 0) + 1,
         prestigeMultiplier: 1 + ((p.prestige || 0) + 1) * 0.1
       }));
-  
+
       // Resetar estado global do jogo
       gameState.teamCoins = 0;
       gameState.teamLevel = 1;
       gameState.levelProgressRemaining = 100;
       gameState.upgrades.forEach(u => u.level = 0);
-      
+
       // Atualizar jogadores com novos valores de prestígio
       gameState.players.forEach(p => {
         const multiplier = currentMultipliers.find(m => m.id === p.id);
-        p.prestige = multiplier.prestige; 
+        p.prestige = multiplier.prestige;
         p.prestigeMultiplier = multiplier.prestigeMultiplier;
         p.clicks = 0;
         p.level = 1;
         p.contribution = 0;
       });
-  
+
       // Emitir eventos na ordem correta
       io.emit('prestige');
       io.emit('notification', `${player.name} ativou o prestígio!\nMultiplicador Global: x${player.prestigeMultiplier.toFixed(1)}\nFragmentos ganhos: ${fragmentsToGain}`);
@@ -503,24 +538,287 @@ io.on('connection', (socket) => {
   socket.on('surrenderBoss', () => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (!player || !gameState.activeBoss) return;
-  
+
     const penalty = Math.floor(gameState.teamCoins * gameState.activeBoss.penalty.coinLossPercentage);
     gameState.teamCoins = Math.max(0, gameState.teamCoins - penalty);
     gameState.isInBossFight = false;
-  
+
     if (gameState.activeBoss.timerId) {
       clearTimeout(gameState.activeBoss.timerId);
     }
-  
-    io.emit('bossResult', { 
+
+    io.emit('bossResult', {
       victory: false,
       penalty: penalty,
       surrendered: true,
       surrenderedBy: player.name
     });
-    
+
     gameState.activeBoss = null;
     broadcastGameState();
+  });
+
+  socket.on('plantSeed', ({ slotId, seedType }) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    const seedInfo = gameState.gardenSeeds[seedType];
+    if (!seedInfo) return;
+
+    // Validate slot is available
+    if (garden.plants[slotId] || slotId >= garden.unlockedSlots) return;
+
+    const adjustedGrowthTime = calculateGrowthTime(
+      getSeedGrowthTime(seedType),
+      garden.upgrades
+    );
+
+    garden.plants[slotId] = {
+      type: seedType,
+      plantedAt: Date.now(),
+      growthTime: adjustedGrowthTime,
+      ready: false,
+      plantedBy: socket.id
+    };
+
+    // Broadcast to all players
+    io.emit('gardenUpdate', garden);
+  });
+
+  socket.on('harvestPlant', (slotId) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    const plant = garden.plants[slotId];
+    if (!plant || !plant.ready) return;
+
+    const harvestAmount = calculateHarvestYield(
+      gameState.gardenSeeds[plant.type].reward.amount,
+      garden.upgrades
+    );
+
+    // Add resources and mark as unlocked when first harvested
+    garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+    garden.unlockedResources[plant.type] = true;
+    
+    // Verifica se o jogador tem a Podadora de Precisão e aplica o efeito
+    if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
+      // Calcular a diferença entre o que foi colhido e o que seria colhido sem bônus
+      const baseYield = gameState.gardenSeeds[plant.type].reward.amount;
+      const totalYield = calculateHarvestYield(baseYield, garden.upgrades);
+      const extraAmount = totalYield - Math.floor(baseYield * GARDEN_UPGRADES.harvestYield.getEffect(garden.upgrades.harvestYield || 0));
+      
+      if (extraAmount > 0) {
+        socket.emit('notification', `Podadora de Precisão: +${extraAmount} ${getResourceEmoji(plant.type)}!`);
+      }
+    }
+    
+    delete garden.plants[slotId];
+
+    // Atualizar informações de visibilidade das sementes
+    const updatedSeeds = { ...gameState.gardenSeeds };
+    Object.keys(updatedSeeds).forEach(seedId => {
+      updatedSeeds[seedId] = {
+        ...updatedSeeds[seedId],
+        visible: isSeedVisible(garden, seedId),
+        unlockCost: getSeedUnlockCost(seedId)
+      };
+    });
+
+    // Enviar atualização completa incluindo novas sementes visíveis
+    io.emit('gardenInit', {
+      seeds: updatedSeeds,
+      upgrades: serializeGardenUpgrades(),
+      garden: garden,
+    });
+  });
+
+  socket.on('harvestAllPlants', () => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    let plantsHarvested = false;
+
+    // Percorre todas as plantas e colhe as que estão prontas
+    for (const slotId in garden.plants) {
+      const plant = garden.plants[slotId];
+      if (plant && plant.ready) {
+        const baseYield = gameState.gardenSeeds[plant.type].reward.amount;
+        const harvestAmount = calculateHarvestYield(baseYield, garden.upgrades);
+
+        // Adiciona recursos ao inventário compartilhado
+        garden.resources[plant.type] = (garden.resources[plant.type] || 0) + harvestAmount;
+        
+        // Verifica se houve bônus extra do Podador de Precisão
+        if (garden.upgrades && garden.upgrades.prunerPrecision > 0) {
+          const baseAmount = Math.floor(baseYield * GARDEN_UPGRADES.harvestYield.getEffect(garden.upgrades.harvestYield || 0));
+          const extraAmount = harvestAmount - baseAmount;
+          
+          if (extraAmount > 0) {
+            socket.emit('notification', `Podadora de Precisão: +${extraAmount} ${getResourceEmoji(plant.type)}!`);
+          }
+        }
+        
+        delete garden.plants[slotId];
+        plantsHarvested = true;
+      }
+    }
+
+    if (plantsHarvested) {
+      // Atualizar informações de visibilidade das sementes
+      const updatedSeeds = { ...gameState.gardenSeeds };
+      Object.keys(updatedSeeds).forEach(seedId => {
+        updatedSeeds[seedId] = {
+          ...updatedSeeds[seedId],
+          visible: isSeedVisible(garden, seedId),
+          unlockCost: getSeedUnlockCost(seedId)
+        };
+      });
+
+      // Enviar atualização completa incluindo novas sementes visíveis
+      io.emit('gardenInit', {
+        seeds: updatedSeeds,
+        upgrades: serializeGardenUpgrades(),
+        garden: garden,
+      });
+      
+      socket.emit('notification', 'Todas as plantas prontas foram colhidas!');
+    } else {
+      socket.emit('notification', 'Não há plantas prontas para colher!');
+    }
+  });
+
+  socket.on('buyGardenUpgrade', ({ upgradeId }) => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+    
+    // Verificar se é um comando para desbloquear uma semente
+    if (upgradeId.startsWith('unlock_')) {
+      const seedId = upgradeId.replace('unlock_', '');
+      if (processSeedUnlock(garden, seedId)) {
+        // Atualizar as sementes visíveis
+        const updatedSeeds = { ...gameState.gardenSeeds };
+        Object.keys(updatedSeeds).forEach(id => {
+          updatedSeeds[id] = {
+            ...updatedSeeds[id],
+            visible: isSeedVisible(garden, id),
+            unlocked: garden[`${id}Unlocked`] || false
+          };
+        });
+        
+        // Enviar dados atualizados para todos os clientes
+        io.emit('gardenInit', {
+          seeds: updatedSeeds,
+          upgrades: serializeGardenUpgrades(),
+          garden: garden
+        });
+        
+        socket.emit('notification', {
+          message: `${gameState.gardenSeeds[seedId].name} desbloqueado!`,
+          type: 'success'
+        });
+      } else {
+        socket.emit('notification', {
+          message: 'Recursos insuficientes para desbloquear esta semente!',
+          type: 'error'
+        });
+      }
+      return;
+    }
+    
+    // Verificar se o upgrade existe
+    const upgrade = gameState.gardenUpgrades[upgradeId];
+    if (!upgrade) {
+      console.error(`[Jardim] Upgrade não encontrado: ${upgradeId}`);
+      return;
+    }
+    
+    // Inicializar o upgrade se necessário
+    if (!garden.upgrades[upgradeId]) {
+      garden.upgrades[upgradeId] = 0;
+    }
+    
+    // Verificar se já atingiu o nível máximo
+    if (garden.upgrades[upgradeId] >= upgrade.maxLevel) {
+      socket.emit('notification', {
+        message: `Você já atingiu o nível máximo de ${upgrade.name}!`,
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Calcular o custo para o próximo nível
+    const cost = upgrade.getCost(garden.upgrades[upgradeId]);
+    
+    // Verificar se tem recursos suficientes
+    const hasResources = Object.entries(cost).every(([resource, amount]) => 
+      garden.resources[resource] >= amount
+    );
+    
+    if (!hasResources) {
+      socket.emit('notification', {
+        message: 'Recursos insuficientes para comprar este upgrade!',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Deduzir os recursos
+    Object.entries(cost).forEach(([resource, amount]) => {
+      garden.resources[resource] -= amount;
+    });
+    
+    // Aumentar o nível do upgrade
+    garden.upgrades[upgradeId]++;
+    
+    // Processar efeitos especiais baseados no tipo do upgrade
+    if (upgradeId === 'slot') {
+      garden.unlockedSlots = upgrade.getEffect(garden.upgrades[upgradeId]);
+    }
+    
+    socket.emit('notification', {
+      message: `${upgrade.name} melhorado para o nível ${garden.upgrades[upgradeId]}!`,
+      type: 'success'
+    });
+    
+    // Enviar dados atualizados para todos os clientes
+    io.emit('gardenUpdate', garden);
+  });
+
+  // Adiciona handler para solicitação de atualização do jardim
+  socket.on('requestGardenUpdate', () => {
+    const garden = gameState.gardens.sharedGarden;
+    if (!garden) return;
+
+    // Adiciona informações de visibilidade e custo para cada semente
+    const seeds = { ...SEEDS };
+    Object.keys(seeds).forEach(seedId => {
+      seeds[seedId] = {
+        ...seeds[seedId],
+        visible: isSeedVisible(garden, seedId),
+        unlockCost: getSeedUnlockCost(seedId)
+      };
+    });
+
+    // Garantir que os upgrades sejam enviados como objetos completos
+    const gardenUpgrades = {};
+    
+    // Copiar os métodos e propriedades dos upgrades
+    Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
+      gardenUpgrades[key] = {
+        ...upgrade,
+        // Converter as funções em strings para serem reconstruídas no cliente
+        getEffectStr: upgrade.getEffect.toString(),
+        getCostStr: upgrade.getCost.toString()
+      };
+    });
+
+    // Envia dados atualizados do jardim para o cliente
+    socket.emit('gardenInit', {
+      seeds,
+      upgrades: serializeGardenUpgrades(),
+      garden,
+    });
   });
 
   socket.on('disconnect', () => {
@@ -529,7 +827,7 @@ io.on('connection', (socket) => {
       const playerName = gameState.players[playerIndex].name;
       gameState.players.splice(playerIndex, 1);
       console.log(`[Desconexão] Jogador ${playerName} desconectado`);
-      
+
       if (gameState.players.length === 0) {
         gameState.lastActiveTime = Date.now();
         const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
@@ -542,7 +840,7 @@ io.on('connection', (socket) => {
 
 function calculateClickValue(player) {
   let clickPower = 1 * (player.prestigeMultiplier || 1) * gameState.achievementBoosts.clickMultiplier;
-  
+
   // Adicionar bônus temporários
   if (player.temporaryMultipliers) {
     player.temporaryMultipliers.forEach(buff => {
@@ -571,15 +869,15 @@ function calculateClickValue(player) {
 
 function levelUpTeam() {
   gameState.teamLevel++;
-  
+
   // Emitir evento específico de level up
   io.emit('teamLevelUp', gameState.teamLevel);
-  
+
   // Checar se deve spawnar um boss
   if (gameState.teamLevel >= gameState.nextBossLevel) {
     spawnBoss();
   }
-  
+
   gameState.players.forEach(player => {
     player.level++;
     const coinsAwarded = 10 * gameState.teamLevel * getUpgradeEffect('coin-boost');
@@ -607,7 +905,7 @@ function spawnBoss() {
   boss.maxHealth = boss.health;
   boss.startTime = Date.now();
   boss.timeLimit = 60000; // 60 segundos para derrotar o boss
-  
+
   // Criar o boss primeiro
   gameState.activeBoss = boss;
   gameState.nextBossLevel += gameState.bossSpawnInterval;
@@ -630,7 +928,7 @@ function spawnBoss() {
       const penalty = Math.floor(gameState.teamCoins * boss.penalty.coinLossPercentage);
       gameState.teamCoins -= penalty;
       gameState.isInBossFight = false; // Reset flag when boss fight ends
-      io.emit('bossResult', { 
+      io.emit('bossResult', {
         victory: false,
         penalty: penalty
       });
@@ -641,10 +939,6 @@ function spawnBoss() {
 
   // Armazenar apenas o ID do timer
   boss.timerId = bossTimer[Symbol.toPrimitive]();
-}
-
-function getUpgradePrice(upgrade) {
-  return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
 }
 
 function getUpgradeEffect(upgradeId) {
@@ -659,27 +953,27 @@ setInterval(() => {
     const autoClickerUpgrade = gameState.upgrades.find(u => u.id === 'auto-clicker');
     if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
 
-      let totalDamage = 0;
-    const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) * 
-                         gameState.achievementBoosts.autoMultiplier;
+    let totalDamage = 0;
+    const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) *
+      gameState.achievementBoosts.autoMultiplier;
 
     // Create a snapshot of players to avoid modification issues
     const currentPlayers = [...gameState.players];
-    
+
     currentPlayers.forEach(player => {
       if (!player?.id) return;
       const clickValue = calculateClickValue(player) * autoClickValue;
-      
+
       // Find and update player in original array
       const playerInState = gameState.players.find(p => p.id === player.id);
       if (playerInState) {
         playerInState.clicks += clickValue;
         // Remove contribution increment from autoclicker
-        
+
         // Emitir evento de dano automático para o cliente
         io.to(player.id).emit('autoClickDamage', clickValue);
       }
-      
+
       totalDamage += clickValue;
     });
 
@@ -716,7 +1010,7 @@ setInterval(checkAchievements, 2000);
 setInterval(() => {
   const now = Date.now();
   let buffRemoved = false;
-  
+
   gameState.players.forEach(player => {
     if (player.temporaryMultipliers) {
       player.temporaryMultipliers = player.temporaryMultipliers.filter(buff => {
@@ -731,6 +1025,40 @@ setInterval(() => {
     broadcastGameState();
   }
 }, 1000);
+
+// Add garden check interval to update plant growth
+setInterval(() => {
+  const garden = gameState.gardens.sharedGarden;
+  let updated = false;
+  Object.entries(garden.plants).forEach(([slotId, plant]) => {
+    if (!plant.ready && Date.now() - plant.plantedAt >= plant.growthTime) {
+      plant.ready = true;
+      updated = true;
+    }
+  });
+  if (updated) {
+    io.emit('gardenUpdate', garden);
+  }
+}, 1000);
+
+// Função auxiliar para serializar os upgrades do jardim
+function serializeGardenUpgrades() {
+  const gardenUpgrades = {};
+  
+  try {
+    Object.entries(gameState.gardenUpgrades).forEach(([key, upgrade]) => {
+      gardenUpgrades[key] = {
+        ...upgrade,
+        getEffectStr: upgrade.getEffect.toString(),
+        getCostStr: upgrade.getCost.toString()
+      };
+    });
+  } catch (error) {
+    console.error('[Jardim Server] Erro ao serializar upgrades:', error);
+  }
+  
+  return gardenUpgrades;
+}
 
 const port = process.env.PORT || 3000;
 server.listen(port, '0.0.0.0', () => {
