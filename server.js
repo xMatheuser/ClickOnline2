@@ -511,7 +511,7 @@ io.on('connection', (socket) => {
     }, powerUp.duration * gameState.achievementBoosts.powerUpDuration);
   });
 
-  socket.on('buyPrestigeUpgrade', (upgradeId) => {
+  socket.on('buyPrestigeUpgrade', (upgradeId, targetLevel) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (!player || !isActivePlayer(socket.id, player.id)) {
       socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
@@ -524,14 +524,29 @@ io.on('connection', (socket) => {
       return;
     }
 
-    let price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
-    if (gameState.fragments >= price && upgrade.level < upgrade.maxLevel) {
+    // If targetLevel is provided, ensure we're buying the correct level
+    const targetLevelToBuy = targetLevel || upgrade.level + 1;
+    
+    // Ensure we're not skipping levels
+    if (targetLevel && targetLevel > upgrade.level + 1) {
+      socket.emit('notification', 'Você precisa comprar os níveis anteriores primeiro!');
+      return;
+    }
+    
+    // Ensure we're not exceeding max level
+    if (targetLevelToBuy > upgrade.maxLevel) {
+      socket.emit('notification', `${upgrade.name} já está no nível máximo!`);
+      return;
+    }
+
+    let price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, targetLevelToBuy - 1));
+    if (gameState.fragments >= price) {
       gameState.fragments -= price;
-      upgrade.level++;
+      upgrade.level = targetLevelToBuy;
       broadcastGameState();
       socket.emit('notification', `Upgrade ${upgrade.name} comprado! Agora é nível ${upgrade.level}`);
     } else {
-      socket.emit('notification', gameState.fragments < price ? `Fragmentos insuficientes!` : `${upgrade.name} já está no nível máximo!`);
+      socket.emit('notification', `Fragmentos insuficientes!`);
     }
   });
 
