@@ -29,6 +29,16 @@ const prestigeUpgrades = [
         effect: level => 1 + level * 0.1, // 10% por nível
         priceIncrease: 2,
         requires: 'powerups-unlock' // Requer que o powerups-unlock seja comprado
+    },
+    {
+        id: 'garden-unlock',
+        name: 'Desbloquear Jardim',
+        description: 'Desbloqueia o sistema de jardim, permitindo cultivar recursos especiais',
+        basePrice: 100,
+        level: 0,
+        maxLevel: 1,
+        effect: level => level > 0, // Returns true if unlocked
+        priceIncrease: 1
     }
 ];
 

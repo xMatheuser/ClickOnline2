@@ -911,17 +911,18 @@ function groupUpgradesByType(upgrades) {
 function getUpgradeType(id) {
   if (id.includes('fragment')) return 'fragment';
   if (id.includes('powerups')) return 'powerup';
-  return 'misc';
+  if (id.includes('garden')) return 'garden';
+  return null;
 }
 
 function getTypeName(type) {
   const typeNames = {
     'fragment': 'Fragmentos',
     'powerup': 'Power-Ups',
-    'misc': 'Diversos'
+    'garden': 'Jardim'
   };
   
-  return typeNames[type] || 'Outros';
+  return typeNames[type] || '';
 }
 
 // Função para atualizar o status dos nós após uma compra
