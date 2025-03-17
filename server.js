@@ -31,7 +31,7 @@ let gameState = {
   achievements: achievements, // This is now the array
   achievementCategories: achievementCategories, // Add categories to gameState
   powerUps: powerUps,
-  fragments: 100000,
+  fragments: 0,
   prestigeUpgrades: prestigeUpgrades,
   totalClicks: 0,
   lastAutoClickerLevel: 0,
