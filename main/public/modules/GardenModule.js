@@ -21,6 +21,54 @@ export function initGarden() {
   const closeGardenButton = document.getElementById('close-garden');
   const gardenOverlay = document.getElementById('garden-overlay');
 
+  if (!openGardenButton || !closeGardenButton || !gardenOverlay) {
+    console.error('Garden elements not found');
+    return;
+  }
+
+  // Initialize button as hidden by default
+  openGardenButton.style.display = 'none';
+  
+  // Add locked class by default
+  openGardenButton.classList.add('garden-button', 'locked');
+
+  // Update garden unlock state (will show button if upgrade is unlocked)
+  updateGardenUnlockState();
+
+  // Create tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'garden-tooltip';
+  tooltip.textContent = 'Compre o upgrade de prestígio para desbloquear o jardim';
+  document.body.appendChild(tooltip);
+
+  // Add tooltip functionality
+  openGardenButton.addEventListener('mousemove', (e) => {
+    if (!isGardenUnlocked()) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = e.pageX + 10 + 'px';
+      tooltip.style.top = e.pageY + 10 + 'px';
+    }
+  });
+
+  openGardenButton.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+
+  // Add click handler
+  openGardenButton.addEventListener('click', (e) => {
+    if (!isGardenUnlocked()) {
+      e.preventDefault();
+      return;
+    }
+    gardenOverlay.classList.add('active');
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
+    updateGardenSlots();
+    updateGardenResources();
+    updateStoreItems();
+    updateHarvestAllButton();
+    renderSeedOptions();
+  });
+
   console.log('[Garden] Initializing with gameState:', {
     hasGardens: !!gameState.gardens,
     gardenData: gameState.gardens?.sharedGarden,
@@ -40,7 +88,13 @@ export function initGarden() {
   socket.emit('requestGardenUpdate');
 
   openGardenButton.addEventListener('click', () => {
-    gardenOverlay.style.display = 'flex';
+    gardenOverlay.classList.add('active');
+    // Não precisamos mais definir style.display, pois o CSS já faz isso
+    // gardenOverlay.style.display = 'flex';
+    
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
+    
     updateGardenSlots();
     updateGardenResources();
     updateStoreItems();
@@ -49,10 +103,49 @@ export function initGarden() {
   });
 
   closeGardenButton.addEventListener('click', () => {
-    gardenOverlay.style.display = 'none';
+    gardenOverlay.classList.remove('active');
+    // Não precisamos mais definir style.display, pois o CSS já faz isso
+    // gardenOverlay.style.display = 'none';
+    
+    // Disparar evento para notificar que um overlay foi fechado
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
+  });
+
+  // Fechar o garden quando clicar fora do conteúdo
+  gardenOverlay.addEventListener('click', (e) => {
+    if (e.target === gardenOverlay) {
+      closeGardenButton.click();
+    }
   });
 
   initGardenGarden();
+  initGardenStateListeners();
+}
+
+function isGardenUnlocked() {
+  const gardenUpgrade = gameState.prestigeUpgrades?.find(u => u.id === 'garden-unlock');
+  return gardenUpgrade && gardenUpgrade.level > 0;
+}
+
+// Add a function to update garden unlock state
+export function updateGardenUnlockState() {
+  const openGardenButton = document.getElementById('open-garden');
+  if (!openGardenButton) return;
+
+  if (isGardenUnlocked()) {
+    openGardenButton.style.display = 'inline-block';
+    openGardenButton.classList.remove('locked');
+  } else {
+    openGardenButton.style.display = 'none';
+    openGardenButton.classList.add('locked');
+  }
+}
+
+// Add a listener for game state updates to update garden unlock state
+export function initGardenStateListeners() {
+  document.addEventListener('gameStateUpdated', () => {
+    updateGardenUnlockState();
+  });
 }
 
 function handleGardenUpdate(garden) {

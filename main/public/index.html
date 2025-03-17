@@ -21,6 +21,8 @@
   <link rel="stylesheet" href="css/bossFight.css">
   <link rel="stylesheet" href="css/garden.css">
   <link rel="stylesheet" href="css/dragAndDrop.css">
+  <link rel="stylesheet" href="css/skill-tree.css">
+  <link rel="stylesheet" href="css/rpgui.css">
 </head>
 <body class="nes-container">
   <div class="animated-background"></div>
@@ -54,16 +56,27 @@
         <button class="close-prestige" id="close-prestige">×</button>
       </div>
       <div class="prestige-content">
-        <div class="prestige-info">
-          <h2>Prestígio</h2>
-          <p>Reinicie seu progresso para ganhar fragmentos mágicos!</p>
-          <p>Você receberá <span id="potential-fragments">0</span> fragmentos ao prestigiar.</p>
-          <p class="fragments">🔮 <span id="fragments-count">0</span> Fragmentos</p>
-          <button id="prestige-button" class="rpgui-button golden">Prestigiar</button>
-        </div>
-        <div class="prestige-upgrades">
-          <h2>Upgrades de Prestígio</h2>
-          <div id="prestige-upgrades-container"></div>
+        <div class="skill-tree-container" id="skill-tree-container">
+          <div class="skill-tree" id="skill-tree">
+            <!-- Skill nodes will be dynamically added here -->
+          </div>
+          
+          <div class="fixed-prestige-info" id="fixed-prestige-info">
+            <h2>Fragmentos</h2>
+            <div class="fragments">🔮 <span id="fragments-count">0</span></div>
+            <p>Você receberá <strong><span id="potential-fragments">0</span></strong> fragmentos ao prestigiar.</p>
+            <button id="prestige-button" class="rpgui-button golden prestige-button">PRESTIGIAR</button>
+          </div>
+          
+          <div class="zoom-controls">
+            <button class="zoom-btn" id="zoom-in">+</button>
+            <button class="zoom-btn" id="zoom-out">-</button>
+            <button class="zoom-btn home" id="center-tree">⌂</button>
+          </div>
+          <div class="keyboard-hints">
+            Atalhos: <span>+/-</span> Zoom, <span>Home</span> Centralizar, <span>Esc</span> Fechar
+          </div>
+          <div class="skill-tooltip" id="skill-tooltip"></div>
         </div>
       </div>
     </div>

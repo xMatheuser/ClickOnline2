@@ -1,0 +1,503 @@
+/* Skill Tree Styles */
+.skill-tree-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.05);
+  cursor: grab;
+  top: 0;
+  left: 0;
+  background-image: 
+    radial-gradient(circle at 25px 25px, rgba(139, 0, 255, 0.1) 2px, transparent 0),
+    radial-gradient(circle at 75px 75px, rgba(139, 0, 255, 0.1) 2px, transparent 0);
+  background-size: 100px 100px;
+}
+
+.skill-tree-container.grabbing {
+  cursor: grabbing;
+}
+
+.skill-tree {
+  position: absolute;
+  transform-origin: center;
+  transition: transform 0.1s ease-out;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10;
+}
+
+.zoom-controls::after {
+  content: '';
+  width: 40px;
+  height: 2px;
+  background: rgba(139, 0, 255, 0.5);
+  margin: 5px auto;
+}
+
+.zoom-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(139, 0, 255, 0.8);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.zoom-btn:hover {
+  background: rgba(139, 0, 255, 1);
+  transform: scale(1.1);
+}
+
+.zoom-btn.home {
+  font-size: 16px;
+}
+
+/* Fixed Prestige Info Panel */
+.fixed-prestige-info {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 280px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: all 0.3s ease;
+  border: 2px solid #8b00ff;
+  max-height: 280px;
+  height: auto;
+  overflow: visible;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.fixed-prestige-info:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.fixed-prestige-info h2 {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+  color: #8b00ff;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fixed-prestige-info p {
+  margin: 10px 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.fixed-prestige-info .fragments {
+  font-size: 18px;
+  font-weight: bold;
+  color: #8b00ff;
+  margin: 5px auto 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 0, 255, 0.1);
+  padding: 8px 10px;
+  border-radius: 20px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fixed-prestige-info #fragments-count {
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+.fixed-prestige-info .prestige-button {
+  width: 100%;
+  margin-top: 15px;
+  padding: 15px 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  background-color: #8b00ff;
+  color: white;
+  border: 2px solid gold;
+  position: relative;
+  z-index: 20;
+}
+
+.fixed-prestige-info .prestige-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Skill Node Styles */
+.skill-node {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 2;
+  border: 3px solid #ddd;
+  overflow: hidden;
+}
+
+.skill-node:hover {
+  transform: scale(1.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.skill-node.locked {
+  background: #f0f0f0;
+  border-color: #ccc;
+  opacity: 0.7;
+}
+
+.skill-node.available {
+  border-color: #8b00ff;
+  animation: pulse 2s infinite;
+}
+
+.skill-node.unlocked {
+  border-color: rgba(139, 0, 255, 0.5);
+  border-style: dashed;
+}
+
+.skill-node.maxed {
+  border-color: gold;
+  background: linear-gradient(135deg, #fff, #fffbe0);
+}
+
+.skill-node.purchased {
+  border-color: #8b00ff;
+  background: linear-gradient(135deg, #fff, #f8f0ff);
+}
+
+.skill-node-icon {
+  font-size: 24px;
+}
+
+.skill-node-level {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Skill Node Connections */
+.skill-connection {
+  position: absolute;
+  height: 3px;
+  background: #ddd;
+  transform-origin: left center;
+  z-index: 1;
+}
+
+.skill-connection.active {
+  background: #8b00ff;
+}
+
+.skill-connection.maxed {
+  background: gold;
+}
+
+.skill-connection.unlocked {
+  background: rgba(139, 0, 255, 0.5);
+}
+
+/* Central Node */
+.central-node {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #8b00ff, #6a00cc);
+  color: white;
+  border: 4px solid #8b00ff !important;
+}
+
+/* Tooltip */
+.skill-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  max-width: 250px;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.skill-tooltip.visible {
+  opacity: 1;
+}
+
+.skill-tooltip h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  color: #8b00ff;
+}
+
+.skill-tooltip p {
+  margin: 5px 0;
+}
+
+.skill-tooltip .cost {
+  color: #FFD700;
+  font-weight: bold;
+}
+
+.skill-tooltip .effect {
+  color: #4CAF50;
+}
+
+.skill-tooltip .requirement {
+  color: #8b00ff;
+  font-style: italic;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(139, 0, 255, 0.3);
+}
+
+.skill-tooltip .level {
+  color: #64B5F6;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(139, 0, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(139, 0, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 0, 255, 0);
+  }
+}
+
+/* Dark Mode Support */
+body.dark-mode .skill-tree-container {
+  background: rgba(255, 255, 255, 0.05);
+  background-image: 
+    radial-gradient(circle at 25px 25px, rgba(139, 0, 255, 0.15) 2px, transparent 0),
+    radial-gradient(circle at 75px 75px, rgba(139, 0, 255, 0.15) 2px, transparent 0);
+  background-size: 100px 100px;
+}
+
+body.dark-mode .fixed-prestige-info {
+  background: rgba(40, 40, 40, 0.9);
+  color: #e0e0e0;
+  border-color: #a855ff;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .fixed-prestige-info h2 {
+  color: #a855ff;
+}
+
+body.dark-mode .skill-node {
+  background: #333;
+  border-color: #555;
+}
+
+body.dark-mode .skill-node.locked {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+body.dark-mode .skill-node.available {
+  border-color: #a855ff;
+}
+
+body.dark-mode .skill-node.purchased {
+  border-color: #8b00ff;
+  background: linear-gradient(135deg, #333, #38244a);
+}
+
+body.dark-mode .skill-node.unlocked {
+  border-color: rgba(168, 85, 255, 0.5);
+  border-style: dashed;
+}
+
+body.dark-mode .skill-connection {
+  background: #444;
+}
+
+body.dark-mode .skill-tooltip {
+  background: rgba(40, 40, 40, 0.95);
+}
+
+body.dark-mode .skill-tooltip h3 {
+  color: #a855ff;
+}
+
+/* Fullscreen Prestige Overlay */
+.prestige-overlay {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.prestige-popup {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.prestige-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(139, 0, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.prestige-content {
+  flex: 1;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Node Click Animation */
+.skill-node.node-clicked {
+  animation: node-click 0.3s ease;
+}
+
+@keyframes node-click {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Prestige Button Confirmation */
+#prestige-button.confirming {
+  background: #ff5722;
+  animation: button-pulse 1s infinite;
+}
+
+@keyframes button-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 87, 34, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0); }
+}
+
+/* Keyboard Shortcut Hints */
+.keyboard-hints {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.keyboard-hints:hover {
+  opacity: 1;
+}
+
+.keyboard-hints span {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin: 0 3px;
+}
+
+/* Responsive Adjustments */
+@media (max-height: 700px) {
+  .fixed-prestige-info {
+    max-height: 200px;
+    padding: 10px;
+    overflow: visible;
+  }
+  
+  .fixed-prestige-info h2 {
+    font-size: 18px;
+    margin-bottom: 5px;
+  }
+  
+  .fixed-prestige-info p {
+    font-size: 13px;
+    margin: 3px 0;
+  }
+
+  .fixed-prestige-info .prestige-button {
+    padding: 10px 0;
+    margin-top: 10px;
+    font-size: 15px;
+  }
+}
+
+/* Animação de compra */
+.skill-node.purchasing {
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
+}
+
+body.dark-mode .central-node {
+  border: 4px solid #8b00ff !important;
+  background: linear-gradient(135deg, #8b00ff, #6a00cc);
+} 

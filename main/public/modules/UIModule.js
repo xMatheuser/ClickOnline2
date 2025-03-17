@@ -74,30 +74,48 @@ export function initUI() {
     lastRenderedAchievements = JSON.stringify(gameState.achievements);
     newAchievements = 0;
     updateAchievementBadge();
+    
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
   });
 
   closeAchievementsBtn.addEventListener('click', () => {
     achievementsOverlay.classList.remove('active');
+    
+    // Disparar evento para notificar que um overlay foi fechado
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
   });
 
   achievementsOverlay.addEventListener('click', (e) => {
     if (e.target === achievementsOverlay) {
       achievementsOverlay.classList.remove('active');
+      
+      // Disparar evento para notificar que um overlay foi fechado
+      document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
     }
   });
 
   openBonusStatsBtn.addEventListener('click', () => {
     bonusStatsOverlay.classList.add('active');
     renderBonusStats();
+    
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
   });
 
   closeBonusStatsBtn.addEventListener('click', () => {
     bonusStatsOverlay.classList.remove('active');
+    
+    // Disparar evento para notificar que um overlay foi fechado
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
   });
 
   bonusStatsOverlay.addEventListener('click', (e) => {
     if (e.target === bonusStatsOverlay) {
       bonusStatsOverlay.classList.remove('active');
+      
+      // Disparar evento para notificar que um overlay foi fechado
+      document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
     }
   });
 

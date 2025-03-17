@@ -9,15 +9,24 @@ export function initHistory() {
   showHistoryBtn.addEventListener('click', () => {
     historyOverlay.classList.add('active');
     renderFullHistory();
+    
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
   });
 
   closeHistoryBtn.addEventListener('click', () => {
     historyOverlay.classList.remove('active');
+    
+    // Disparar evento para notificar que um overlay foi fechado
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
   });
 
   historyOverlay.addEventListener('click', (e) => {
     if (e.target === historyOverlay) {
       historyOverlay.classList.remove('active');
+      
+      // Disparar evento para notificar que um overlay foi fechado
+      document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
     }
   });
 

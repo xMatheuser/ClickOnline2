@@ -182,6 +182,9 @@ export function initSocket() {
     import('./UIModule.js').then(module => {
       module.handleGameStateUpdate(gameState);
     });
+    
+    // Dispatch event for other modules to listen for game state updates
+    document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
   });
 
   socket.on('notification', (message) => {
@@ -224,6 +227,9 @@ export function initSocket() {
         p.prestigeMultiplier = savedPrestige[p.id].prestigeMultiplier;
       }
     });
+    
+    // Dispatch event for other modules to listen for game state updates
+    document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
   });
 
   socket.on('bossResult', (result) => {

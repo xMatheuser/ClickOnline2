@@ -1,10 +1,31 @@
 import { socket, gameState, isOwnPlayer } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
-import { formatNumber, showTooltip, hideTooltip } from './UtilsModule.js';
+import { formatNumber } from './UtilsModule.js';
+import { playSound, tickSound } from './AudioModule.js';
+import { updateGardenUnlockState } from './GardenModule.js';
 
 const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
 const closePrestigeBtn = document.getElementById('close-prestige');
+
+// Skill Tree Elements
+let skillTree;
+let skillTreeContainer;
+let skillTooltip;
+let zoomInBtn;
+let zoomOutBtn;
+let fixedPrestigeInfo;
+let centerTreeBtn;
+
+// Skill Tree State
+let skillTreeScale = 1;
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let treePositionX = 0;
+let treePositionY = 0;
+let skillNodes = [];
+let skillConnections = [];
 
 // Cache do último estado para comparação
 let lastPrestigeState = {
@@ -13,6 +34,15 @@ let lastPrestigeState = {
 };
 
 export function initPrestige() {
+  // Initialize skill tree elements
+  skillTree = document.getElementById('skill-tree');
+  skillTreeContainer = document.getElementById('skill-tree-container');
+  skillTooltip = document.getElementById('skill-tooltip');
+  zoomInBtn = document.getElementById('zoom-in');
+  zoomOutBtn = document.getElementById('zoom-out');
+  fixedPrestigeInfo = document.getElementById('fixed-prestige-info');
+  centerTreeBtn = document.getElementById('center-tree');
+
   socket.on('gameStateUpdate', (newState) => {
     // Ignora atualizações de clique e auto-clique
     if (newState.type === 'click' || newState.type === 'autoclick') {
@@ -27,21 +57,87 @@ export function initPrestige() {
     const shouldUpdateUI = hasPrestigeStateChanged();
     if (shouldUpdateUI) {
       updatePrestigeUI();
-      renderPrestigeUpgrades();
+      if (prestigeOverlay.classList.contains('active')) {
+        if (skillNodes.length > 0) {
+          // Se já temos nós, apenas atualizamos o status
+          updateSkillTreeNodes();
+        } else {
+          // Se não temos nós, renderizamos a árvore completa
+          renderSkillTree();
+        }
+      }
       updatePrestigeStateCache();
+    }
+  });
+
+  // Adicionar listener para o evento de compra de upgrade de prestígio
+  socket.on('buyPrestigeUpgrade', (data) => {
+    console.log('Evento buyPrestigeUpgrade recebido:', data);
+    
+    // Atualizar o cache do estado de prestígio
+    if (gameState.prestigeUpgrades) {
+      const upgrade = gameState.prestigeUpgrades.find(u => u.id === data.id);
+      if (upgrade) {
+        console.log(`Atualizando upgrade ${data.id} para nível ${data.level}`);
+        upgrade.level = data.level;
+        
+        // Atualizar o cache do estado de prestígio
+        updatePrestigeStateCache();
+        
+        // Se for o upgrade do jardim, atualizar o estado de desbloqueio imediatamente
+        if (upgrade.id === 'garden-unlock') {
+          updateGardenUnlockState();
+        }
+      }
+    }
+    
+    // Dispatch event for other modules
+    document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
+    
+    if (prestigeOverlay.classList.contains('active')) {
+      // Forçar a renderização completa da árvore de habilidades
+      console.log('Renderizando árvore de habilidades após compra');
+      skillTree.innerHTML = '';
+      skillNodes = [];
+      skillConnections = [];
+      renderSkillTree();
     }
   });
 
   openPrestigeBtn.addEventListener('click', () => {
     prestigeOverlay.classList.add('active');
+    document.body.classList.add('overlay-active');
+    
+    // Centralizar a árvore de habilidades
+    centerSkillTree();
+    
+    // Renderizar a árvore de habilidades se ainda não foi feito
+    if (skillNodes.length === 0) {
+      renderSkillTree();
+    } else {
+      // Caso contrário, apenas atualizar o status dos nós
+      updateSkillTreeNodes();
+    }
+    
+    // Atualizar o UI de prestígio
     updatePrestigeUI();
-    renderPrestigeUpgrades();
+    
+    // Disparar evento de abertura do overlay
+    document.dispatchEvent(new CustomEvent('overlayOpened', { detail: { id: 'prestige-overlay' } }));
   });
 
-  closePrestigeBtn.addEventListener('click', () => prestigeOverlay.classList.remove('active'));
+  closePrestigeBtn.addEventListener('click', () => {
+    prestigeOverlay.classList.remove('active');
+    document.body.classList.remove('overlay-active');
+    
+    // Disparar evento de fechamento do overlay
+    document.dispatchEvent(new CustomEvent('overlayClosed', { detail: { id: 'prestige-overlay' } }));
+  });
 
   prestigeOverlay.addEventListener('click', (e) => {
-    if (e.target === prestigeOverlay) prestigeOverlay.classList.remove('active');
+    if (e.target === prestigeOverlay) {
+      closePrestigeBtn.click();
+    }
   });
 
   document.getElementById('prestige-button').addEventListener('click', () => {
@@ -54,30 +150,181 @@ export function initPrestige() {
       showNotification('Você precisa estar pelo menos no nível 2 para prestigiar!');
       return;
     }
-    socket.emit('prestige');
+    
+    // Add confirmation animation
+    const button = document.getElementById('prestige-button');
+    button.classList.add('confirming');
+    button.textContent = 'Confirmar?';
+    
+    // If already confirming, proceed with prestige
+    if (button.dataset.confirming === 'true') {
+      socket.emit('prestige');
+      button.classList.remove('confirming');
+      button.textContent = 'Prestigiar';
+      button.dataset.confirming = 'false';
+      return;
+    }
+    
+    button.dataset.confirming = 'true';
+    
+    // Reset confirmation after 3 seconds
+    setTimeout(() => {
+      if (button.dataset.confirming === 'true') {
+        button.classList.remove('confirming');
+        button.textContent = 'Prestigiar';
+        button.dataset.confirming = 'false';
+      }
+    }, 3000);
+  });
+
+  // Initialize skill tree controls
+  initSkillTreeControls();
+  
+  // Centralizar a árvore de habilidades
+  centerTreeBtn.addEventListener('click', centerSkillTree);
+  
+  // Add window resize handler to adjust skill tree
+  window.addEventListener('resize', () => {
+    if (prestigeOverlay.classList.contains('active')) {
+      centerSkillTree();
+    }
   });
 }
 
-function hasPrestigeStateChanged() {
-  // Ignora se o estado do jogo ainda não está disponível
-  if (!gameState) return false;
-
-  // Verifica mudanças nos fragments
-  if ((gameState.fragments || 0) !== lastPrestigeState.fragments) {
-    return true;
-  }
-
-  // Verifica mudanças nos prestigeUpgrades
-  const currentUpgrades = gameState.prestigeUpgrades || [];
-  if (currentUpgrades.length !== lastPrestigeState.prestigeUpgrades.length) {
-    return true;
-  }
-
-  // Verifica se algum upgrade mudou de nível
-  return currentUpgrades.some((upgrade, index) => {
-    const lastUpgrade = lastPrestigeState.prestigeUpgrades[index];
-    return !lastUpgrade || upgrade.level !== lastUpgrade.level;
+function initSkillTreeControls() {
+  // Zoom controls
+  zoomInBtn.addEventListener('click', () => {
+    skillTreeScale = Math.min(skillTreeScale + 0.1, 2);
+    updateSkillTreeTransform();
   });
+
+  zoomOutBtn.addEventListener('click', () => {
+    skillTreeScale = Math.max(skillTreeScale - 0.1, 0.5);
+    updateSkillTreeTransform();
+  });
+
+  // Drag controls
+  skillTreeContainer.addEventListener('mousedown', (e) => {
+    // Ignore if clicking on fixed elements or nodes
+    if (e.target === fixedPrestigeInfo || 
+        fixedPrestigeInfo.contains(e.target) ||
+        e.target.closest('.skill-node') ||
+        e.target.closest('.zoom-controls')) {
+      return;
+    }
+    
+    isDragging = true;
+    skillTreeContainer.classList.add('grabbing');
+    dragStartX = e.clientX - treePositionX;
+    dragStartY = e.clientY - treePositionY;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      treePositionX = e.clientX - dragStartX;
+      treePositionY = e.clientY - dragStartY;
+      updateSkillTreeTransform();
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    skillTreeContainer.classList.remove('grabbing');
+  });
+
+  // Mouse wheel zoom
+  skillTreeContainer.addEventListener('wheel', (e) => {
+    // Ignore wheel events on fixed elements
+    if (e.target === fixedPrestigeInfo || fixedPrestigeInfo.contains(e.target)) {
+      return;
+    }
+    
+    e.preventDefault();
+    const zoomSpeed = 0.1;
+    const zoomDirection = e.deltaY < 0 ? 1 : -1;
+    
+    // Calculate zoom centered on mouse position
+    const containerRect = skillTreeContainer.getBoundingClientRect();
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+    
+    // Calculate mouse position relative to the tree
+    const mouseXRelative = (mouseX - treePositionX) / skillTreeScale;
+    const mouseYRelative = (mouseY - treePositionY) / skillTreeScale;
+    
+    // Apply zoom
+    const oldScale = skillTreeScale;
+    skillTreeScale = Math.max(0.5, Math.min(2, skillTreeScale + zoomDirection * zoomSpeed));
+    
+    // Adjust position to zoom centered on mouse
+    treePositionX = mouseX - mouseXRelative * skillTreeScale;
+    treePositionY = mouseY - mouseYRelative * skillTreeScale;
+    
+    updateSkillTreeTransform();
+  });
+  
+  // Add keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (!prestigeOverlay.classList.contains('active')) return;
+    
+    switch (e.key) {
+      case '=':
+      case '+':
+        zoomInBtn.click();
+        break;
+      case '-':
+        zoomOutBtn.click();
+        break;
+      case 'Escape':
+        closePrestigeBtn.click();
+        break;
+      case 'Home':
+        centerSkillTree();
+        break;
+    }
+  });
+}
+
+function updateSkillTreeTransform() {
+  skillTree.style.transform = `translate(${treePositionX}px, ${treePositionY}px) scale(${skillTreeScale})`;
+}
+
+function centerSkillTree() {
+  const containerRect = skillTreeContainer.getBoundingClientRect();
+  treePositionX = containerRect.width / 2;
+  treePositionY = containerRect.height / 2;
+  skillTreeScale = 1; // Reset scale when centering
+  updateSkillTreeTransform();
+}
+
+function hasPrestigeStateChanged() {
+  // Verificar se os fragmentos mudaram
+  if (gameState.fragments !== lastPrestigeState.fragments) {
+    return true;
+  }
+  
+  // Verificar se os upgrades de prestígio mudaram
+  if (!gameState.prestigeUpgrades || !lastPrestigeState.prestigeUpgrades) {
+    return true;
+  }
+  
+  // Verificar se o número de upgrades mudou
+  if (gameState.prestigeUpgrades.length !== lastPrestigeState.prestigeUpgrades.length) {
+    return true;
+  }
+  
+  // Verificar se algum upgrade específico mudou
+  for (let i = 0; i < gameState.prestigeUpgrades.length; i++) {
+    const currentUpgrade = gameState.prestigeUpgrades[i];
+    const lastUpgrade = lastPrestigeState.prestigeUpgrades[i];
+    
+    if (currentUpgrade.id !== lastUpgrade.id || 
+        currentUpgrade.level !== lastUpgrade.level) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 function updatePrestigeStateCache() {
@@ -116,62 +363,788 @@ function calculatePrestigeReward() {
   return Math.max(1, Math.floor(base * multiplier));
 }
 
-function renderPrestigeUpgrades() {
-  const container = document.getElementById('prestige-upgrades-container');
-  if (!container || !gameState?.prestigeUpgrades) return;
+function renderSkillTree() {
+  if (!skillTree || !gameState?.prestigeUpgrades) return;
 
-  // Garante que o container está visível
-  container.style.display = 'block';
+  // Clear previous nodes and connections
+  skillTree.innerHTML = '';
+  skillNodes = [];
+  skillConnections = [];
+
+  // Create central node
+  const centralNode = createSkillNode({
+    id: 'central',
+    name: 'Centro de Poder',
+    description: 'O centro da sua árvore de habilidades',
+    x: 0,
+    y: 0,
+    isCentral: true
+  });
   
-  container.innerHTML = '';
-  gameState.prestigeUpgrades.forEach(upgrade => {
-    const price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
-    const canAfford = (gameState.fragments || 0) >= price;
-    const maxedOut = upgrade.level >= upgrade.maxLevel;
-    const canBuy = canAfford && !maxedOut && isOwnPlayer();
+  // Calculate positions for each upgrade node
+  const totalUpgrades = gameState.prestigeUpgrades.length;
+  const radius = 300; // Increased distance from center for better visibility
+  
+  // Group upgrades by type for better organization
+  const upgradesByType = groupUpgradesByType(gameState.prestigeUpgrades);
+  
+  // Mapa para armazenar os nós criados, para referência para upgrades dependentes
+  const createdNodes = new Map();
+  createdNodes.set('central', centralNode);
+  
+  // Create nodes for each upgrade type
+  let angleOffset = 0;
+  Object.entries(upgradesByType).forEach(([type, upgrades], typeIndex) => {
+    const typeAngle = (2 * Math.PI / Object.keys(upgradesByType).length) * typeIndex;
+    const typeRadius = radius * 0.6; // Slightly closer to center
+    
+    // Create type node if there are multiple upgrades of this type
+    if (upgrades.length > 1) {
+      const typeNodeX = Math.cos(typeAngle) * typeRadius;
+      const typeNodeY = Math.sin(typeAngle) * typeRadius;
+      
+      const typeNode = createSkillNode({
+        id: `type-${type}`,
+        name: getTypeName(type),
+        description: `Categoria de upgrades: ${getTypeName(type)}`,
+        x: typeNodeX,
+        y: typeNodeY,
+        isType: true
+      });
+      
+      createdNodes.set(`type-${type}`, typeNode);
+      
+      // Connect type node to central node
+      createConnection(centralNode, typeNode);
+      
+      // First place upgrades without dependencies
+      const independentUpgrades = upgrades.filter(u => !u.requires);
+      const dependentUpgrades = upgrades.filter(u => u.requires);
+      
+      // Create upgrade nodes around the type node for independent upgrades
+      independentUpgrades.forEach((upgrade, i) => {
+        const upgradeAngle = typeAngle + (i - (independentUpgrades.length - 1) / 2) * (Math.PI / 8);
+        const upgradeRadius = radius;
+        
+        const x = Math.cos(upgradeAngle) * upgradeRadius;
+        const y = Math.sin(upgradeAngle) * upgradeRadius;
+        
+        // For multi-level upgrades, create multiple nodes in a line
+        if (upgrade.maxLevel > 1) {
+          createMultiLevelNodes(upgrade, x, y, upgradeAngle, typeNode, createdNodes);
+        } else {
+          const node = createSkillNode({
+            ...upgrade,
+            x,
+            y
+          });
+          
+          createdNodes.set(upgrade.id, node);
+          
+          // Connect to type node
+          createConnection(typeNode, node);
+        }
+      });
+      
+      // Now place dependent upgrades
+      dependentUpgrades.forEach((upgrade) => {
+        positionDependentUpgrade(upgrade, typeNode, typeAngle, radius, createdNodes);
+      });
+    } else if (upgrades.length === 1) {
+      // If only one upgrade of this type, connect directly to central node
+      const upgrade = upgrades[0];
+      
+      // Check if this upgrade depends on another
+      if (upgrade.requires) {
+        positionDependentUpgrade(upgrade, centralNode, typeAngle, radius, createdNodes);
+      } else {
+        const x = Math.cos(typeAngle) * radius;
+        const y = Math.sin(typeAngle) * radius;
+        
+        if (upgrade.maxLevel > 1) {
+          createMultiLevelNodes(upgrade, x, y, typeAngle, centralNode, createdNodes);
+        } else {
+          const node = createSkillNode({
+            ...upgrade,
+            x,
+            y
+          });
+          
+          createdNodes.set(upgrade.id, node);
+          
+          // Connect to central node
+          createConnection(centralNode, node);
+        }
+      }
+    }
+  });
+  
+  // Add all nodes and connections to the DOM
+  skillConnections.forEach(conn => skillTree.appendChild(conn.element));
+  skillNodes.forEach(node => skillTree.appendChild(node.element));
+  
+  // Add subtle animation to nodes
+  skillNodes.forEach((node, index) => {
+    if (node.element) {
+      node.element.style.opacity = '0';
+      node.element.style.transform = 'scale(0.5)';
+      
+      setTimeout(() => {
+        node.element.style.transition = 'all 0.5s ease';
+        node.element.style.opacity = '1';
+        node.element.style.transform = '';
+      }, 50 * index);
+    }
+  });
+}
 
-    const upgradeElement = document.createElement('div');
-    upgradeElement.className = `upgrade-item ${!canBuy ? 'disabled' : ''}`;
+function positionDependentUpgrade(upgrade, parentNode, baseAngle, baseRadius, createdNodes) {
+  // Encontra o nó do upgrade do qual este depende
+  const requiredNodeId = upgrade.requires;
+  const requiredNode = createdNodes.get(requiredNodeId);
+  
+  if (!requiredNode) {
+    console.warn(`Upgrade ${upgrade.id} depende de ${requiredNodeId}, mas o nó requerido não foi encontrado.`);
+    return;
+  }
+  
+  // Posiciona este upgrade logo após o upgrade requerido
+  const offsetAngle = 0.2; // Pequeno deslocamento para não sobrepor
+  let newX, newY, angle;
+  
+  // Se o upgrade requerido for um upgrade de múltiplos níveis, posiciona após o último nível
+  if (requiredNode.targetLevel) {
+    // Encontra o último nó do upgrade multi-nível
+    const lastLevelNodeId = `${requiredNodeId}-level-${requiredNode.originalMaxLevel || upgrade.maxLevel}`;
+    const lastLevelNodes = skillNodes.filter(n => n.originalId === requiredNodeId && n.targetLevel === requiredNode.originalMaxLevel);
     
-    // Tratamento especial para diferentes tipos de upgrade
-    let currentEffect, nextEffect, tooltipText;
-    
-    if (upgrade.id === 'powerups-unlock') {
-      currentEffect = upgrade.level > 0 ? 'Desbloqueado' : 'Bloqueado';
-      nextEffect = 'Desbloqueado';
-      tooltipText = `${upgrade.description}\nStatus: ${currentEffect}`;
-    } else if (upgrade.id === 'fragment-multiplier') {
-      // Use a mesma fórmula do calculatePrestigeReward
-      currentEffect = 1 + upgrade.level * 0.2;
-      nextEffect = !maxedOut ? (1 + (upgrade.level + 1) * 0.2) : currentEffect;
-      tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\n${!maxedOut ? `Próximo: x${nextEffect.toFixed(1)}` : ''}`;
+    if (lastLevelNodes.length > 0) {
+      const lastLevelNode = lastLevelNodes[0];
+      // Usa o mesmo ângulo, mas um pouco mais longe
+      angle = Math.atan2(lastLevelNode.y, lastLevelNode.x);
+      const distance = Math.sqrt(lastLevelNode.x * lastLevelNode.x + lastLevelNode.y * lastLevelNode.y) + 120;
+      newX = Math.cos(angle) * distance;
+      newY = Math.sin(angle) * distance;
     } else {
-      currentEffect = upgrade.effect(upgrade.level);
-      nextEffect = !maxedOut ? upgrade.effect(upgrade.level + 1) : currentEffect;
-      tooltipText = `${upgrade.description}\nAtual: x${currentEffect.toFixed(1)}\n${!maxedOut ? `Próximo: x${nextEffect.toFixed(1)}` : ''}`;
+      // Fallback se não encontrar o último nível
+      angle = Math.atan2(requiredNode.y, requiredNode.x) + offsetAngle;
+      newX = Math.cos(angle) * baseRadius;
+      newY = Math.sin(angle) * baseRadius;
+    }
+  } else {
+    // Para upgrades normais, posiciona em um ângulo próximo
+    angle = Math.atan2(requiredNode.y, requiredNode.x) + offsetAngle;
+    const distance = Math.sqrt(requiredNode.x * requiredNode.x + requiredNode.y * requiredNode.y) + 120;
+    newX = Math.cos(angle) * distance;
+    newY = Math.sin(angle) * distance;
+  }
+  
+  // Cria o nó do upgrade
+  if (upgrade.maxLevel > 1) {
+    createMultiLevelNodes(upgrade, newX, newY, angle, requiredNode, createdNodes);
+  } else {
+    const node = createSkillNode({
+      ...upgrade,
+      x: newX,
+      y: newY
+    });
+    
+    createdNodes.set(upgrade.id, node);
+    
+    // Conecta ao nó requerido, não ao nó pai
+    createConnection(requiredNode, node);
+  }
+}
+
+function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode, createdNodesMap = null) {
+  // Increase the spacing between level nodes (was 80)
+  const levelSpacing = 120; // More space between level nodes
+  const direction = {
+    x: Math.cos(angle),
+    y: Math.sin(angle)
+  };
+  
+  let prevNode = parentNode;
+  
+  // Create a node for each level
+  for (let level = 1; level <= upgrade.maxLevel; level++) {
+    const x = startX + direction.x * (level - 1) * levelSpacing;
+    const y = startY + direction.y * (level - 1) * levelSpacing;
+    
+    // Criar um objeto de upgrade específico para este nível
+    const levelUpgrade = {
+      ...upgrade,
+      id: `${upgrade.id}-level-${level}`, // ID único para cada nível
+      originalId: upgrade.id, // Manter o ID original para referência
+      name: `${upgrade.name} ${level}`,
+      currentLevel: upgrade.level, // The overall upgrade level
+      targetLevel: level, // The specific level this node represents
+      originalMaxLevel: upgrade.maxLevel // Manter referência ao nível máximo original
+    };
+    
+    const node = createSkillNode({
+      ...levelUpgrade,
+      x,
+      y
+    });
+    
+    // Armazenar o nó no mapa se fornecido
+    if (createdNodesMap && level === 1) {
+      createdNodesMap.set(upgrade.id, node);
     }
     
-    upgradeElement.setAttribute('data-tooltip', tooltipText);
-    upgradeElement.innerHTML = `
-      <div class="upgrade-info">
-        <div><strong>${upgrade.name}</strong> <span class="upgrade-level">(Nível ${upgrade.level}/${upgrade.maxLevel})</span></div>
-        <div>${upgrade.description}</div>
-      </div>
-      <button class="rpgui-button golden" ${!canBuy ? 'disabled' : ''}>${maxedOut ? 'MAX' : `${formatNumber(price)} 🔮`}</button>
-    `;
+    // Connect to previous node
+    createConnection(prevNode, node);
+    prevNode = node;
+  }
+}
 
-    const buyButton = upgradeElement.querySelector('.rpgui-button.golden');
-    buyButton.addEventListener('click', () => {
-      if (!isOwnPlayer()) {
-        showNotification('Você só pode comprar upgrades quando for o jogador ativo!');
-        return;
+function createSkillNode(data) {
+  const { id, name, description, x, y, isCentral, isType } = data;
+  
+  const nodeElement = document.createElement('div');
+  nodeElement.className = `skill-node ${isCentral ? 'central-node' : ''}`;
+  nodeElement.style.left = `${x}px`;
+  nodeElement.style.top = `${y}px`;
+  
+  // Aplicar estilo específico para o nó central
+  if (isCentral) {
+    nodeElement.style.border = '4px solid #8b00ff';
+  }
+  
+  // Determine node status
+  let nodeStatus = 'locked';
+  let nodeIcon = '🔒';
+  
+  if (isCentral) {
+    nodeStatus = 'central';
+    nodeIcon = '🔮';
+  } else if (isType) {
+    nodeStatus = 'type';
+    nodeIcon = '📚';
+  } else {
+    const upgrade = data;
+    const canAfford = (gameState.fragments || 0) >= calculateUpgradePrice(upgrade);
+    
+    // Verificar se os requisitos foram atendidos
+    const requirementsMet = checkUpgradeRequirements(upgrade);
+    
+    // For multi-level upgrades
+    if (upgrade.targetLevel) {
+      // Check if this specific level is already purchased
+      if (upgrade.currentLevel >= upgrade.targetLevel) {
+        nodeStatus = 'purchased';
+        nodeIcon = '✅';
+      } 
+      // Check if this level is the next one to purchase (previous level is purchased)
+      else if (upgrade.currentLevel === upgrade.targetLevel - 1) {
+        if (requirementsMet) {
+          if (canAfford) {
+            nodeStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            nodeStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
+        } else {
+          nodeStatus = 'locked';
+          nodeIcon = '🔒';
+        }
       }
-      socket.emit('buyPrestigeUpgrade', upgrade.id);
-    });
-
-    upgradeElement.addEventListener('mousemove', (event) => showTooltip(event, tooltipText));
-    upgradeElement.addEventListener('mouseleave', hideTooltip);
-
-    container.appendChild(upgradeElement);
+      // Check if this is the first level and it's not purchased yet
+      else if (upgrade.targetLevel === 1) {
+        if (requirementsMet) {
+          if (canAfford) {
+            nodeStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            nodeStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
+        } else {
+          nodeStatus = 'locked';
+          nodeIcon = '🔒';
+        }
+      }
+      // All other levels should be locked until their previous level is purchased
+      else {
+        nodeStatus = 'locked';
+        nodeIcon = '🔒';
+      }
+    } 
+    // For regular upgrades
+    else {
+      if (upgrade.level > 0) {
+        nodeStatus = 'purchased';
+        nodeIcon = '✅';
+      } else if (requirementsMet) {
+        if (canAfford) {
+          nodeStatus = 'available';
+          nodeIcon = '💰';
+        } else {
+          nodeStatus = 'unlocked';
+          nodeIcon = '🔓';
+        }
+      } else {
+        nodeStatus = 'locked';
+        nodeIcon = '🔒';
+      }
+    }
+  }
+  
+  nodeElement.classList.add(nodeStatus);
+  
+  // Add node content
+  nodeElement.innerHTML = `
+    <div class="node-icon">${nodeIcon}</div>
+  `;
+  
+  // Add event listeners
+  nodeElement.addEventListener('mouseenter', (e) => {
+    showSkillTooltip(e, data);
   });
+  
+  nodeElement.addEventListener('mouseleave', () => {
+    if (skillTooltip) {
+      skillTooltip.classList.remove('visible');
+    }
+  });
+  
+  nodeElement.addEventListener('click', () => {
+    handleNodeClick(id);
+  });
+  
+  // Store node data
+  const nodeData = {
+    id,
+    element: nodeElement,
+    x,
+    y,
+    status: nodeStatus,
+    targetLevel: data.targetLevel,
+    originalMaxLevel: data.originalMaxLevel,
+    originalId: data.originalId,
+    requires: data.requires
+  };
+  
+  skillNodes.push(nodeData);
+  return nodeData;
+}
+
+// Função para verificar se os requisitos do upgrade foram atendidos
+function checkUpgradeRequirements(upgrade) {
+  // Se não houver requisitos, retorna true
+  if (!upgrade.requires && !upgrade.originalId?.requires) {
+    return true;
+  }
+  
+  // Verifica o requisito (seja do upgrade original ou do atual)
+  const requiredUpgradeId = upgrade.requires || upgrade.originalId?.requires;
+  const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredUpgradeId);
+  
+  // O requisito é atendido se o upgrade requerido existe e tem nível maior que 0
+  return requiredUpgrade && requiredUpgrade.level > 0;
+}
+
+function createConnection(fromNode, toNode) {
+  // Node size in pixels (from CSS)
+  const nodeSize = 80;
+  const nodeRadius = nodeSize / 2;
+
+  // Calculate center points of nodes
+  const fromX = fromNode.x + nodeRadius;
+  const fromY = fromNode.y + nodeRadius;
+  const toX = toNode.x + nodeRadius;
+  const toY = toNode.y + nodeRadius;
+  
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  
+  const connection = document.createElement('div');
+  connection.className = 'skill-connection';
+  
+  // Set connection status based on nodes
+  if (toNode.status === 'maxed' || toNode.status === 'purchased' || toNode.status === 'available') {
+    connection.classList.add('active');
+  } else if (toNode.status === 'unlocked') {
+    connection.classList.add('unlocked');
+  }
+  
+  // Position and rotate the connection
+  connection.style.width = `${distance}px`;
+  connection.style.left = `${fromX}px`;
+  connection.style.top = `${fromY}px`;
+  connection.style.transform = `rotate(${angle}deg)`;
+  
+  const connectionData = {
+    element: connection,
+    from: fromNode.id,
+    to: toNode.id
+  };
+  
+  skillConnections.push(connectionData);
+  return connectionData;
+}
+
+function showSkillTooltip(event, data) {
+  if (!skillTooltip) return;
+  
+  const { name, description, isCentral, isType } = data;
+  
+  let tooltipContent = `<h3>${name}</h3><p>${description}</p>`;
+  
+  if (!isCentral && !isType) {
+    const upgrade = data;
+    const price = calculateUpgradePrice(upgrade);
+    const maxedOut = upgrade.currentLevel >= upgrade.maxLevel || 
+                     (upgrade.targetLevel && upgrade.currentLevel >= upgrade.targetLevel);
+    
+    if (!maxedOut) {
+      tooltipContent += `<p class="cost">Custo: ${formatNumber(price)} 🔮</p>`;
+    }
+    
+    // Mostrar informações sobre requisitos
+    if (upgrade.requires || upgrade.originalId?.requires) {
+      const requiredId = upgrade.requires || upgrade.originalId?.requires;
+      const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredId);
+      
+      if (requiredUpgrade) {
+        const requirementMet = requiredUpgrade.level > 0;
+        const requirementStatus = requirementMet ? 
+          '<span style="color: #4CAF50;">✓ Requisito atendido</span>' : 
+          '<span style="color: #F44336;">✗ Requisito não atendido</span>';
+        
+        tooltipContent += `<p class="requirement">Requer: ${requiredUpgrade.name} ${requirementStatus}</p>`;
+      }
+    }
+    
+    // Mostrar informações sobre o efeito do upgrade
+    if (typeof upgrade.effect === 'function') {
+      let currentEffect = upgrade.effect(upgrade.currentLevel || 0);
+      let nextEffect = upgrade.effect((upgrade.currentLevel || 0) + 1);
+      
+      if (upgrade.targetLevel) {
+        currentEffect = upgrade.effect(upgrade.currentLevel || 0);
+        nextEffect = upgrade.effect(upgrade.targetLevel);
+      }
+      
+      const effectFormatted = formatEffect(upgrade.originalId || upgrade.id, nextEffect);
+      tooltipContent += `<p class="effect">Efeito: ${effectFormatted}</p>`;
+    }
+  }
+  
+  skillTooltip.innerHTML = tooltipContent;
+  
+  // Position tooltip near the mouse but within viewport
+  const tooltipRect = skillTooltip.getBoundingClientRect();
+  const containerRect = skillTreeContainer.getBoundingClientRect();
+  
+  let left = event.clientX - containerRect.left + 15;
+  let top = event.clientY - containerRect.top + 15;
+  
+  // Adjust if tooltip would go outside container
+  if (left + tooltipRect.width > containerRect.width) {
+    left = event.clientX - containerRect.left - tooltipRect.width - 15;
+  }
+  
+  if (top + tooltipRect.height > containerRect.height) {
+    top = event.clientY - containerRect.top - tooltipRect.height - 15;
+  }
+  
+  skillTooltip.style.left = `${left}px`;
+  skillTooltip.style.top = `${top}px`;
+  skillTooltip.classList.add('visible');
+}
+
+function hideSkillTooltip() {
+  if (skillTooltip) {
+    skillTooltip.classList.remove('visible');
+  }
+}
+
+function calculateUpgradePrice(upgrade) {
+  if (!upgrade) return 0;
+  
+  // Para upgrades multi-nível, usar targetLevel
+  if (upgrade.targetLevel) {
+    return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.targetLevel - 1));
+  }
+  
+  // Para upgrades regulares, calcular o preço para o próximo nível
+  return Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
+}
+
+function getUpgradeEffect(upgrade) {
+  const level = upgrade.currentLevel;
+  if (typeof upgrade.effect === 'function') {
+    return upgrade.effect(level);
+  }
+  return level;
+}
+
+function getNextUpgradeEffect(upgrade) {
+  const nextLevel = upgrade.targetLevel ? upgrade.targetLevel : upgrade.currentLevel + 1;
+  if (typeof upgrade.effect === 'function') {
+    return upgrade.effect(nextLevel);
+  }
+  return nextLevel;
+}
+
+function formatEffect(upgradeId, effect) {
+  if (upgradeId === 'fragment-multiplier') {
+    return `x${effect.toFixed(1)}`;
+  } else if (upgradeId === 'powerups-unlock') {
+    return effect ? 'Desbloqueado' : 'Bloqueado';
+  } else if (upgradeId === 'powerup-duration') {
+    return `+${((effect - 1) * 100).toFixed(0)}%`;
+  }
+  return `x${effect.toFixed(1)}`;
+}
+
+function groupUpgradesByType(upgrades) {
+  const types = {};
+  
+  upgrades.forEach(upgrade => {
+    const type = getUpgradeType(upgrade.id);
+    if (!types[type]) {
+      types[type] = [];
+    }
+    types[type].push(upgrade);
+  });
+  
+  return types;
+}
+
+function getUpgradeType(id) {
+  if (id.includes('fragment')) return 'fragment';
+  if (id.includes('powerups')) return 'powerup';
+  if (id.includes('garden')) return 'garden';
+  return null;
+}
+
+function getTypeName(type) {
+  const typeNames = {
+    'fragment': 'Fragmentos',
+    'powerup': 'Power-Ups',
+    'garden': 'Jardim'
+  };
+  
+  return typeNames[type] || '';
+}
+
+// Função para atualizar o status dos nós após uma compra
+function updateSkillTreeNodes() {
+  // Obter o jogador atual
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (!player) return;
+  
+  console.log("Atualizando nós da árvore de habilidades...");
+  
+  // Agora, atualize o status visual de cada nó
+  skillNodes.forEach(node => {
+    if (!node.element) return;
+    
+    // Pular nós centrais e de tipo
+    if (node.status === 'central' || node.status === 'type') return;
+    
+    // Use o ID original se disponível
+    const upgradeId = node.originalId || node.id;
+    const upgrade = gameState.prestigeUpgrades?.find(u => u.id === upgradeId);
+    if (!upgrade) return;
+    
+    // Determinar o novo status do nó
+    let newStatus = 'locked';
+    let nodeIcon = '🔒';
+    
+    const canAfford = (gameState.fragments || 0) >= calculateUpgradePrice(upgrade);
+    
+    // Verificar se os requisitos foram atendidos
+    const requirementsMet = checkUpgradeRequirements({ 
+      ...upgrade, 
+      originalId: node.originalId ? { requires: upgrade.requires } : null
+    });
+    
+    // Para upgrades multi-nível
+    if (node.targetLevel) {
+      // Verificar se este nível específico já foi comprado
+      if (upgrade.level >= node.targetLevel) {
+        newStatus = 'purchased';
+        nodeIcon = '✅';
+      } 
+      // Verificar se este é o próximo nível a ser comprado (nível anterior foi comprado)
+      else if (upgrade.level === node.targetLevel - 1) {
+        if (requirementsMet) {
+          if (canAfford) {
+            newStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            newStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
+        }
+      }
+      // Verificar se este é o primeiro nível e ainda não foi comprado
+      else if (node.targetLevel === 1) {
+        if (requirementsMet) {
+          if (canAfford) {
+            newStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            newStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
+        }
+      }
+      // Todos os outros níveis devem estar bloqueados até que o nível anterior seja comprado
+      else {
+        newStatus = 'locked';
+        nodeIcon = '🔒';
+      }
+    } 
+    // Para upgrades regulares
+    else {
+      if (upgrade.level > 0) {
+        newStatus = 'purchased';
+        nodeIcon = '✅';
+      } else if (requirementsMet) {
+        if (canAfford) {
+          newStatus = 'available';
+          nodeIcon = '💰';
+        } else {
+          newStatus = 'unlocked';
+          nodeIcon = '🔓';
+        }
+      }
+    }
+    
+    // Atualizar o status do nó se for diferente
+    if (node.status !== newStatus) {
+      console.log(`Atualizando nó ${node.id} de ${node.status} para ${newStatus}`);
+      node.element.classList.remove(node.status);
+      node.element.classList.add(newStatus);
+      node.status = newStatus;
+      
+      // Atualizar o ícone
+      const iconElement = node.element.querySelector('.node-icon');
+      if (iconElement) {
+        iconElement.textContent = nodeIcon;
+      }
+      
+      // Atualizar as conexões relacionadas a este nó
+      updateNodeConnections(node);
+    }
+  });
+}
+
+function updateNodeConnections(node) {
+  // Atualizar todas as conexões que têm este nó como destino
+  skillConnections.forEach(conn => {
+    if (conn.to === node.id) {
+      const connection = conn.element;
+      if (!connection) return;
+      
+      // Remover classes existentes
+      connection.classList.remove('maxed', 'active', 'unlocked');
+      
+      // Adicionar classe com base no status do nó
+      if (node.status === 'maxed' || node.status === 'purchased' || node.status === 'available') {
+        connection.classList.add('active');
+      } else if (node.status === 'unlocked') {
+        connection.classList.add('unlocked');
+      }
+    }
+  });
+}
+
+function handleNodeClick(nodeId) {
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (!player || !isOwnPlayer()) return;
+  
+  const node = skillNodes.find(n => n.id === nodeId);
+  if (!node) return;
+  
+  // Use o ID original se disponível, caso contrário use o ID do nó
+  const upgradeId = node.originalId || node.id;
+  const upgrade = gameState.prestigeUpgrades.find(u => u.id === upgradeId);
+  if (!upgrade) return;
+  
+  console.log(`Clique no nó ${nodeId}, status: ${node.status}, targetLevel: ${node.targetLevel}`);
+  
+  // Verificar se os requisitos foram atendidos
+  const requirementsMet = checkUpgradeRequirements({
+    ...upgrade,
+    originalId: node.originalId ? { requires: upgrade.requires } : null
+  });
+  
+  if (!requirementsMet) {
+    const requiredId = upgrade.requires || node.originalId?.requires;
+    const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredId);
+    if (requiredUpgrade) {
+      showNotification(`Este upgrade requer ${requiredUpgrade.name} para ser desbloqueado!`, 'info');
+    } else {
+      showNotification(`Este upgrade tem requisitos não atendidos!`, 'info');
+    }
+    return;
+  }
+  
+  // Verificar se o nó está disponível para compra
+  if (node.status !== 'available') {
+    if (node.status === 'locked') {
+      showNotification('Este upgrade está bloqueado! Complete os upgrades anteriores primeiro.', 'info');
+    } else if (node.status === 'purchased') {
+      // Verificar se atingiu o nível máximo
+      const isMaxLevel = node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel) || 
+                         (!node.targetLevel && upgrade.level >= upgrade.maxLevel);
+      
+      if (isMaxLevel) {
+        showNotification('Este upgrade já está no nível máximo!', 'info');
+      } else {
+        showNotification('Este upgrade já foi comprado!', 'info');
+      }
+    } else if (node.status === 'unlocked') {
+      showNotification('Fragmentos insuficientes para comprar este upgrade!', 'error');
+    }
+    return;
+  }
+  
+  // Para upgrades multi-nível
+  if (node.targetLevel) {
+    const targetLevel = node.targetLevel;
+    const price = calculateUpgradePrice({...upgrade, targetLevel: targetLevel});
+    
+    console.log(`Tentando comprar nível ${targetLevel} do upgrade ${upgradeId}, preço: ${price}, fragmentos: ${gameState.fragments}`);
+    
+    if (gameState.fragments >= price) {
+      socket.emit('buyPrestigeUpgrade', upgradeId, targetLevel);
+      playSound(tickSound);
+      
+      // Mostrar animação de compra
+      const nodeElement = node.element;
+      nodeElement.classList.add('purchasing');
+      setTimeout(() => {
+        nodeElement.classList.remove('purchasing');
+      }, 500);
+    } else {
+      showNotification('Fragmentos insuficientes!', 'error');
+    }
+  } else {
+    // Para upgrades regulares
+    const price = calculateUpgradePrice(upgrade);
+    
+    if (gameState.fragments >= price) {
+      socket.emit('buyPrestigeUpgrade', upgradeId);
+      playSound(tickSound);
+      
+      // Mostrar animação de compra
+      const nodeElement = node.element;
+      nodeElement.classList.add('purchasing');
+      setTimeout(() => {
+        nodeElement.classList.remove('purchasing');
+      }, 500);
+    } else {
+      showNotification('Fragmentos insuficientes!', 'error');
+    }
+  }
 }

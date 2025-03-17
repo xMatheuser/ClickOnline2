@@ -33,7 +33,7 @@
 }
 
 .garden-overlay.active {
-  display: flex;
+  display: flex !important;
 }
 
 .garden-popup {
@@ -181,7 +181,7 @@
 .seed-option .time-reduced {
   color: #4CAF50;
   font-weight: bold;
-  animation: pulse 1.5s infinite alternate;
+  animation: pulse 1.5s ease-in-out alternate;
   padding: 2px 4px;
   border-radius: 3px;
   background-color: rgba(76, 175, 80, 0.1);
@@ -352,7 +352,7 @@
 .plant-time-info .time-reduced {
   color: #4CAF50;
   font-weight: bold;
-  animation: pulse 1.5s infinite alternate;
+  animation: pulse 1.5s ease-in-out alternate;
 }
 
 .plant-time-info .time-original {
@@ -727,4 +727,35 @@ body.dark-mode .close-achievements {
   .upgrades-container {
     grid-template-columns: 1fr;
   }
+}
+
+.garden-button {
+  position: relative;
+}
+
+.garden-button.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+.garden-button.locked::after {
+  content: '🔒';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 14px;
+}
+
+.garden-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+  display: none;
 }

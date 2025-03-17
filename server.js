@@ -31,7 +31,7 @@ let gameState = {
   achievements: achievements, // This is now the array
   achievementCategories: achievementCategories, // Add categories to gameState
   powerUps: powerUps,
-  fragments: 100000,
+  fragments: 0,
   prestigeUpgrades: prestigeUpgrades,
   totalClicks: 0,
   lastAutoClickerLevel: 0,
@@ -473,45 +473,61 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const powerupsUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'powerups-unlock');
-    if (!powerupsUpgrade || powerupsUpgrade.level === 0) {
-      socket.emit('notification', 'Desbloqueie os Power-Ups através do upgrade de prestígio!');
+    if (!gameState.activePowerUp) {
       return;
     }
 
-    const availablePowerUps = Object.entries(gameState.powerUps)
-      .filter(([_, powerUp]) => !powerUp.active)
-      .map(([id, powerUp]) => ({ id, ...powerUp }));
-
-    if (availablePowerUps.length === 0) {
-      socket.emit('notification', 'Todos os power-ups estão ativos!');
+    if (gameState.activePowerUp.type === 'none') {
+      socket.emit('notification', 'Não há power-up disponível para ativar!');
       return;
     }
 
-    const randomPowerUp = availablePowerUps[Math.floor(Math.random() * availablePowerUps.length)];
-    const powerUpId = randomPowerUp.id;
-    const powerUp = gameState.powerUps[powerUpId];
+    // Se o power-up estiver disponível, ativá-lo
+    const powerUp = powerUps[gameState.activePowerUp.type];
+    if (!powerUp) {
+      socket.emit('notification', 'Power-up inválido!');
+      return;
+    }
 
-    powerUp.active = true;
-    gameState.powerUpUses += 1; // Incrementar contador de usos
-    console.log(`[Power-Up] ${player.name} ativou ${powerUp.name}`);
-    io.to(player.id).emit('powerUpActivated', {
-      name: powerUp.name,
-      description: powerUp.description,
-      duration: powerUp.duration * gameState.achievementBoosts.powerUpDuration,
-      color: powerUp.color
-    });
-    broadcastGameState();
+    // Verificar se o upgrade de duração foi comprado
+    const durationUpgrade = gameState.prestigeUpgrades.find(u => u.id === 'powerup-duration');
+    const durationMultiplier = durationUpgrade ? durationUpgrade.effect(durationUpgrade.level) : 1;
+    
+    // Aplicar o bônus de duração do achievement, se existir
+    const achievementBonus = gameState.achievementBoosts?.powerUpDuration || 0;
+    const totalDurationMultiplier = durationMultiplier * (1 + achievementBonus);
+    
+    // Calcular a duração final do power-up
+    const finalDuration = Math.floor(powerUp.duration * totalDurationMultiplier);
+
+    console.log(`[Power-Up] Ativando ${powerUp.name} por ${finalDuration / 1000} segundos (multiplicador: ${totalDurationMultiplier.toFixed(2)})`);
+
+    // Ativar o power-up
+    gameState.activePowerUps[gameState.activePowerUp.type] = {
+      active: true,
+      startTime: Date.now(),
+      endTime: Date.now() + finalDuration
+    };
+
+    // Incrementar contador de power-ups usados para achievements
+    gameState.powerUpUses = (gameState.powerUpUses || 0) + 1;
     checkAchievements();
 
-    setTimeout(() => {
-      powerUp.active = false;
-      console.log(`[Power-Up] ${powerUp.name} expirou`);
-      broadcastGameState();
-    }, powerUp.duration * gameState.achievementBoosts.powerUpDuration);
+    // Informar todos os jogadores
+    io.emit('powerUpActivated', {
+      type: gameState.activePowerUp.type,
+      name: powerUp.name,
+      description: powerUp.description,
+      duration: finalDuration,
+      color: powerUp.color
+    });
+
+    // Remover o power-up disponível
+    gameState.activePowerUp = { type: 'none' };
+    broadcastGameState();
   });
 
-  socket.on('buyPrestigeUpgrade', (upgradeId) => {
+  socket.on('buyPrestigeUpgrade', (upgradeId, targetLevel) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (!player || !isActivePlayer(socket.id, player.id)) {
       socket.emit('notification', 'Você só pode comprar upgrades quando for o jogador ativo!');
@@ -523,15 +539,43 @@ io.on('connection', (socket) => {
       socket.emit('notification', 'Upgrade não encontrado!');
       return;
     }
+    
+    // Verificar se o upgrade tem requisitos e se eles foram atendidos
+    if (upgrade.requires) {
+      const requiredUpgrade = gameState.prestigeUpgrades.find(u => u.id === upgrade.requires);
+      if (!requiredUpgrade || requiredUpgrade.level === 0) {
+        socket.emit('notification', `Este upgrade requer ${requiredUpgrade?.name || 'outro upgrade'} para ser desbloqueado!`);
+        return;
+      }
+    }
 
-    let price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, upgrade.level));
-    if (gameState.fragments >= price && upgrade.level < upgrade.maxLevel) {
+    // If targetLevel is provided, ensure we're buying the correct level
+    const targetLevelToBuy = targetLevel || upgrade.level + 1;
+    
+    // Ensure we're not skipping levels
+    if (targetLevel && targetLevel > upgrade.level + 1) {
+      socket.emit('notification', 'Você precisa comprar os níveis anteriores primeiro!');
+      return;
+    }
+    
+    // Ensure we're not exceeding max level
+    if (targetLevelToBuy > upgrade.maxLevel) {
+      socket.emit('notification', `${upgrade.name} já está no nível máximo!`);
+      return;
+    }
+
+    let price = Math.ceil(upgrade.basePrice * Math.pow(upgrade.priceIncrease, targetLevelToBuy - 1));
+    if (gameState.fragments >= price) {
       gameState.fragments -= price;
-      upgrade.level++;
+      upgrade.level = targetLevelToBuy;
+      
+      // Emitir evento específico para atualizar a árvore de habilidades
+      io.emit('buyPrestigeUpgrade', { id: upgrade.id, level: upgrade.level });
+      
       broadcastGameState();
       socket.emit('notification', `Upgrade ${upgrade.name} comprado! Agora é nível ${upgrade.level}`);
     } else {
-      socket.emit('notification', gameState.fragments < price ? `Fragmentos insuficientes!` : `${upgrade.name} já está no nível máximo!`);
+      socket.emit('notification', `Fragmentos insuficientes!`);
     }
   });
 
