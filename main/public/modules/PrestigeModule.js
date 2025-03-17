@@ -577,8 +577,9 @@ function createSkillNode(data) {
         nodeStatus = 'available';
         nodeIcon = '💰';
       } else {
-        nodeStatus = 'locked';
-        nodeIcon = '🔒';
+        // Verificar se o upgrade está disponível mas o jogador não tem fragmentos suficientes
+        nodeStatus = 'unlocked';
+        nodeIcon = '🔓';
       }
     }
   }
@@ -856,8 +857,9 @@ function updateSkillTreeNodes() {
         newStatus = 'available';
         nodeIcon = '💰';
       } else {
-        newStatus = 'locked';
-        nodeIcon = '🔒';
+        // Verificar se o upgrade está disponível mas o jogador não tem fragmentos suficientes
+        newStatus = 'unlocked';
+        nodeIcon = '🔓';
       }
     }
     
