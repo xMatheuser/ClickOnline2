@@ -510,13 +510,18 @@ function createSkillNode(data) {
   nodeElement.style.left = `${x}px`;
   nodeElement.style.top = `${y}px`;
   
+  // Aplicar estilo específico para o nó central
+  if (isCentral) {
+    nodeElement.style.border = '4px solid #8b00ff';
+  }
+  
   // Determine node status
   let nodeStatus = 'locked';
   let nodeIcon = '🔒';
   
   if (isCentral) {
     nodeStatus = 'central';
-    nodeIcon = '⭐';
+    nodeIcon = '🔮';
   } else if (isType) {
     nodeStatus = 'type';
     nodeIcon = '📚';
