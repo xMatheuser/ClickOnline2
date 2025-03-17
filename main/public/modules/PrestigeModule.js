@@ -1,6 +1,7 @@
 import { socket, gameState, isOwnPlayer } from './CoreModule.js';
 import { showNotification } from './UIModule.js';
 import { formatNumber } from './UtilsModule.js';
+import { playSound, tickSound } from './AudioModule.js';
 
 const prestigeOverlay = document.getElementById('prestige-overlay');
 const openPrestigeBtn = document.getElementById('open-prestige');
@@ -938,7 +939,7 @@ function handleNodeClick(nodeId) {
     
     if (gameState.fragments >= price) {
       socket.emit('buyPrestigeUpgrade', upgradeId, targetLevel);
-      playSound('upgrade');
+      playSound(tickSound);
       
       // Mostrar animação de compra
       const nodeElement = node.element;
@@ -955,7 +956,7 @@ function handleNodeClick(nodeId) {
     
     if (gameState.fragments >= price) {
       socket.emit('buyPrestigeUpgrade', upgradeId);
-      playSound('upgrade');
+      playSound(tickSound);
       
       // Mostrar animação de compra
       const nodeElement = node.element;
