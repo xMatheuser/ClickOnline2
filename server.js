@@ -543,6 +543,10 @@ io.on('connection', (socket) => {
     if (gameState.fragments >= price) {
       gameState.fragments -= price;
       upgrade.level = targetLevelToBuy;
+      
+      // Emitir evento específico para atualizar a árvore de habilidades
+      io.emit('buyPrestigeUpgrade', { id: upgrade.id, level: upgrade.level });
+      
       broadcastGameState();
       socket.emit('notification', `Upgrade ${upgrade.name} comprado! Agora é nível ${upgrade.level}`);
     } else {

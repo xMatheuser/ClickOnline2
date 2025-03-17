@@ -418,4 +418,26 @@ body.dark-mode .skill-tooltip h3 {
     font-size: 12px;
     margin: 3px 0;
   }
+}
+
+/* Animação de compra */
+.skill-node.purchasing {
+  animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
 } 
