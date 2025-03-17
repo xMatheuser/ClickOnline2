@@ -284,6 +284,14 @@
   color: #4CAF50;
 }
 
+.skill-tooltip .requirement {
+  color: #8b00ff;
+  font-style: italic;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(139, 0, 255, 0.3);
+}
+
 .skill-tooltip .level {
   color: #64B5F6;
 }

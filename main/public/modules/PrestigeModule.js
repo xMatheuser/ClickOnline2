@@ -379,6 +379,10 @@ function renderSkillTree() {
   // Group upgrades by type for better organization
   const upgradesByType = groupUpgradesByType(gameState.prestigeUpgrades);
   
+  // Mapa para armazenar os nós criados, para referência para upgrades dependentes
+  const createdNodes = new Map();
+  createdNodes.set('central', centralNode);
+  
   // Create nodes for each upgrade type
   let angleOffset = 0;
   Object.entries(upgradesByType).forEach(([type, upgrades], typeIndex) => {
@@ -399,12 +403,18 @@ function renderSkillTree() {
         isType: true
       });
       
+      createdNodes.set(`type-${type}`, typeNode);
+      
       // Connect type node to central node
       createConnection(centralNode, typeNode);
       
-      // Create upgrade nodes around the type node
-      upgrades.forEach((upgrade, i) => {
-        const upgradeAngle = typeAngle + (i - (upgrades.length - 1) / 2) * (Math.PI / 8);
+      // First place upgrades without dependencies
+      const independentUpgrades = upgrades.filter(u => !u.requires);
+      const dependentUpgrades = upgrades.filter(u => u.requires);
+      
+      // Create upgrade nodes around the type node for independent upgrades
+      independentUpgrades.forEach((upgrade, i) => {
+        const upgradeAngle = typeAngle + (i - (independentUpgrades.length - 1) / 2) * (Math.PI / 8);
         const upgradeRadius = radius;
         
         const x = Math.cos(upgradeAngle) * upgradeRadius;
@@ -412,7 +422,7 @@ function renderSkillTree() {
         
         // For multi-level upgrades, create multiple nodes in a line
         if (upgrade.maxLevel > 1) {
-          createMultiLevelNodes(upgrade, x, y, upgradeAngle, typeNode);
+          createMultiLevelNodes(upgrade, x, y, upgradeAngle, typeNode, createdNodes);
         } else {
           const node = createSkillNode({
             ...upgrade,
@@ -420,27 +430,42 @@ function renderSkillTree() {
             y
           });
           
+          createdNodes.set(upgrade.id, node);
+          
           // Connect to type node
           createConnection(typeNode, node);
         }
       });
+      
+      // Now place dependent upgrades
+      dependentUpgrades.forEach((upgrade) => {
+        positionDependentUpgrade(upgrade, typeNode, typeAngle, radius, createdNodes);
+      });
     } else if (upgrades.length === 1) {
       // If only one upgrade of this type, connect directly to central node
       const upgrade = upgrades[0];
-      const x = Math.cos(typeAngle) * radius;
-      const y = Math.sin(typeAngle) * radius;
       
-      if (upgrade.maxLevel > 1) {
-        createMultiLevelNodes(upgrade, x, y, typeAngle, centralNode);
+      // Check if this upgrade depends on another
+      if (upgrade.requires) {
+        positionDependentUpgrade(upgrade, centralNode, typeAngle, radius, createdNodes);
       } else {
-        const node = createSkillNode({
-          ...upgrade,
-          x,
-          y
-        });
+        const x = Math.cos(typeAngle) * radius;
+        const y = Math.sin(typeAngle) * radius;
         
-        // Connect to central node
-        createConnection(centralNode, node);
+        if (upgrade.maxLevel > 1) {
+          createMultiLevelNodes(upgrade, x, y, typeAngle, centralNode, createdNodes);
+        } else {
+          const node = createSkillNode({
+            ...upgrade,
+            x,
+            y
+          });
+          
+          createdNodes.set(upgrade.id, node);
+          
+          // Connect to central node
+          createConnection(centralNode, node);
+        }
       }
     }
   });
@@ -464,7 +489,65 @@ function renderSkillTree() {
   });
 }
 
-function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode) {
+function positionDependentUpgrade(upgrade, parentNode, baseAngle, baseRadius, createdNodes) {
+  // Encontra o nó do upgrade do qual este depende
+  const requiredNodeId = upgrade.requires;
+  const requiredNode = createdNodes.get(requiredNodeId);
+  
+  if (!requiredNode) {
+    console.warn(`Upgrade ${upgrade.id} depende de ${requiredNodeId}, mas o nó requerido não foi encontrado.`);
+    return;
+  }
+  
+  // Posiciona este upgrade logo após o upgrade requerido
+  const offsetAngle = 0.2; // Pequeno deslocamento para não sobrepor
+  let newX, newY, angle;
+  
+  // Se o upgrade requerido for um upgrade de múltiplos níveis, posiciona após o último nível
+  if (requiredNode.targetLevel) {
+    // Encontra o último nó do upgrade multi-nível
+    const lastLevelNodeId = `${requiredNodeId}-level-${requiredNode.originalMaxLevel || upgrade.maxLevel}`;
+    const lastLevelNodes = skillNodes.filter(n => n.originalId === requiredNodeId && n.targetLevel === requiredNode.originalMaxLevel);
+    
+    if (lastLevelNodes.length > 0) {
+      const lastLevelNode = lastLevelNodes[0];
+      // Usa o mesmo ângulo, mas um pouco mais longe
+      angle = Math.atan2(lastLevelNode.y, lastLevelNode.x);
+      const distance = Math.sqrt(lastLevelNode.x * lastLevelNode.x + lastLevelNode.y * lastLevelNode.y) + 120;
+      newX = Math.cos(angle) * distance;
+      newY = Math.sin(angle) * distance;
+    } else {
+      // Fallback se não encontrar o último nível
+      angle = Math.atan2(requiredNode.y, requiredNode.x) + offsetAngle;
+      newX = Math.cos(angle) * baseRadius;
+      newY = Math.sin(angle) * baseRadius;
+    }
+  } else {
+    // Para upgrades normais, posiciona em um ângulo próximo
+    angle = Math.atan2(requiredNode.y, requiredNode.x) + offsetAngle;
+    const distance = Math.sqrt(requiredNode.x * requiredNode.x + requiredNode.y * requiredNode.y) + 120;
+    newX = Math.cos(angle) * distance;
+    newY = Math.sin(angle) * distance;
+  }
+  
+  // Cria o nó do upgrade
+  if (upgrade.maxLevel > 1) {
+    createMultiLevelNodes(upgrade, newX, newY, angle, requiredNode, createdNodes);
+  } else {
+    const node = createSkillNode({
+      ...upgrade,
+      x: newX,
+      y: newY
+    });
+    
+    createdNodes.set(upgrade.id, node);
+    
+    // Conecta ao nó requerido, não ao nó pai
+    createConnection(requiredNode, node);
+  }
+}
+
+function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode, createdNodesMap = null) {
   // Increase the spacing between level nodes (was 80)
   const levelSpacing = 120; // More space between level nodes
   const direction = {
@@ -495,6 +578,11 @@ function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode) {
       x,
       y
     });
+    
+    // Armazenar o nó no mapa se fornecido
+    if (createdNodesMap && level === 1) {
+      createdNodesMap.set(upgrade.id, node);
+    }
     
     // Connect to previous node
     createConnection(prevNode, node);
@@ -529,37 +617,44 @@ function createSkillNode(data) {
     const upgrade = data;
     const canAfford = (gameState.fragments || 0) >= calculateUpgradePrice(upgrade);
     
+    // Verificar se os requisitos foram atendidos
+    const requirementsMet = checkUpgradeRequirements(upgrade);
+    
     // For multi-level upgrades
     if (upgrade.targetLevel) {
       // Check if this specific level is already purchased
       if (upgrade.currentLevel >= upgrade.targetLevel) {
-        // Verificar se é o último nível do upgrade
-        /*if (upgrade.targetLevel === (upgrade.originalMaxLevel || upgrade.maxLevel)) {
-          nodeStatus = 'maxed';
-          nodeIcon = '✨';
-        } else {*/
-          nodeStatus = 'purchased';
-          nodeIcon = '✅';
-        //}
+        nodeStatus = 'purchased';
+        nodeIcon = '✅';
       } 
       // Check if this level is the next one to purchase (previous level is purchased)
       else if (upgrade.currentLevel === upgrade.targetLevel - 1) {
-        if (canAfford) {
-          nodeStatus = 'available';
-          nodeIcon = '💰';
+        if (requirementsMet) {
+          if (canAfford) {
+            nodeStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            nodeStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
         } else {
-          nodeStatus = 'unlocked';
-          nodeIcon = '🔓';
+          nodeStatus = 'locked';
+          nodeIcon = '🔒';
         }
       }
       // Check if this is the first level and it's not purchased yet
       else if (upgrade.targetLevel === 1) {
-        if (canAfford) {
-          nodeStatus = 'available';
-          nodeIcon = '💰';
+        if (requirementsMet) {
+          if (canAfford) {
+            nodeStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            nodeStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
         } else {
-          nodeStatus = 'unlocked';
-          nodeIcon = '🔓';
+          nodeStatus = 'locked';
+          nodeIcon = '🔒';
         }
       }
       // All other levels should be locked until their previous level is purchased
@@ -573,13 +668,17 @@ function createSkillNode(data) {
       if (upgrade.level > 0) {
         nodeStatus = 'purchased';
         nodeIcon = '✅';
-      } else if (canAfford) {
-        nodeStatus = 'available';
-        nodeIcon = '💰';
+      } else if (requirementsMet) {
+        if (canAfford) {
+          nodeStatus = 'available';
+          nodeIcon = '💰';
+        } else {
+          nodeStatus = 'unlocked';
+          nodeIcon = '🔓';
+        }
       } else {
-        // Verificar se o upgrade está disponível mas o jogador não tem fragmentos suficientes
-        nodeStatus = 'unlocked';
-        nodeIcon = '🔓';
+        nodeStatus = 'locked';
+        nodeIcon = '🔒';
       }
     }
   }
@@ -615,11 +714,27 @@ function createSkillNode(data) {
     status: nodeStatus,
     targetLevel: data.targetLevel,
     originalMaxLevel: data.originalMaxLevel,
-    originalId: data.originalId
+    originalId: data.originalId,
+    requires: data.requires
   };
   
   skillNodes.push(nodeData);
   return nodeData;
+}
+
+// Função para verificar se os requisitos do upgrade foram atendidos
+function checkUpgradeRequirements(upgrade) {
+  // Se não houver requisitos, retorna true
+  if (!upgrade.requires && !upgrade.originalId?.requires) {
+    return true;
+  }
+  
+  // Verifica o requisito (seja do upgrade original ou do atual)
+  const requiredUpgradeId = upgrade.requires || upgrade.originalId?.requires;
+  const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredUpgradeId);
+  
+  // O requisito é atendido se o upgrade requerido existe e tem nível maior que 0
+  return requiredUpgrade && requiredUpgrade.level > 0;
 }
 
 function createConnection(fromNode, toNode) {
@@ -679,6 +794,35 @@ function showSkillTooltip(event, data) {
     
     if (!maxedOut) {
       tooltipContent += `<p class="cost">Custo: ${formatNumber(price)} 🔮</p>`;
+    }
+    
+    // Mostrar informações sobre requisitos
+    if (upgrade.requires || upgrade.originalId?.requires) {
+      const requiredId = upgrade.requires || upgrade.originalId?.requires;
+      const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredId);
+      
+      if (requiredUpgrade) {
+        const requirementMet = requiredUpgrade.level > 0;
+        const requirementStatus = requirementMet ? 
+          '<span style="color: #4CAF50;">✓ Requisito atendido</span>' : 
+          '<span style="color: #F44336;">✗ Requisito não atendido</span>';
+        
+        tooltipContent += `<p class="requirement">Requer: ${requiredUpgrade.name} ${requirementStatus}</p>`;
+      }
+    }
+    
+    // Mostrar informações sobre o efeito do upgrade
+    if (typeof upgrade.effect === 'function') {
+      let currentEffect = upgrade.effect(upgrade.currentLevel || 0);
+      let nextEffect = upgrade.effect((upgrade.currentLevel || 0) + 1);
+      
+      if (upgrade.targetLevel) {
+        currentEffect = upgrade.effect(upgrade.currentLevel || 0);
+        nextEffect = upgrade.effect(upgrade.targetLevel);
+      }
+      
+      const effectFormatted = formatEffect(upgrade.originalId || upgrade.id, nextEffect);
+      tooltipContent += `<p class="effect">Efeito: ${effectFormatted}</p>`;
     }
   }
   
@@ -744,6 +888,8 @@ function formatEffect(upgradeId, effect) {
     return `x${effect.toFixed(1)}`;
   } else if (upgradeId === 'powerups-unlock') {
     return effect ? 'Desbloqueado' : 'Bloqueado';
+  } else if (upgradeId === 'powerup-duration') {
+    return `+${((effect - 1) * 100).toFixed(0)}%`;
   }
   return `x${effect.toFixed(1)}`;
 }
@@ -804,37 +950,47 @@ function updateSkillTreeNodes() {
     
     const canAfford = (gameState.fragments || 0) >= calculateUpgradePrice(upgrade);
     
+    // Verificar se os requisitos foram atendidos
+    const requirementsMet = checkUpgradeRequirements({ 
+      ...upgrade, 
+      originalId: node.originalId ? { requires: upgrade.requires } : null
+    });
+    
     // Para upgrades multi-nível
     if (node.targetLevel) {
       // Verificar se este nível específico já foi comprado
       if (upgrade.level >= node.targetLevel) {
-        // Verificar se é o último nível do upgrade
-        /*if (node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel)) {
-          newStatus = 'maxed';
-          nodeIcon = '✨';
-        } else {*/
-          newStatus = 'purchased';
-          nodeIcon = '✅';
-        //}
+        newStatus = 'purchased';
+        nodeIcon = '✅';
       } 
       // Verificar se este é o próximo nível a ser comprado (nível anterior foi comprado)
       else if (upgrade.level === node.targetLevel - 1) {
-        if (canAfford) {
-          newStatus = 'available';
-          nodeIcon = '💰';
+        if (requirementsMet) {
+          if (canAfford) {
+            newStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            newStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
         } else {
-          newStatus = 'unlocked';
-          nodeIcon = '🔓';
+          newStatus = 'locked';
+          nodeIcon = '🔒';
         }
       }
       // Verificar se este é o primeiro nível e ainda não foi comprado
       else if (node.targetLevel === 1) {
-        if (canAfford) {
-          newStatus = 'available';
-          nodeIcon = '💰';
+        if (requirementsMet) {
+          if (canAfford) {
+            newStatus = 'available';
+            nodeIcon = '💰';
+          } else {
+            newStatus = 'unlocked';
+            nodeIcon = '🔓';
+          }
         } else {
-          newStatus = 'unlocked';
-          nodeIcon = '🔓';
+          newStatus = 'locked';
+          nodeIcon = '🔒';
         }
       }
       // Todos os outros níveis devem estar bloqueados até que o nível anterior seja comprado
@@ -845,21 +1001,20 @@ function updateSkillTreeNodes() {
     } 
     // Para upgrades regulares
     else {
-      /*const maxedOut = upgrade.level >= upgrade.maxLevel;
-      
-      if (maxedOut) {
-        newStatus = 'maxed';
-        nodeIcon = '✨';
-      } else*/ if (upgrade.level > 0) {
+      if (upgrade.level > 0) {
         newStatus = 'purchased';
         nodeIcon = '✅';
-      } else if (canAfford) {
-        newStatus = 'available';
-        nodeIcon = '💰';
+      } else if (requirementsMet) {
+        if (canAfford) {
+          newStatus = 'available';
+          nodeIcon = '💰';
+        } else {
+          newStatus = 'unlocked';
+          nodeIcon = '🔓';
+        }
       } else {
-        // Verificar se o upgrade está disponível mas o jogador não tem fragmentos suficientes
-        newStatus = 'unlocked';
-        nodeIcon = '🔓';
+        newStatus = 'locked';
+        nodeIcon = '🔒';
       }
     }
     
@@ -915,6 +1070,23 @@ function handleNodeClick(nodeId) {
   if (!upgrade) return;
   
   console.log(`Clique no nó ${nodeId}, status: ${node.status}, targetLevel: ${node.targetLevel}`);
+  
+  // Verificar se os requisitos foram atendidos
+  const requirementsMet = checkUpgradeRequirements({
+    ...upgrade,
+    originalId: node.originalId ? { requires: upgrade.requires } : null
+  });
+  
+  if (!requirementsMet) {
+    const requiredId = upgrade.requires || node.originalId?.requires;
+    const requiredUpgrade = gameState.prestigeUpgrades?.find(u => u.id === requiredId);
+    if (requiredUpgrade) {
+      showNotification(`Este upgrade requer ${requiredUpgrade.name} para ser desbloqueado!`, 'info');
+    } else {
+      showNotification(`Este upgrade tem requisitos não atendidos!`, 'info');
+    }
+    return;
+  }
   
   // Verificar se o nó está disponível para compra
   if (node.status !== 'available') {
