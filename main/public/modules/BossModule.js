@@ -33,6 +33,10 @@ function showBossFight(bossData) {
   const bossImage = document.querySelector('.boss-image');
 
   bossOverlay.classList.add('active');
+  
+  // Disparar evento para notificar que um overlay foi aberto
+  document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
+  
   startParticleEffect(bossData.particles);
   updateBossHealth(bossData.health, bossData.maxHealth);
 
@@ -133,5 +137,9 @@ function hideBossFight() {
   clearInterval(bossTimer);
   const bossOverlay = document.querySelector('.boss-overlay');
   bossOverlay.classList.remove('active');
+  
+  // Disparar evento para notificar que um overlay foi fechado
+  document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
+  
   document.querySelector('.boss-timer')?.classList.remove('danger');
 }

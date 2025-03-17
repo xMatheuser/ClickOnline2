@@ -40,7 +40,13 @@ export function initGarden() {
   socket.emit('requestGardenUpdate');
 
   openGardenButton.addEventListener('click', () => {
-    gardenOverlay.style.display = 'flex';
+    gardenOverlay.classList.add('active');
+    // Não precisamos mais definir style.display, pois o CSS já faz isso
+    // gardenOverlay.style.display = 'flex';
+    
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
+    
     updateGardenSlots();
     updateGardenResources();
     updateStoreItems();
@@ -49,7 +55,19 @@ export function initGarden() {
   });
 
   closeGardenButton.addEventListener('click', () => {
-    gardenOverlay.style.display = 'none';
+    gardenOverlay.classList.remove('active');
+    // Não precisamos mais definir style.display, pois o CSS já faz isso
+    // gardenOverlay.style.display = 'none';
+    
+    // Disparar evento para notificar que um overlay foi fechado
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
+  });
+
+  // Fechar o garden quando clicar fora do conteúdo
+  gardenOverlay.addEventListener('click', (e) => {
+    if (e.target === gardenOverlay) {
+      closeGardenButton.click();
+    }
   });
 
   initGardenGarden();

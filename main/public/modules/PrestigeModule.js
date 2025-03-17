@@ -69,6 +69,9 @@ export function initPrestige() {
     renderSkillTree();
     centerSkillTree();
     
+    // Disparar evento para notificar que um overlay foi aberto
+    document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
+    
     // Add entrance animation
     skillTreeContainer.style.opacity = '0';
     fixedPrestigeInfo.style.transform = 'translateY(50px)';
@@ -95,6 +98,9 @@ export function initPrestige() {
     setTimeout(() => {
       prestigeOverlay.classList.remove('active');
       document.body.style.overflow = ''; // Restore scrolling
+      
+      // Disparar evento para notificar que um overlay foi fechado
+      document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
       
       // Reset styles for next opening
       setTimeout(() => {

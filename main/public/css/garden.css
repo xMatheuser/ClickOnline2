@@ -33,7 +33,7 @@
 }
 
 .garden-overlay.active {
-  display: flex;
+  display: flex !important;
 }
 
 .garden-popup {
