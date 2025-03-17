@@ -481,12 +481,12 @@ function createMultiLevelNodes(upgrade, startX, startY, angle, parentNode) {
     // Criar um objeto de upgrade específico para este nível
     const levelUpgrade = {
       ...upgrade,
-      id: upgrade.id, // Manter o ID original para identificação correta
+      id: `${upgrade.id}-level-${level}`, // ID único para cada nível
+      originalId: upgrade.id, // Manter o ID original para referência
       name: `${upgrade.name} ${level}`,
-      maxLevel: 1, // Each node represents one level
       currentLevel: upgrade.level, // The overall upgrade level
       targetLevel: level, // The specific level this node represents
-      // Não definir isLevelUnlocked aqui, deixar para o createSkillNode determinar o status
+      originalMaxLevel: upgrade.maxLevel // Manter referência ao nível máximo original
     };
     
     const node = createSkillNode({
@@ -527,8 +527,14 @@ function createSkillNode(data) {
     if (upgrade.targetLevel) {
       // Check if this specific level is already purchased
       if (upgrade.currentLevel >= upgrade.targetLevel) {
-        nodeStatus = 'maxed';
-        nodeIcon = '✨';
+        // Verificar se é o último nível do upgrade
+        if (upgrade.targetLevel === (upgrade.originalMaxLevel || upgrade.maxLevel)) {
+          nodeStatus = 'maxed';
+          nodeIcon = '✨';
+        } else {
+          nodeStatus = 'purchased';
+          nodeIcon = '✅';
+        }
       } 
       // Check if this level is the next one to purchase (previous level is purchased)
       else if (upgrade.currentLevel === upgrade.targetLevel - 1) {
@@ -605,7 +611,9 @@ function createSkillNode(data) {
     x,
     y,
     status: nodeStatus,
-    targetLevel: data.targetLevel
+    targetLevel: data.targetLevel,
+    originalMaxLevel: data.originalMaxLevel,
+    originalId: data.originalId
   };
   
   skillNodes.push(nodeData);
@@ -783,7 +791,9 @@ function updateSkillTreeNodes() {
     // Pular nós centrais e de tipo
     if (node.status === 'central' || node.status === 'type') return;
     
-    const upgrade = gameState.prestigeUpgrades?.find(u => u.id === node.id);
+    // Use o ID original se disponível
+    const upgradeId = node.originalId || node.id;
+    const upgrade = gameState.prestigeUpgrades?.find(u => u.id === upgradeId);
     if (!upgrade) return;
     
     // Determinar o novo status do nó
@@ -796,8 +806,14 @@ function updateSkillTreeNodes() {
     if (node.targetLevel) {
       // Verificar se este nível específico já foi comprado
       if (upgrade.level >= node.targetLevel) {
-        newStatus = 'maxed';
-        nodeIcon = '✨';
+        // Verificar se é o último nível do upgrade
+        if (node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel)) {
+          newStatus = 'maxed';
+          nodeIcon = '✨';
+        } else {
+          newStatus = 'purchased';
+          nodeIcon = '✅';
+        }
       } 
       // Verificar se este é o próximo nível a ser comprado (nível anterior foi comprado)
       else if (upgrade.level === node.targetLevel - 1) {
@@ -892,7 +908,9 @@ function handleNodeClick(nodeId) {
   const node = skillNodes.find(n => n.id === nodeId);
   if (!node) return;
   
-  const upgrade = gameState.prestigeUpgrades.find(u => u.id === node.id);
+  // Use o ID original se disponível, caso contrário use o ID do nó
+  const upgradeId = node.originalId || node.id;
+  const upgrade = gameState.prestigeUpgrades.find(u => u.id === upgradeId);
   if (!upgrade) return;
   
   console.log(`Clique no nó ${nodeId}, status: ${node.status}, targetLevel: ${node.targetLevel}`);
@@ -916,10 +934,10 @@ function handleNodeClick(nodeId) {
     const targetLevel = node.targetLevel;
     const price = calculateUpgradePrice({...upgrade, targetLevel: targetLevel});
     
-    console.log(`Tentando comprar nível ${targetLevel} do upgrade ${upgrade.id}, preço: ${price}, fragmentos: ${gameState.fragments}`);
+    console.log(`Tentando comprar nível ${targetLevel} do upgrade ${upgradeId}, preço: ${price}, fragmentos: ${gameState.fragments}`);
     
     if (gameState.fragments >= price) {
-      socket.emit('buyPrestigeUpgrade', upgrade.id, targetLevel);
+      socket.emit('buyPrestigeUpgrade', upgradeId, targetLevel);
       playSound('upgrade');
       
       // Mostrar animação de compra
@@ -936,7 +954,7 @@ function handleNodeClick(nodeId) {
     const price = calculateUpgradePrice(upgrade);
     
     if (gameState.fragments >= price) {
-      socket.emit('buyPrestigeUpgrade', upgrade.id);
+      socket.emit('buyPrestigeUpgrade', upgradeId);
       playSound('upgrade');
       
       // Mostrar animação de compra
