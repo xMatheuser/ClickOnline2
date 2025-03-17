@@ -529,13 +529,13 @@ function createSkillNode(data) {
       // Check if this specific level is already purchased
       if (upgrade.currentLevel >= upgrade.targetLevel) {
         // Verificar se é o último nível do upgrade
-        if (upgrade.targetLevel === (upgrade.originalMaxLevel || upgrade.maxLevel)) {
+        /*if (upgrade.targetLevel === (upgrade.originalMaxLevel || upgrade.maxLevel)) {
           nodeStatus = 'maxed';
           nodeIcon = '✨';
-        } else {
+        } else {*/
           nodeStatus = 'purchased';
           nodeIcon = '✅';
-        }
+        //}
       } 
       // Check if this level is the next one to purchase (previous level is purchased)
       else if (upgrade.currentLevel === upgrade.targetLevel - 1) {
@@ -565,12 +565,7 @@ function createSkillNode(data) {
     } 
     // For regular upgrades
     else {
-      const maxedOut = upgrade.level >= upgrade.maxLevel;
-      
-      if (maxedOut) {
-        nodeStatus = 'maxed';
-        nodeIcon = '✨';
-      } else if (upgrade.level > 0) {
+      if (upgrade.level > 0) {
         nodeStatus = 'purchased';
         nodeIcon = '✅';
       } else if (canAfford) {
@@ -641,10 +636,10 @@ function createConnection(fromNode, toNode) {
   connection.className = 'skill-connection';
   
   // Set connection status based on nodes
-  if (toNode.status === 'maxed') {
-    connection.classList.add('maxed');
-  } else if (toNode.status === 'purchased' || toNode.status === 'available') {
+  if (toNode.status === 'maxed' || toNode.status === 'purchased' || toNode.status === 'available') {
     connection.classList.add('active');
+  } else if (toNode.status === 'unlocked') {
+    connection.classList.add('unlocked');
   }
   
   // Position and rotate the connection
@@ -808,13 +803,13 @@ function updateSkillTreeNodes() {
       // Verificar se este nível específico já foi comprado
       if (upgrade.level >= node.targetLevel) {
         // Verificar se é o último nível do upgrade
-        if (node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel)) {
+        /*if (node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel)) {
           newStatus = 'maxed';
           nodeIcon = '✨';
-        } else {
+        } else {*/
           newStatus = 'purchased';
           nodeIcon = '✅';
-        }
+        //}
       } 
       // Verificar se este é o próximo nível a ser comprado (nível anterior foi comprado)
       else if (upgrade.level === node.targetLevel - 1) {
@@ -844,12 +839,12 @@ function updateSkillTreeNodes() {
     } 
     // Para upgrades regulares
     else {
-      const maxedOut = upgrade.level >= upgrade.maxLevel;
+      /*const maxedOut = upgrade.level >= upgrade.maxLevel;
       
       if (maxedOut) {
         newStatus = 'maxed';
         nodeIcon = '✨';
-      } else if (upgrade.level > 0) {
+      } else*/ if (upgrade.level > 0) {
         newStatus = 'purchased';
         nodeIcon = '✅';
       } else if (canAfford) {
@@ -891,9 +886,7 @@ function updateNodeConnections(node) {
       connection.classList.remove('maxed', 'active', 'unlocked');
       
       // Adicionar classe com base no status do nó
-      if (node.status === 'maxed') {
-        connection.classList.add('maxed');
-      } else if (node.status === 'purchased' || node.status === 'available') {
+      if (node.status === 'maxed' || node.status === 'purchased' || node.status === 'available') {
         connection.classList.add('active');
       } else if (node.status === 'unlocked') {
         connection.classList.add('unlocked');
@@ -920,10 +913,16 @@ function handleNodeClick(nodeId) {
   if (node.status !== 'available') {
     if (node.status === 'locked') {
       showNotification('Este upgrade está bloqueado! Complete os upgrades anteriores primeiro.', 'info');
-    } else if (node.status === 'maxed') {
-      showNotification('Este upgrade já está no nível máximo!', 'info');
     } else if (node.status === 'purchased') {
-      showNotification('Este upgrade já foi comprado!', 'info');
+      // Verificar se atingiu o nível máximo
+      const isMaxLevel = node.targetLevel === (node.originalMaxLevel || upgrade.maxLevel) || 
+                         (!node.targetLevel && upgrade.level >= upgrade.maxLevel);
+      
+      if (isMaxLevel) {
+        showNotification('Este upgrade já está no nível máximo!', 'info');
+      } else {
+        showNotification('Este upgrade já foi comprado!', 'info');
+      }
     } else if (node.status === 'unlocked') {
       showNotification('Fragmentos insuficientes para comprar este upgrade!', 'error');
     }

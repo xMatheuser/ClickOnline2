@@ -181,13 +181,19 @@
   animation: pulse 2s infinite;
 }
 
+.skill-node.unlocked {
+  border-color: rgba(139, 0, 255, 0.5);
+  border-style: dashed;
+}
+
 .skill-node.maxed {
   border-color: gold;
   background: linear-gradient(135deg, #fff, #fffbe0);
 }
 
 .skill-node.purchased {
-  border-color: #4CAF50;
+  border-color: #8b00ff;
+  background: linear-gradient(135deg, #fff, #f8f0ff);
 }
 
 .skill-node-icon {
@@ -224,6 +230,10 @@
 
 .skill-connection.maxed {
   background: gold;
+}
+
+.skill-connection.unlocked {
+  background: rgba(139, 0, 255, 0.5);
 }
 
 /* Central Node */
@@ -319,6 +329,20 @@ body.dark-mode .skill-node {
 body.dark-mode .skill-node.locked {
   background: #2a2a2a;
   border-color: #444;
+}
+
+body.dark-mode .skill-node.available {
+  border-color: #a855ff;
+}
+
+body.dark-mode .skill-node.purchased {
+  border-color: #8b00ff;
+  background: linear-gradient(135deg, #333, #38244a);
+}
+
+body.dark-mode .skill-node.unlocked {
+  border-color: rgba(168, 85, 255, 0.5);
+  border-style: dashed;
 }
 
 body.dark-mode .skill-connection {
