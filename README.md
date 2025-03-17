@@ -124,14 +124,11 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 
 ## 🎯 Future Development
 - [ ] New boss types
-- [ ] Additional garden features
-- [ ] More achievement categories
+- [ ] Additional garden seeds
+- [ ] More achievement
 - [ ] Extended skill tree
-- [ ] Social features
-- [ ] Trading system
-- [ ] Daily challenges
-- [ ] Seasonal events
-
+- [ ] Improve all game balance
+ 
 ## 🤝 Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
