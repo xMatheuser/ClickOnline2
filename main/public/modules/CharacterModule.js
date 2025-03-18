@@ -110,8 +110,21 @@ export function initCharacterSelection() {
 
   // Toggle inventory expansion
   inventoryToggle.addEventListener('click', () => {
+    // Add rotation animation
+    inventoryToggle.classList.remove('rotate-animation');
+    void inventoryToggle.offsetWidth; // Trigger reflow to restart animation
+    inventoryToggle.classList.add('rotate-animation');
+    
     const isExpanded = inventoryGrid.classList.toggle('expanded');
     inventoryToggle.textContent = isExpanded ? '▲' : '▼';
+    
+    // When collapsed, remove padding immediately
+    if (!isExpanded) {
+      inventoryGrid.style.padding = '0';
+    } else {
+      // When expanded, reset any inline padding
+      inventoryGrid.style.padding = '';
+    }
   });
 
   // Initialize with inventory slots
@@ -364,7 +377,15 @@ function renderInventorySlots(count) {
     const slot = document.createElement('div');
     slot.className = 'inventory-slot';
     slot.setAttribute('data-inventory-slot', i);
-    slot.innerHTML = '<span class="empty-slot"></span>';
+    
+    // Create a more visually appealing empty slot indicator
+    const emptySlot = document.createElement('span');
+    emptySlot.className = 'empty-slot';
+    slot.appendChild(emptySlot);
+    
+    // Add tooltip showing slot number
+    slot.setAttribute('title', `Slot ${i+1}`);
+    
     inventoryGrid.appendChild(slot);
   }
 }
