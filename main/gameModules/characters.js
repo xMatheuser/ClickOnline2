@@ -11,9 +11,8 @@ const CHARACTER_TYPES = {
       agility: 2
     },
     bonuses: {
-      clickPower: 1.25, // 25% mais força por clique
+      clickPower: 1.3, // 30% mais força por clique
       autoClicker: 0.9, // 10% menos eficiente em auto-clickers
-      criticalChance: 0.1 // 10% de chance de crítico
     }
   },
   archer: {
@@ -28,8 +27,7 @@ const CHARACTER_TYPES = {
     },
     bonuses: {
       clickPower: 1.0, // Força normal por clique
-      autoClicker: 1.2, // 20% mais eficiente em auto-clickers
-      doubleAttackChance: 0.15 // 15% de chance de ataque duplo
+      autoClicker: 1.0, // Eficiencia normal em auto-clickers
     }
   },
   mage: {
@@ -44,8 +42,7 @@ const CHARACTER_TYPES = {
     },
     bonuses: {
       clickPower: 0.9, // 10% menos força por clique
-      autoClicker: 1.5, // 50% mais eficiente em auto-clickers
-      aoeChance: 0.1 // 10% de chance de dano em área
+      autoClicker: 1.3, // 30% mais eficiente em auto-clickers
     }
   }
 };
