@@ -145,8 +145,8 @@ export function initCharacterSelection() {
         player.characterType = data.characterType;
         player.characterBonuses = characterTypes[data.characterType].bonuses;
         
-        // Atualizar a visualização para mostrar personagens dos outros jogadores
-        updateOtherPlayersCharacters();
+        // Renderiza toda a tela de seleção para garantir que as opções sejam atualizadas
+        renderCharacterSelection();
       }
     }
   });
@@ -183,12 +183,6 @@ function renderCharacterSelection() {
       card.style.display = 'flex';
       card.style.opacity = '1';
       card.classList.remove('selected');
-
-      // Add click event to select character
-      card.addEventListener('click', () => {
-        const characterType = card.getAttribute('data-character-type');
-        selectCharacter(characterType);
-      });
     });
     
     // Restaura a exibição da seção de opções de personagens
@@ -199,11 +193,40 @@ function renderCharacterSelection() {
     }
   }
 
+  // Adicionar eventos de clique aos cards APÓS atualizar a exibição
+  // para garantir que todos os cards disponíveis tenham o evento
+  addClickEventsToCards();
+
   // Update Select button state
   updateSelectButtonState();
   
   // Atualiza a exibição dos personagens dos outros jogadores
   updateOtherPlayersCharacters();
+}
+
+// Função separada para adicionar eventos de clique aos cards
+function addClickEventsToCards() {
+  // Remover eventos antigos primeiro para evitar duplicação
+  characterCards.forEach(card => {
+    const newCard = card.cloneNode(true);
+    if (card.parentNode) {
+      card.parentNode.replaceChild(newCard, card);
+    }
+  });
+  
+  // Buscar os cards novamente após substituição
+  characterCards = document.querySelectorAll('.character-card');
+  
+  // Adicionar eventos somente aos cards não desabilitados
+  characterCards.forEach(card => {
+    // Não adicionar evento se já estiver com a classe disabled
+    if (!card.classList.contains('disabled')) {
+      card.addEventListener('click', () => {
+        const characterType = card.getAttribute('data-character-type');
+        selectCharacter(characterType);
+      });
+    }
+  });
 }
 
 function selectCharacter(characterType) {
@@ -344,6 +367,10 @@ function updateOtherPlayersCharacters() {
     }
   });
   
+  // Lista de todos os tipos de personagens para verificar quais ainda estão disponíveis
+  const allCharacterTypes = Object.keys(characterTypes);
+  const availableCharacterTypes = allCharacterTypes.filter(type => !selectedCharacters[type]);
+  
   // Agora, vamos atualizar a interface para cada jogador
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
@@ -357,15 +384,31 @@ function updateOtherPlayersCharacters() {
     if (totalPlayers > 0) {
       // Sempre mostrar em grid, independente se o jogador já escolheu ou não
       characterLayout.style.display = 'grid';
-      characterLayout.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
-      characterLayout.style.gap = '20px';
-      characterLayout.style.maxWidth = 'none';
+      
+      // Se houver apenas 1 personagem selecionado, centralize-o
+      if (totalPlayers === 1) {
+        characterLayout.style.gridTemplateColumns = '1fr';
+        characterLayout.style.maxWidth = '400px';
+        characterLayout.style.margin = '0 auto';
+      } else {
+        // Caso contrário, mostre vários personagens em layout de grade
+        characterLayout.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+        characterLayout.style.gap = '20px';
+        characterLayout.style.maxWidth = 'none';
+      }
       
       // Se o jogador não escolheu um personagem, esconder os cards
       if (selectedCharacterType) {
         const characterOptions = document.querySelector('.character-options');
         if (characterOptions) {
           characterOptions.classList.add('hidden');
+        }
+      } else {
+        // Garantir que as opções estejam visíveis quando o jogador não tem personagem
+        const characterOptions = document.querySelector('.character-options');
+        if (characterOptions) {
+          characterOptions.classList.remove('hidden');
+          characterOptions.style.display = 'flex';
         }
       }
     }
@@ -393,7 +436,8 @@ function updateOtherPlayersCharacters() {
         
         // Destacar se é o jogador atual
         const isCurrentPlayer = playerId === socket.id;
-        playerLabel.textContent = isCurrentPlayer ? 'Seu personagem' : `Personagem de ${player.name}`;
+        const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
+        playerLabel.textContent = isCurrentPlayer ? 'SEU PERSONAGEM' : `PERSONAGEM DE ${playerNumber}`;
         playerLabel.classList.toggle('current-player', isCurrentPlayer);
       } else if (totalPlayers === 0) {
         // Nenhum personagem selecionado, mostrar todos os containers
@@ -406,36 +450,53 @@ function updateOtherPlayersCharacters() {
     });
   }
   
-  // Se não tem personagem selecionado, desabilita os cards já escolhidos por outros
+  // Atualizar a disponibilidade de todos os cards de personagens
   if (!selectedCharacterType) {
+    // Limpar primeiro todos os cards
+    characterCards.forEach(card => {
+      // Resetar o estado visual de todos os cards
+      card.style.display = 'none'; // Inicialmente escondido
+      card.classList.remove('disabled');
+    });
+      
+    // Primeiro, destacar claramente quais personagens ainda estão disponíveis
+    availableCharacterTypes.forEach(availableType => {
+      const availableCard = Array.from(characterCards).find(card => 
+        card.getAttribute('data-character-type') === availableType
+      );
+        
+      if (availableCard) {
+        // Este personagem está disponível para seleção
+        availableCard.style.display = 'flex';
+        availableCard.style.opacity = '1';
+        availableCard.style.pointerEvents = 'auto';
+        availableCard.style.cursor = 'pointer';
+        
+        // Adicionar um destaque visual para personagens disponíveis
+        availableCard.classList.add('available');
+      }
+    });
+      
+    // Depois, lidar com os personagens já selecionados
     characterCards.forEach(card => {
       const cardType = card.getAttribute('data-character-type');
-      
+        
       if (selectedCharacters[cardType] && selectedCharacters[cardType] !== socket.id) {
         // Este personagem já foi escolhido por outro jogador
         card.classList.add('disabled');
         card.style.opacity = '0.5';
         card.style.pointerEvents = 'none';
-        
+        card.style.display = 'flex'; // Mostrar, mas desativado
+          
         // Adicionar indicação visual de que está selecionado por outro jogador
         const playerInfo = document.createElement('div');
         playerInfo.className = 'other-player-selection';
-        
-        const otherPlayer = gameState.players.find(p => p.id === selectedCharacters[cardType]);
-        playerInfo.textContent = otherPlayer ? `Selecionado por ${otherPlayer.name}` : 'Já selecionado';
-        
+          
+        const playerNumber = gameState.players.findIndex(p => p.id === selectedCharacters[cardType]) + 1;
+        playerInfo.textContent = `Selecionado por ${playerNumber}`;
+          
         if (!card.querySelector('.other-player-selection')) {
           card.appendChild(playerInfo);
-        }
-      } else if (!selectedCharacters[cardType]) {
-        // Este personagem está disponível
-        card.classList.remove('disabled');
-        card.style.opacity = '1';
-        card.style.pointerEvents = 'auto';
-        
-        const playerInfo = card.querySelector('.other-player-selection');
-        if (playerInfo) {
-          playerInfo.remove();
         }
       }
     });
