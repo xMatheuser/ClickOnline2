@@ -90,6 +90,13 @@ function handleBossResult(result) {
       message += `\nRaridade: <span style="color:${rarity.color}">${rarity.name}</span>`;
       
       console.log(`[EQUIPMENT DROP] ${result.killedBy} recebeu: ${result.equipmentDrop.name} (${rarity.name})`);
+      
+      // Disparar um evento para notificar que um item foi obtido
+      document.dispatchEvent(new CustomEvent('itemDropped', { 
+        detail: {
+          item: result.equipmentDrop
+        }
+      }));
     }
     
     showNotification(message, true);

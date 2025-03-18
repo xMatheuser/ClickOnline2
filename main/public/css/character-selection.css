@@ -470,6 +470,47 @@
   }
 }
 
+/* Animation for new items */
+@keyframes newItemGlow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 5px currentColor;
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px currentColor;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 5px currentColor;
+  }
+}
+
+.new-item {
+  position: relative;
+  z-index: 10;
+}
+
+.new-item::after {
+  content: 'Novo!';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: #ffca28;
+  color: #000;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 6px;
+  border-radius: 10px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
 /* Responsive adjustments */
 @media (max-width: 1200px) {
   .character-layout {

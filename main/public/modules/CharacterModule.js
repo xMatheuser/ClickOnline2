@@ -64,6 +64,9 @@ export function initCharacterSelection() {
     
     renderCharacterSelection();
     
+    // Atualizar o inventário sempre que a tela de personagem for aberta
+    renderInventorySlots();
+    
     // Update button text based on current state
     updateSelectButtonText();
     
@@ -192,6 +195,14 @@ export function initCharacterSelection() {
       if (characterSelectionOverlay.classList.contains('active')) {
         renderInventorySlots();
       }
+    }
+  });
+  
+  // Adicionar evento para quando um item for dropado (evento local)
+  document.addEventListener('itemDropped', () => {
+    // Se a tela de personagem estiver aberta, atualizar imediatamente
+    if (characterSelectionOverlay.classList.contains('active')) {
+      renderInventorySlots();
     }
   });
 }
@@ -374,6 +385,12 @@ function renderInventorySlots() {
     return;
   }
   
+  // Find newly added items (added in the last 5 seconds)
+  const now = Date.now();
+  const recentlyAdded = player.inventory
+    .filter(item => item.dateObtained && (now - item.dateObtained < 5000))
+    .map(item => item.id);
+  
   // Render inventory items
   player.inventory.forEach((item, index) => {
     const slot = document.createElement('div');
@@ -392,6 +409,13 @@ function renderInventorySlots() {
     const borderColor = rarityColors[item.rarity] || '#d4d4d4';
     slot.style.borderColor = borderColor;
     slot.style.boxShadow = `0 0 5px ${borderColor}`;
+    
+    // Highlight new items
+    if (recentlyAdded.includes(item.id)) {
+      slot.classList.add('new-item');
+      // Add animation to highlight new items
+      slot.style.animation = 'newItemGlow 2s ease-in-out infinite';
+    }
     
     // Add item icon and styling
     const itemIcon = document.createElement('div');
@@ -864,4 +888,7 @@ function equipItem(item) {
   
   // Update the tooltips
   addTooltipsToSlots();
-} 
+}
+
+// Export the renderInventorySlots function so it can be called from other modules
+export { renderInventorySlots }; 
