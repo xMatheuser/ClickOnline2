@@ -115,7 +115,7 @@ export function initCharacterSelection() {
   });
 
   // Initialize with inventory slots
-  renderInventorySlots(20);
+  renderInventorySlots(5);
 
   // Character selection button
   selectCharacterButton.addEventListener('click', () => {
