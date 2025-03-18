@@ -116,6 +116,10 @@ export function initCharacterSelection() {
 
   // Initialize with inventory slots
   renderInventorySlots(5);
+  
+  // Make inventory expanded by default
+  inventoryGrid.classList.add('expanded');
+  inventoryToggle.textContent = '▲';
 
   // Character selection button
   selectCharacterButton.addEventListener('click', () => {
