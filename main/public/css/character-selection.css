@@ -45,6 +45,12 @@
   color: #fff;
 }
 
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .close-character-selection {
   background: none;
   border: none;
@@ -52,6 +58,7 @@
   font-size: 28px;
   cursor: pointer;
   transition: color 0.2s;
+  padding: 0 5px;
 }
 
 .close-character-selection:hover {
@@ -307,12 +314,12 @@
 }
 
 .character-select-button {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
 }

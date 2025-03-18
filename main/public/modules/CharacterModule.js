@@ -45,7 +45,7 @@ export const characterTypes = {
   },
   mage: {
     name: 'Mago',
-    icon: '🔮',
+    icon: '🪄',
     description: 'Especialista em magias, o Mago tem alto poder mágico e conhecimento arcano.',
     stats: {
       attack: 1,
