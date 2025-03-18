@@ -9,57 +9,17 @@ export const selectCharacterButton = document.getElementById('select-character-b
 export const inventoryToggle = document.getElementById('inventory-toggle');
 export const inventoryGrid = document.getElementById('inventory-grid');
 
-// Character data
-export const characterTypes = {
-  warrior: {
-    name: 'Guerreiro',
-    icon: '⚔️',
-    description: 'Especialista em combate corpo a corpo, o Guerreiro tem alto poder de ataque.',
-    stats: {
-      attack: 3,
-      defense: 2,
-      magic: 1,
-      agility: 2
-    },
-    bonuses: {
-      clickPower: 1.25, // 25% mais força por clique
-      autoClicker: 0.9, // 10% menos eficiente em auto-clickers
-      criticalChance: 0.1 // 10% de chance de crítico
-    }
-  },
-  archer: {
-    name: 'Arqueiro',
-    icon: '🏹',
-    description: 'Especialista em ataques à distância, o Arqueiro tem alta precisão e velocidade.',
-    stats: {
-      attack: 2,
-      defense: 1,
-      magic: 2,
-      agility: 3
-    },
-    bonuses: {
-      clickPower: 1.0, // Força normal por clique
-      autoClicker: 1.2, // 20% mais eficiente em auto-clickers
-      doubleAttackChance: 0.15 // 15% de chance de ataque duplo
-    }
-  },
-  mage: {
-    name: 'Mago',
-    icon: '🪄',
-    description: 'Especialista em magias, o Mago tem alto poder mágico e conhecimento arcano.',
-    stats: {
-      attack: 1,
-      defense: 1,
-      magic: 3,
-      agility: 2
-    },
-    bonuses: {
-      clickPower: 0.9, // 10% menos força por clique
-      autoClicker: 1.5, // 50% mais eficiente em auto-clickers
-      doubleAttackChance: 0.3 // 30% de chance de ataque duplo
-    }
-  }
-};
+// Character types now come from the server via gameState
+// We'll provide a function to access them
+function getCharacterTypes() {
+  return gameState.characterTypes || {};
+}
+
+// Helper to get a specific character type
+function getCharacterType(type) {
+  const types = getCharacterTypes();
+  return types[type] || null;
+}
 
 // Current selected character
 let selectedCharacterType = null;
@@ -69,7 +29,7 @@ let characterContainers;
 export function initCharacterSelection() {
   // Não carrega mais do localStorage - apenas verifica no gameState
   const player = gameState.players?.find(p => p.id === socket.id);
-  if (player && player.characterType && characterTypes[player.characterType]) {
+  if (player && player.characterType && getCharacterType(player.characterType)) {
     selectedCharacterType = player.characterType;
   }
 
@@ -78,6 +38,14 @@ export function initCharacterSelection() {
   
   // Update stat labels to abbreviations
   updateStatLabels();
+  
+  // Listen for character types updates from server
+  document.addEventListener('characterTypesUpdated', () => {
+    // Re-render selection if overlay is active
+    if (characterSelectionOverlay.classList.contains('active')) {
+      renderCharacterSelection();
+    }
+  });
 
   // Add "Select Character" button event
   openCharacterSelectionBtn.addEventListener('click', () => {
@@ -88,6 +56,11 @@ export function initCharacterSelection() {
 
     // Solicita atualização dos personagens selecionados ao servidor
     socket.emit('requestCharacterUpdate');
+    
+    // Solicitar tipos de personagem se ainda não tivermos
+    if (!gameState.characterTypes) {
+      socket.emit('requestCharacterTypes');
+    }
     
     renderCharacterSelection();
     
@@ -170,7 +143,8 @@ export function initCharacterSelection() {
       }
       
       // Show notification
-      showNotification(`Personagem ${characterTypes[selectedCharacterType].name} selecionado!`, 'success');
+      const characterName = getCharacterType(selectedCharacterType)?.name || selectedCharacterType;
+      showNotification(`Personagem ${characterName} selecionado!`, 'success');
 
       // Update button text
       updateSelectButtonText();
@@ -181,20 +155,21 @@ export function initCharacterSelection() {
     }
   });
 
-  // Apply character bonuses if a character is already selected
-  applyCharacterBonuses();
-  
   // Listen for character updates from server
   socket.on('playerCharacterUpdate', (data) => {
-    if (data.playerId && data.characterType) {
+    if (data.playerId && data.characterType !== undefined) {
       const player = gameState.players.find(p => p.id === data.playerId);
       if (player) {
         player.characterType = data.characterType;
-        player.characterBonuses = characterTypes[data.characterType].bonuses;
         
         // Se for o jogador atual, atualiza a variável local
         if (data.playerId === socket.id) {
           selectedCharacterType = data.characterType;
+          
+          // Solicitar tipos de personagem se ainda não tivermos e recebemos um tipo de personagem
+          if (data.characterType && !gameState.characterTypes) {
+            socket.emit('requestCharacterTypes');
+          }
         }
         
         // Renderiza toda a tela de seleção para garantir que as opções sejam atualizadas
@@ -352,14 +327,12 @@ function saveSelectedCharacter(characterType) {
   // Não salva mais no localStorage
   // selectedCharacterType já está atualizado
   
-  // Update the player's character type in the game state
-  if (gameState.player) {
-    gameState.player.characterType = characterType;
-    gameState.player.characterBonuses = characterTypes[characterType].bonuses;
+  // Emit update to server 
+  if (socket && isOwnPlayer()) {
+    socket.emit('updatePlayerCharacter', {
+      characterType: characterType
+    });
   }
-
-  // Apply character bonuses
-  applyCharacterBonuses();
   
   // Show character layout
   const characterLayout = document.querySelector('.character-layout');
@@ -367,33 +340,8 @@ function saveSelectedCharacter(characterType) {
     characterLayout.classList.add('visible');
   }
   
-  // Emit update to server if it's the player's own character
-  if (socket && isOwnPlayer()) {
-    socket.emit('updatePlayerCharacter', {
-      characterType: characterType
-    });
-  }
-  
   // Atualizar a exibição para mostrar os personagens dos outros jogadores
   updateOtherPlayersCharacters();
-}
-
-function applyCharacterBonuses() {
-  if (!selectedCharacterType || !characterTypes[selectedCharacterType]) return;
-  
-  // Apply character bonuses to game state
-  const player = gameState.players.find(p => p.id === socket.id);
-  if (player) {
-    const bonuses = characterTypes[selectedCharacterType].bonuses;
-    player.characterType = selectedCharacterType;
-    player.characterBonuses = bonuses;
-    
-    // Update local game state
-    socket.emit('updatePlayerData', { 
-      characterType: selectedCharacterType, 
-      characterBonuses: bonuses 
-    });
-  }
 }
 
 function renderInventorySlots(count) {
@@ -418,11 +366,14 @@ function renderInventorySlots(count) {
 // Get current character info
 export function getPlayerCharacter() {
   const player = gameState.players.find(p => p.id === socket.id);
-  if (player && player.characterType && characterTypes[player.characterType]) {
-    return {
-      type: player.characterType,
-      ...characterTypes[player.characterType]
-    };
+  if (player && player.characterType) {
+    const characterType = getCharacterType(player.characterType);
+    if (characterType) {
+      return {
+        type: player.characterType,
+        ...characterType
+      };
+    }
   }
   return null;
 }
@@ -432,12 +383,12 @@ export function hasSelectedCharacter() {
   return selectedCharacterType !== null;
 }
 
-// Get character bonus for a specific stat
+// Get character bonus for a specific stat - now just returns what's in the player object
 export function getCharacterBonus(bonusType) {
-  if (!selectedCharacterType || !characterTypes[selectedCharacterType]) return 1;
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player || !player.characterBonuses) return 1;
   
-  const bonuses = characterTypes[selectedCharacterType].bonuses;
-  return bonuses[bonusType] || 1;
+  return player.characterBonuses[bonusType] || 1;
 }
 
 // Função para atualizar a visualização de personagens de outros jogadores
@@ -452,7 +403,7 @@ function updateOtherPlayersCharacters() {
   });
   
   // Lista de todos os tipos de personagens para verificar quais ainda estão disponíveis
-  const allCharacterTypes = Object.keys(characterTypes);
+  const allCharacterTypes = Object.keys(getCharacterTypes());
   const availableCharacterTypes = allCharacterTypes.filter(type => !selectedCharacters[type]);
   
   // Agora, vamos atualizar a interface para cada jogador
@@ -660,7 +611,7 @@ function resetCharacterSelection() {
       
       // Show notification about character change
       if (previousCharacter) {
-        const characterName = characterTypes[previousCharacter]?.name || 'Personagem';
+        const characterName = getCharacterType(previousCharacter)?.name || previousCharacter;
         showNotification(`${characterName} removido. Selecione um novo personagem.`, 'info');
       }
     }

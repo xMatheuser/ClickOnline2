@@ -8,6 +8,7 @@ const powerUps = require('./main/gameModules/powerUps');
 const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
 const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime, getResourceEmoji } = require('./main/gameModules/garden.js');
+const charactersModule = require('./main/gameModules/characters');
 
 const app = express();
 const server = http.createServer(app);
@@ -76,23 +77,31 @@ let gameState = {
   },
   gardenSeeds: SEEDS,
   gardenUpgrades: GARDEN_UPGRADES,
+  characterTypes: charactersModule.CHARACTER_TYPES // Add character types to gameState
 };
 
 let lastTotalCPS = 0;
 
 function prepareGameStateForBroadcast(state) {
-  // Criar uma cópia sem o timer e outras propriedades circulares
-  const preparedState = JSON.parse(JSON.stringify(state, (key, value) => {
-    // Ignorar propriedades que podem causar circularidade
-    if (key === 'timer' || key === '_idleNext' || key === '_idlePrev') {
-      return undefined;
-    }
-    if (typeof value === 'function') {
-      return undefined;
-    }
-    return value;
-  }));
-  return preparedState;
+  // Criar uma cópia do estado para não modificar o original
+  const stateCopy = JSON.parse(JSON.stringify(state));
+  
+  // Garantir que todos os jogadores tenham as propriedades necessárias
+  if (stateCopy.players) {
+    stateCopy.players.forEach(player => {
+      player.clicks = player.clicks || 0;
+      player.temporaryMultipliers = player.temporaryMultipliers || [];
+      player.prestigeMultiplier = player.prestigeMultiplier || 1;
+      // Remover propriedades desnecessárias para broadcast
+      delete player.socketId;
+    });
+  }
+  
+  // Garantir que os tipos de personagem estejam incluídos no estado
+  stateCopy.characterTypes = charactersModule.CHARACTER_TYPES;
+  
+  // Retornar o estado preparado para broadcast
+  return stateCopy;
 }
 
 let lastBroadcastState = {}; // Armazenar último estado enviado
@@ -293,6 +302,12 @@ io.on('connection', (socket) => {
         console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
         broadcastGameState();
         checkAchievements();
+
+        // Após criar um jogador (adicione isso onde for apropriado)
+        if (playerData.characterType) {
+          // Garantir que os bônus estão aplicados
+          charactersModule.applyCharacterBonuses(playerData);
+        }
       } else {
         socket.emit('notification', 'Este nome já está em uso!');
       }
@@ -876,8 +891,8 @@ io.on('connection', (socket) => {
     
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
-      player.characterType = data.characterType;
-      player.characterBonuses = data.characterBonuses || {};
+      // Usar função do módulo para atualizar o personagem
+      charactersModule.updatePlayerCharacter(player, data.characterType);
       
       // Notify all clients about the character update
       io.emit('playerCharacterUpdate', {
@@ -885,7 +900,8 @@ io.on('connection', (socket) => {
         characterType: data.characterType
       });
       
-      socket.emit('notification', `Personagem atualizado para ${data.characterType}!`);
+      const characterName = data.characterType ? charactersModule.CHARACTER_TYPES[data.characterType].name : 'nenhum';
+      socket.emit('notification', `Personagem atualizado para ${characterName}!`);
       broadcastGameState();
     }
   });
@@ -908,15 +924,23 @@ io.on('connection', (socket) => {
     });
   });
   
+  socket.on('requestCharacterTypes', () => {
+    if (!isPlayerActive(socket.id)) {
+      return;
+    }
+    
+    // Enviar todos os tipos de personagem ao cliente
+    socket.emit('characterTypes', charactersModule.getAllCharacterTypes());
+  });
+  
   socket.on('updatePlayerData', (data) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player) {
       // Update character data
       if (data.characterType) {
         player.characterType = data.characterType;
-      }
-      if (data.characterBonuses) {
-        player.characterBonuses = data.characterBonuses;
+        // Aplicar bônus do personagem
+        charactersModule.applyCharacterBonuses(player);
       }
       
       broadcastGameState();
@@ -943,6 +967,12 @@ io.on('connection', (socket) => {
 function calculateClickValue(player) {
   let clickPower = 1 * (player.prestigeMultiplier || 1) * gameState.achievementBoosts.clickMultiplier;
 
+  // Aplicar bônus de personagem
+  if (player.characterType) {
+    const charClickPowerBonus = charactersModule.getCharacterBonus(player, 'clickPower');
+    clickPower *= charClickPowerBonus;
+  }
+
   // Adicionar bônus temporários
   if (player.temporaryMultipliers) {
     player.temporaryMultipliers.forEach(buff => {
@@ -956,16 +986,16 @@ function calculateClickValue(player) {
   if (clickPowerUpgrade) {
     clickPower += (clickPowerUpgrade.effect(clickPowerUpgrade.level) - 1) * gameState.achievementBoosts.upgradeEffect;
   }
+  
   const teamSynergyBonus = getUpgradeEffect('team-synergy');
   if (teamSynergyBonus > 0) {
     clickPower *= (1 + teamSynergyBonus);
   }
+  
   if (gameState.powerUps['click-frenzy'].active) {
     clickPower *= gameState.powerUps['click-frenzy'].multiplier;
   }
-  if (gameState.powerUps['team-spirit'].active) {
-    clickPower *= gameState.powerUps['team-spirit'].multiplier;
-  }
+  
   return clickPower;
 }
 
@@ -1056,7 +1086,7 @@ setInterval(() => {
     if (!autoClickerUpgrade?.level || gameState.isInBossFight || !gameState.players.length) return;
 
     let totalDamage = 0;
-    const autoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) *
+    const baseAutoClickValue = autoClickerUpgrade.effect(autoClickerUpgrade.level) *
       gameState.achievementBoosts.autoMultiplier;
 
     // Create a snapshot of players to avoid modification issues
@@ -1064,7 +1094,17 @@ setInterval(() => {
 
     currentPlayers.forEach(player => {
       if (!player?.id) return;
-      const clickValue = calculateClickValue(player) * autoClickValue;
+      
+      // Get character auto-clicker bonus
+      let autoClickerBonus = 1;
+      if (player.characterType) {
+        const characterBonuses = charactersModule.getCharacterBonuses(player.characterType);
+        if (characterBonuses && characterBonuses.autoClicker) {
+          autoClickerBonus = characterBonuses.autoClicker;
+        }
+      }
+      
+      const clickValue = calculateClickValue(player) * baseAutoClickValue * autoClickerBonus;
 
       // Find and update player in original array
       const playerInState = gameState.players.find(p => p.id === player.id);

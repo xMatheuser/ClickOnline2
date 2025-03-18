@@ -232,6 +232,17 @@ export function initSocket() {
     document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
   });
 
+  // Adicionar manipulador para receber tipos de personagem
+  socket.on('characterTypes', (types) => {
+    console.log('Received character types from server');
+    gameState.characterTypes = types;
+    
+    // Dispatch event for character module to update
+    document.dispatchEvent(new CustomEvent('characterTypesUpdated', { 
+      detail: { characterTypes: types } 
+    }));
+  });
+
   socket.on('bossResult', (result) => {
     // Preservar dados antes da atualização
     const savedAchievements = gameState.achievements;
