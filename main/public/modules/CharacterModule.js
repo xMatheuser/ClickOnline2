@@ -56,7 +56,7 @@ export const characterTypes = {
     bonuses: {
       clickPower: 0.9, // 10% menos força por clique
       autoClicker: 1.5, // 50% mais eficiente em auto-clickers
-      aoeChance: 0.1 // 10% de chance de dano em área
+      doubleAttackChance: 0.3 // 30% de chance de dano em área
     }
   }
 };
