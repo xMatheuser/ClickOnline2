@@ -76,6 +76,13 @@ export function initCharacterSelection() {
   // Add "Select Character" button event
   openCharacterSelectionBtn.addEventListener('click', () => {
     characterSelectionOverlay.classList.add('active');
+    
+    // Não restauramos mais o layout ao abrir o overlay
+    // Mantemos o estado de seleção do personagem conforme estava
+
+    // Solicita atualização dos personagens selecionados ao servidor
+    socket.emit('requestCharacterUpdate');
+    
     renderCharacterSelection();
     
     // Dispatch event for overlay state change
@@ -111,12 +118,19 @@ export function initCharacterSelection() {
   selectCharacterButton.addEventListener('click', () => {
     if (selectedCharacterType) {
       saveSelectedCharacter(selectedCharacterType);
-      characterSelectionOverlay.classList.remove('active');
       
-      // Dispatch event for overlay state change
-      document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: false } }));
-    } else {
-      showNotification('Por favor, selecione um personagem primeiro!');
+      // Esconde o card selecionado também usando classes CSS
+      const characterOptions = document.querySelector('.character-options');
+      if (characterOptions) {
+        characterOptions.classList.add('hidden');
+      }
+      
+      // Show notification
+      showNotification(`Personagem ${characterTypes[selectedCharacterType].name} selecionado!`, 'success');
+
+      // Deixar overlay aberto para que o jogador possa ver os outros personagens
+      // Atualiza a exibição para mostrar os personagens dos outros jogadores
+      updateOtherPlayersCharacters();
     }
   });
 
@@ -130,6 +144,9 @@ export function initCharacterSelection() {
       if (player) {
         player.characterType = data.characterType;
         player.characterBonuses = characterTypes[data.characterType].bonuses;
+        
+        // Atualizar a visualização para mostrar personagens dos outros jogadores
+        updateOtherPlayersCharacters();
       }
     }
   });
@@ -139,30 +156,54 @@ function renderCharacterSelection() {
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
 
-  // Clear any previous selections
-  characterCards.forEach(card => {
-    card.classList.remove('selected');
-    if (card.getAttribute('data-character-type') === selectedCharacterType) {
-      card.classList.add('selected');
+  // Se já tiver um personagem selecionado, mantém o layout para o seu personagem
+  if (selectedCharacterType) {
+    // Verifica se as opções já estão escondidas
+    const characterOptions = document.querySelector('.character-options');
+    if (characterOptions && !characterOptions.classList.contains('hidden')) {
+      characterOptions.classList.add('hidden');
     }
 
-    // Add click event to select character
-    card.addEventListener('click', () => {
-      const characterType = card.getAttribute('data-character-type');
-      selectCharacter(characterType);
+    // Esconde os cards não selecionados
+    characterCards.forEach(card => {
+      const cardType = card.getAttribute('data-character-type');
+      if (cardType === selectedCharacterType) {
+        card.classList.add('selected');
+        card.style.opacity = '1';
+        card.style.display = 'flex';
+      } else {
+        card.classList.remove('selected');
+        card.style.opacity = '0';
+        card.style.display = 'none';
+      }
     });
-  });
+  } else {
+    // Caso não tenha personagem selecionado, mostra todos os cards e containers
+    characterCards.forEach(card => {
+      card.style.display = 'flex';
+      card.style.opacity = '1';
+      card.classList.remove('selected');
 
-  // Set the selected character container
-  characterContainers.forEach(container => {
-    container.classList.remove('selected');
-    if (container.getAttribute('data-character-type') === selectedCharacterType) {
-      container.classList.add('selected');
+      // Add click event to select character
+      card.addEventListener('click', () => {
+        const characterType = card.getAttribute('data-character-type');
+        selectCharacter(characterType);
+      });
+    });
+    
+    // Restaura a exibição da seção de opções de personagens
+    const characterOptions = document.querySelector('.character-options');
+    if (characterOptions) {
+      characterOptions.classList.remove('hidden');
+      characterOptions.style.display = 'flex';
     }
-  });
+  }
 
   // Update Select button state
   updateSelectButtonState();
+  
+  // Atualiza a exibição dos personagens dos outros jogadores
+  updateOtherPlayersCharacters();
 }
 
 function selectCharacter(characterType) {
@@ -170,16 +211,36 @@ function selectCharacter(characterType) {
 
   // Update UI to show selection
   characterCards.forEach(card => {
-    card.classList.remove('selected');
-    if (card.getAttribute('data-character-type') === characterType) {
+    const cardType = card.getAttribute('data-character-type');
+    
+    if (cardType === characterType) {
       card.classList.add('selected');
+    } else {
+      // Em vez de apenas remover a classe 'selected', esconde os cards não selecionados
+      card.classList.remove('selected');
+      
+      // Usando opacity + setTimeout para uma transição suave
+      card.style.opacity = '0';
+      setTimeout(() => {
+        card.style.display = 'none';
+      }, 300);
     }
   });
 
   characterContainers.forEach(container => {
-    container.classList.remove('selected');
-    if (container.getAttribute('data-character-type') === characterType) {
+    const containerType = container.getAttribute('data-character-type');
+    
+    if (containerType === characterType) {
       container.classList.add('selected');
+    } else {
+      // Esconde os containers de personagens não selecionados
+      container.classList.remove('selected');
+      
+      // Usando opacity + setTimeout para uma transição suave
+      container.style.opacity = '0';
+      setTimeout(() => {
+        container.style.display = 'none';
+      }, 300);
     }
   });
 
@@ -199,15 +260,26 @@ function saveSelectedCharacter(characterType) {
   // Save to localStorage
   localStorage.setItem('selectedCharacterType', characterType);
   
+  selectedCharacterType = characterType;
+  
+  // Update the player's character type in the game state
+  if (gameState.player) {
+    gameState.player.characterType = characterType;
+    gameState.player.characterBonuses = characterTypes[characterType].bonuses;
+    
+    // Emit update to server if it's the player's own character
+    if (socket && isOwnPlayer(gameState.player.id)) {
+      socket.emit('updatePlayerCharacter', {
+        characterType: characterType
+      });
+    }
+  }
+
   // Apply character bonuses
   applyCharacterBonuses();
   
-  // Update player data on server
-  if (isOwnPlayer()) {
-    socket.emit('updatePlayerCharacter', { characterType });
-  }
-  
-  showNotification(`Você escolheu ${characterTypes[characterType].name} como seu personagem!`);
+  // Atualizar a exibição para mostrar os personagens dos outros jogadores
+  updateOtherPlayersCharacters();
 }
 
 function applyCharacterBonuses() {
@@ -259,4 +331,113 @@ export function getCharacterBonus(bonusType) {
   
   const bonuses = characterTypes[selectedCharacterType].bonuses;
   return bonuses[bonusType] || 1;
+}
+
+// Função para atualizar a visualização de personagens de outros jogadores
+function updateOtherPlayersCharacters() {
+  // Primeiro, vamos coletar todos os personagens já selecionados pelos jogadores
+  const selectedCharacters = {};
+  
+  gameState.players.forEach(player => {
+    if (player.characterType) {
+      selectedCharacters[player.characterType] = player.id;
+    }
+  });
+  
+  // Agora, vamos atualizar a interface para cada jogador
+  characterCards = document.querySelectorAll('.character-card');
+  characterContainers = document.querySelectorAll('.character-container');
+  
+  // Para o jogador atual, mostramos todos os personagens incluindo os dele
+  // Atualizar a exibição dos containers para mostrar todos os personagens selecionados
+  const characterLayout = document.querySelector('.character-layout');
+  if (characterLayout) {
+    // Ajustar o layout para mostrar múltiplos personagens
+    const totalPlayers = Object.keys(selectedCharacters).length;
+    if (totalPlayers > 0) {
+      // Sempre mostrar em grid, independente se o jogador já escolheu ou não
+      characterLayout.style.display = 'grid';
+      characterLayout.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+      characterLayout.style.gap = '20px';
+      characterLayout.style.maxWidth = 'none';
+      
+      // Se o jogador não escolheu um personagem, esconder os cards
+      if (selectedCharacterType) {
+        const characterOptions = document.querySelector('.character-options');
+        if (characterOptions) {
+          characterOptions.classList.add('hidden');
+        }
+      }
+    }
+    
+    // Mostrar os containers dos personagens selecionados por qualquer jogador
+    characterContainers.forEach(container => {
+      const containerType = container.getAttribute('data-character-type');
+      
+      if (selectedCharacters[containerType]) {
+        // Este personagem foi selecionado por algum jogador
+        container.style.display = 'flex';
+        container.style.opacity = '1';
+        
+        // Adicionar identificação do jogador que selecionou
+        const playerId = selectedCharacters[containerType];
+        const player = gameState.players.find(p => p.id === playerId);
+        
+        // Verificar se já existe uma identificação
+        let playerLabel = container.querySelector('.player-identifier');
+        if (!playerLabel) {
+          playerLabel = document.createElement('div');
+          playerLabel.className = 'player-identifier';
+          container.appendChild(playerLabel);
+        }
+        
+        // Destacar se é o jogador atual
+        const isCurrentPlayer = playerId === socket.id;
+        playerLabel.textContent = isCurrentPlayer ? 'Seu personagem' : `Personagem de ${player.name}`;
+        playerLabel.classList.toggle('current-player', isCurrentPlayer);
+      } else if (totalPlayers === 0) {
+        // Nenhum personagem selecionado, mostrar todos os containers
+        container.style.display = 'flex';
+        container.style.opacity = '1';
+      } else {
+        // Este personagem não foi selecionado, esconder o container
+        container.style.display = 'none';
+      }
+    });
+  }
+  
+  // Se não tem personagem selecionado, desabilita os cards já escolhidos por outros
+  if (!selectedCharacterType) {
+    characterCards.forEach(card => {
+      const cardType = card.getAttribute('data-character-type');
+      
+      if (selectedCharacters[cardType] && selectedCharacters[cardType] !== socket.id) {
+        // Este personagem já foi escolhido por outro jogador
+        card.classList.add('disabled');
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+        
+        // Adicionar indicação visual de que está selecionado por outro jogador
+        const playerInfo = document.createElement('div');
+        playerInfo.className = 'other-player-selection';
+        
+        const otherPlayer = gameState.players.find(p => p.id === selectedCharacters[cardType]);
+        playerInfo.textContent = otherPlayer ? `Selecionado por ${otherPlayer.name}` : 'Já selecionado';
+        
+        if (!card.querySelector('.other-player-selection')) {
+          card.appendChild(playerInfo);
+        }
+      } else if (!selectedCharacters[cardType]) {
+        // Este personagem está disponível
+        card.classList.remove('disabled');
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+        
+        const playerInfo = card.querySelector('.other-player-selection');
+        if (playerInfo) {
+          playerInfo.remove();
+        }
+      }
+    });
+  }
 } 

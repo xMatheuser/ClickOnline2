@@ -192,6 +192,10 @@ function isActivePlayer(socketId, playerId) {
   return socketId === playerId;
 }
 
+function isPlayerActive(socketId) {
+  return gameState.players.some(player => player.id === socketId);
+}
+
 function applyOfflineClicks(totalClicks) {
   let remainingClicks = totalClicks;
   let levelsGained = 0;
@@ -884,6 +888,24 @@ io.on('connection', (socket) => {
       socket.emit('notification', `Personagem atualizado para ${data.characterType}!`);
       broadcastGameState();
     }
+  });
+  
+  socket.on('requestCharacterUpdate', () => {
+    // Quando um jogador abre a tela de seleção de personagem,
+    // envie atualizações para todos os personagens selecionados
+    if (!isPlayerActive(socket.id)) {
+      return;
+    }
+    
+    // Enviar os dados de personagens de todos os jogadores
+    gameState.players.forEach(player => {
+      if (player.characterType) {
+        socket.emit('playerCharacterUpdate', {
+          playerId: player.id,
+          characterType: player.characterType
+        });
+      }
+    });
   });
   
   socket.on('updatePlayerData', (data) => {
