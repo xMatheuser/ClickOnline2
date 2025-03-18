@@ -1098,10 +1098,7 @@ setInterval(() => {
       // Get character auto-clicker bonus
       let autoClickerBonus = 1;
       if (player.characterType) {
-        const characterBonuses = charactersModule.getCharacterBonuses(player.characterType);
-        if (characterBonuses && characterBonuses.autoClicker) {
-          autoClickerBonus = characterBonuses.autoClicker;
-        }
+        autoClickerBonus = charactersModule.getCharacterBonus(player, 'autoClicker');
       }
       
       const clickValue = calculateClickValue(player) * baseAutoClickValue * autoClickerBonus;
