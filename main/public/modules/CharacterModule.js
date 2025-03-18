@@ -465,8 +465,17 @@ function updateOtherPlayersCharacters() {
           
           // Destacar se é o jogador atual
           const isCurrentPlayer = playerId === socket.id;
-          const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
-          playerLabel.textContent = isCurrentPlayer ? 'SEU PERSONAGEM' : `PERSONAGEM DE ${playerNumber}`;
+          
+          // Mostrar nome do jogador ao invés do ID
+          if (player && player.name) {
+            playerLabel.textContent = player.name;
+          } else if (isCurrentPlayer) {
+            playerLabel.textContent = 'Você';
+          } else {
+            const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
+            playerLabel.textContent = `Jogador ${playerNumber}`;
+          }
+          
           playerLabel.classList.toggle('current-player', isCurrentPlayer);
         } else {
           // Se o jogador não salvou um personagem, esconde todos os containers
@@ -507,8 +516,17 @@ function updateOtherPlayersCharacters() {
         const playerInfo = document.createElement('div');
         playerInfo.className = 'other-player-selection';
           
-        const playerNumber = gameState.players.findIndex(p => p.id === selectedCharacters[cardType]) + 1;
-        playerInfo.textContent = `Selecionado por ${playerNumber}`;
+        // Obter informações do jogador que selecionou o personagem
+        const playerId = selectedCharacters[cardType];
+        const player = gameState.players.find(p => p.id === playerId);
+        
+        // Usar o nome do jogador ao invés do número
+        if (player && player.name) {
+          playerInfo.textContent = `Selecionado por ${player.name}`;
+        } else {
+          const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
+          playerInfo.textContent = `Selecionado por Jogador ${playerNumber}`;
+        }
           
         if (!card.querySelector('.other-player-selection')) {
           card.appendChild(playerInfo);
