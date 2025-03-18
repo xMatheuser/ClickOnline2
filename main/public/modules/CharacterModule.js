@@ -73,6 +73,9 @@ export function initCharacterSelection() {
     selectedCharacterType = player.characterType;
   }
 
+  // Inicialmente esconde os containers de personagens
+  hideAllCharacterContainers();
+
   // Add "Select Character" button event
   openCharacterSelectionBtn.addEventListener('click', () => {
     characterSelectionOverlay.classList.add('active');
@@ -157,6 +160,14 @@ export function initCharacterSelection() {
   });
 }
 
+// Function to hide all character containers
+function hideAllCharacterContainers() {
+  characterContainers = document.querySelectorAll('.character-container');
+  characterContainers.forEach(container => {
+    container.style.display = 'none';
+  });
+}
+
 function renderCharacterSelection() {
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
@@ -167,6 +178,12 @@ function renderCharacterSelection() {
     const characterOptions = document.querySelector('.character-options');
     if (characterOptions && !characterOptions.classList.contains('hidden')) {
       characterOptions.classList.add('hidden');
+    }
+
+    // Mostrar o layout de personagens
+    const characterLayout = document.querySelector('.character-layout');
+    if (characterLayout) {
+      characterLayout.classList.add('visible');
     }
 
     // Esconde os cards não selecionados
@@ -182,6 +199,17 @@ function renderCharacterSelection() {
         card.style.display = 'none';
       }
     });
+    
+    // Mostra apenas o container do personagem selecionado
+    characterContainers.forEach(container => {
+      const containerType = container.getAttribute('data-character-type');
+      if (containerType === selectedCharacterType) {
+        container.style.display = 'flex';
+        container.style.opacity = '1';
+      } else {
+        container.style.display = 'none';
+      }
+    });
   } else {
     // Caso não tenha personagem selecionado, mostra todos os cards e containers
     characterCards.forEach(card => {
@@ -189,6 +217,15 @@ function renderCharacterSelection() {
       card.style.opacity = '1';
       card.classList.remove('selected');
     });
+    
+    // Esconde todos os containers quando não há personagem selecionado
+    hideAllCharacterContainers();
+    
+    // Esconder o layout de personagens
+    const characterLayout = document.querySelector('.character-layout');
+    if (characterLayout) {
+      characterLayout.classList.remove('visible');
+    }
     
     // Restaura a exibição da seção de opções de personagens
     const characterOptions = document.querySelector('.character-options');
@@ -255,20 +292,17 @@ function selectCharacter(characterType) {
     }
   });
 
+  // Mostra apenas o container do personagem selecionado
   characterContainers.forEach(container => {
     const containerType = container.getAttribute('data-character-type');
     
     if (containerType === characterType) {
       container.classList.add('selected');
+      container.style.display = 'flex';
+      container.style.opacity = '1';
     } else {
-      // Esconde os containers de personagens não selecionados
       container.classList.remove('selected');
-      
-      // Usando opacity + setTimeout para uma transição suave
-      container.style.opacity = '0';
-      setTimeout(() => {
-        container.style.display = 'none';
-      }, 300);
+      container.style.display = 'none';
     }
   });
 
@@ -296,6 +330,12 @@ function saveSelectedCharacter(characterType) {
 
   // Apply character bonuses
   applyCharacterBonuses();
+  
+  // Show character layout
+  const characterLayout = document.querySelector('.character-layout');
+  if (characterLayout) {
+    characterLayout.classList.add('visible');
+  }
   
   // Emit update to server if it's the player's own character
   if (socket && isOwnPlayer()) {
@@ -445,12 +485,8 @@ function updateOtherPlayersCharacters() {
         const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
         playerLabel.textContent = isCurrentPlayer ? 'SEU PERSONAGEM' : `PERSONAGEM DE ${playerNumber}`;
         playerLabel.classList.toggle('current-player', isCurrentPlayer);
-      } else if (totalPlayers === 0) {
-        // Nenhum personagem selecionado, mostrar todos os containers
-        container.style.display = 'flex';
-        container.style.opacity = '1';
-      } else {
-        // Este personagem não foi selecionado, esconder o container
+      } else if (!selectedCharacterType) {
+        // Se o jogador não selecionou um personagem, esconde todos os containers
         container.style.display = 'none';
       }
     });

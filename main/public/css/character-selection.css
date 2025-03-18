@@ -175,6 +175,17 @@
   width: 100%;
   max-width: none;
   margin: 0 auto;
+  margin-top: 30px;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: opacity 0.5s ease, height 0.5s ease;
+}
+
+.character-layout.visible {
+  opacity: 1;
+  height: auto;
+  overflow: visible;
 }
 
 .character-container {
