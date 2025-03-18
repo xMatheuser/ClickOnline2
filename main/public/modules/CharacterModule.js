@@ -527,6 +527,30 @@ function createEmptySlot(index) {
       
       // Only if coming from an equipment slot
       if (data.sourceType === 'equipment') {
+        // Find the equipment slot to reset its appearance immediately
+        const player = gameState.players.find(p => p.id === socket.id);
+        if (player && player.characterType) {
+          const characterContainer = document.querySelector(`.character-container[data-character-type="${player.characterType}"]`);
+          if (characterContainer) {
+            const equipmentSlot = characterContainer.querySelector(`.equipment-slot[data-slot="${data.slotType}"]`);
+            if (equipmentSlot) {
+              // Reset the slot to its empty state
+              equipmentSlot.innerHTML = ''; // Clear contents
+              equipmentSlot.className = 'equipment-slot'; // Reset classes
+              equipmentSlot.style.borderColor = ''; // Reset border color
+              equipmentSlot.style.boxShadow = ''; // Reset shadow
+              equipmentSlot.removeAttribute('data-tooltip'); // Remove tooltip
+              equipmentSlot.removeAttribute('title'); // Remove title
+              equipmentSlot.removeAttribute('draggable'); // Remove draggable
+              
+              // Add empty slot indicator
+              const emptySlot = document.createElement('span');
+              emptySlot.className = 'empty-slot';
+              equipmentSlot.appendChild(emptySlot);
+            }
+          }
+        }
+        
         handleUnequipItem(data.itemId, data.slotType, slot);
       }
     } catch (error) {
@@ -622,11 +646,51 @@ function setupEquipmentSlots() {
     });
     
     // For equipped items, allow them to be dragged back to inventory
+    // and add click-to-unequip functionality
     if (newSlot.classList.contains('equipped')) {
       const itemIcon = newSlot.querySelector('.item-icon');
       if (itemIcon) {
         newSlot.setAttribute('draggable', 'true');
         
+        // Add cursor pointer to indicate it's clickable
+        newSlot.style.cursor = 'pointer';
+        
+        // Add a click event to unequip
+        newSlot.addEventListener('click', () => {
+          const player = gameState.players.find(p => p.id === socket.id);
+          if (!player || !player.equippedItems) return;
+          
+          const slotType = newSlot.getAttribute('data-slot');
+          const equippedItemId = player.equippedItems[slotType];
+          
+          if (equippedItemId) {
+            // Find the item to get its name for the console log
+            const item = player.inventory.find(item => item.id === equippedItemId);
+            const itemName = item ? item.name : equippedItemId;
+            
+            // Check if we're in a drag operation (to avoid unequipping during drag)
+            if (!newSlot.classList.contains('dragging')) {
+              // Reset the slot immediately for better user feedback
+              newSlot.innerHTML = '';
+              newSlot.className = 'equipment-slot';
+              newSlot.style.borderColor = '';
+              newSlot.style.boxShadow = '';
+              newSlot.removeAttribute('data-tooltip');
+              newSlot.removeAttribute('title');
+              newSlot.removeAttribute('draggable');
+              
+              // Add empty slot indicator
+              const emptySlot = document.createElement('span');
+              emptySlot.className = 'empty-slot';
+              newSlot.appendChild(emptySlot);
+              
+              handleUnequipItem(equippedItemId, slotType);
+              console.log(`Item ${itemName} desvinculado do slot ${slotType} por clique`);
+            }
+          }
+        });
+        
+        // Update the dragstart event to track if dragging
         newSlot.addEventListener('dragstart', (e) => {
           const player = gameState.players.find(p => p.id === socket.id);
           if (!player || !player.equippedItems) return;
@@ -635,12 +699,14 @@ function setupEquipmentSlots() {
           const equippedItemId = player.equippedItems[slotType];
           
           if (equippedItemId) {
+            // Set a flag to prevent click from triggering during drag operations
+            newSlot.classList.add('dragging');
+            
             e.dataTransfer.setData('text/plain', JSON.stringify({
               itemId: equippedItemId,
               slotType: slotType,
               sourceType: 'equipment'
             }));
-            newSlot.classList.add('dragging');
           }
         });
         
@@ -724,7 +790,31 @@ function handleEquipItem(itemId, slotType, targetSlot) {
   setupEquipmentSlots();
 }
 
-function handleUnequipItem(itemId, slotType, targetSlot) {
+function handleUnequipItem(itemId, slotType, targetSlot = null) {
+  // Find the equipment slot to reset its appearance
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (player && player.characterType) {
+    const characterContainer = document.querySelector(`.character-container[data-character-type="${player.characterType}"]`);
+    if (characterContainer) {
+      const equipmentSlot = characterContainer.querySelector(`.equipment-slot[data-slot="${slotType}"]`);
+      if (equipmentSlot) {
+        // Reset the slot to its empty state
+        equipmentSlot.innerHTML = ''; // Clear contents
+        equipmentSlot.className = 'equipment-slot'; // Reset classes
+        equipmentSlot.style.borderColor = ''; // Reset border color
+        equipmentSlot.style.boxShadow = ''; // Reset shadow
+        equipmentSlot.removeAttribute('data-tooltip'); // Remove tooltip
+        equipmentSlot.removeAttribute('title'); // Remove title
+        equipmentSlot.removeAttribute('draggable'); // Remove draggable
+        
+        // Add empty slot indicator
+        const emptySlot = document.createElement('span');
+        emptySlot.className = 'empty-slot';
+        equipmentSlot.appendChild(emptySlot);
+      }
+    }
+  }
+  
   // Emit unequip event to server
   socket.emit('unequipItem', {
     itemId: itemId,
@@ -1098,6 +1188,9 @@ function renderEquippedItems(player, container) {
             return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
           }).join('')}
         </ul>
+        <div style="margin-top: 8px; color: #ff9800; font-style: italic; text-align: center;">
+          Clique para desequipar
+        </div>
       </div>
     `;
     
@@ -1105,5 +1198,13 @@ function renderEquippedItems(player, container) {
     equipmentSlot.setAttribute('data-tooltip', tooltipContent);
     equipmentSlot.classList.add('equipped');
     equipmentSlot.setAttribute('draggable', 'true');
+    // Also set a title attribute for native browser tooltip
+    equipmentSlot.setAttribute('title', `${item.name} (Clique para desequipar)`);
+    
+    // Add click event to unequip the item
+    equipmentSlot.addEventListener('click', () => {
+      handleUnequipItem(itemId, slotType);
+      console.log(`Item ${item.name} desvinculado do slot ${slotType} por clique`);
+    });
   });
 } 

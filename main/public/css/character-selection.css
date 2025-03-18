@@ -426,6 +426,36 @@
   border-color: gold;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
   background-color: rgba(60, 60, 60, 0.8);
+  cursor: pointer;
+  position: relative;
+}
+
+.equipment-slot.equipped:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+}
+
+.equipment-slot.equipped:hover::after {
+  content: '❌';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: rgba(244, 67, 54, 0.8);
+  color: white;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .empty-slot {
