@@ -8,7 +8,7 @@ export function initSplitButtonVisibility() {
   // Função para verificar se algum overlay está ativo
   function checkOverlays() {
     // Verificar overlays que usam a classe 'active'
-    const anyOverlayActive = document.querySelector('.prestige-overlay.active, .achievements-overlay.active, .bonus-stats-overlay.active, .history-overlay.active, .boss-overlay.active');
+    const anyOverlayActive = document.querySelector('.prestige-overlay.active, .achievements-overlay.active, .bonus-stats-overlay.active, .history-overlay.active, .boss-overlay.active, .character-selection-overlay.active');
     
     // Verificar especificamente o garden overlay que pode usar display:flex
     const gardenOverlay = document.querySelector('.garden-overlay');
