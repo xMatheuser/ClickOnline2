@@ -67,10 +67,10 @@ let characterCards;
 let characterContainers;
 
 export function initCharacterSelection() {
-  // Load the player's character type from localStorage
-  const savedCharacterType = localStorage.getItem('selectedCharacterType');
-  if (savedCharacterType && characterTypes[savedCharacterType]) {
-    selectedCharacterType = savedCharacterType;
+  // Não carrega mais do localStorage - apenas verifica no gameState
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (player && player.characterType && characterTypes[player.characterType]) {
+    selectedCharacterType = player.characterType;
   }
 
   // Add "Select Character" button event
@@ -144,6 +144,11 @@ export function initCharacterSelection() {
       if (player) {
         player.characterType = data.characterType;
         player.characterBonuses = characterTypes[data.characterType].bonuses;
+        
+        // Se for o jogador atual, atualiza a variável local
+        if (data.playerId === socket.id) {
+          selectedCharacterType = data.characterType;
+        }
         
         // Renderiza toda a tela de seleção para garantir que as opções sejam atualizadas
         renderCharacterSelection();
@@ -280,26 +285,24 @@ function updateSelectButtonState() {
 }
 
 function saveSelectedCharacter(characterType) {
-  // Save to localStorage
-  localStorage.setItem('selectedCharacterType', characterType);
-  
-  selectedCharacterType = characterType;
+  // Não salva mais no localStorage
+  // selectedCharacterType já está atualizado
   
   // Update the player's character type in the game state
   if (gameState.player) {
     gameState.player.characterType = characterType;
     gameState.player.characterBonuses = characterTypes[characterType].bonuses;
-    
-    // Emit update to server if it's the player's own character
-    if (socket && isOwnPlayer(gameState.player.id)) {
-      socket.emit('updatePlayerCharacter', {
-        characterType: characterType
-      });
-    }
   }
 
   // Apply character bonuses
   applyCharacterBonuses();
+  
+  // Emit update to server if it's the player's own character
+  if (socket && isOwnPlayer()) {
+    socket.emit('updatePlayerCharacter', {
+      characterType: characterType
+    });
+  }
   
   // Atualizar a exibição para mostrar os personagens dos outros jogadores
   updateOtherPlayersCharacters();
@@ -316,7 +319,10 @@ function applyCharacterBonuses() {
     player.characterBonuses = bonuses;
     
     // Update local game state
-    socket.emit('updatePlayerData', { characterType: selectedCharacterType, characterBonuses: bonuses });
+    socket.emit('updatePlayerData', { 
+      characterType: selectedCharacterType, 
+      characterBonuses: bonuses 
+    });
   }
 }
 
