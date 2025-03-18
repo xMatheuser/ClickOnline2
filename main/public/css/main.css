@@ -1116,7 +1116,8 @@ body.dark-mode .top-bar {
 #open-prestige, 
 #open-achievements,
 #open-bonus-stats,
-#open-garden {
+#open-garden,
+#open-character-selection {
   background-color: #209cee !important;
   color: #fff !important;
 }

@@ -75,6 +75,9 @@ export function initCharacterSelection() {
 
   // Inicialmente esconde os containers de personagens
   hideAllCharacterContainers();
+  
+  // Update stat labels to abbreviations
+  updateStatLabels();
 
   // Add "Select Character" button event
   openCharacterSelectionBtn.addEventListener('click', () => {
@@ -202,6 +205,9 @@ function renderCharacterSelection() {
 
   // Hide all character containers initially
   hideAllCharacterContainers();
+  
+  // Update stat labels to abbreviations
+  updateStatLabels();
   
   // Hide character layout unless the character is fully selected (saved)
   const characterLayout = document.querySelector('.character-layout');
@@ -555,4 +561,25 @@ function updateOtherPlayersCharacters() {
       }
     });
   }
+}
+
+// Function to update stat labels to their abbreviated versions
+function updateStatLabels() {
+  const statLabels = document.querySelectorAll('.character-card .stat-label');
+  statLabels.forEach(label => {
+    switch(label.textContent) {
+      case 'Ataque':
+        label.textContent = 'ATK';
+        break;
+      case 'Defesa':
+        label.textContent = 'DEF';
+        break;
+      case 'Magia':
+        label.textContent = 'MAG';
+        break;
+      case 'Agilidade':
+        label.textContent = 'AGI';
+        break;
+    }
+  });
 } 
