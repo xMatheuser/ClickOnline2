@@ -91,6 +91,9 @@ export function initCharacterSelection() {
     
     renderCharacterSelection();
     
+    // Update button text based on current state
+    updateSelectButtonText();
+    
     // Dispatch event for overlay state change
     document.dispatchEvent(new CustomEvent('overlayStateChanged', { detail: { isOpen: true } }));
   });
@@ -139,7 +142,14 @@ export function initCharacterSelection() {
 
   // Character selection button
   selectCharacterButton.addEventListener('click', () => {
-    if (selectedCharacterType) {
+    const player = gameState.players?.find(p => p.id === socket.id);
+    const hasCharacter = player && player.characterType;
+    
+    if (hasCharacter) {
+      // If player already has a character, show character selection options
+      resetCharacterSelection();
+    } else if (selectedCharacterType) {
+      // If no character yet but one is selected, save it
       saveSelectedCharacter(selectedCharacterType);
       
       // After clicking the select button, hide non-selected cards with animation
@@ -162,6 +172,9 @@ export function initCharacterSelection() {
       // Show notification
       showNotification(`Personagem ${characterTypes[selectedCharacterType].name} selecionado!`, 'success');
 
+      // Update button text
+      updateSelectButtonText();
+      
       // Deixar overlay aberto para que o jogador possa ver os outros personagens
       // Atualiza a exibição para mostrar os personagens dos outros jogadores
       updateOtherPlayersCharacters();
@@ -235,6 +248,9 @@ function renderCharacterSelection() {
       if (characterOptions && !characterOptions.classList.contains('hidden')) {
         characterOptions.classList.add('hidden');
       }
+      
+      // Update button text
+      updateSelectButtonText();
     } else {
       // No saved character, show selection options
       characterLayout.classList.remove('visible');
@@ -263,6 +279,9 @@ function renderCharacterSelection() {
           }
         });
       }
+      
+      // Update button text
+      updateSelectButtonText();
     }
   }
 
@@ -582,4 +601,77 @@ function updateStatLabels() {
         break;
     }
   });
+}
+
+// Function to update select button text based on player state
+function updateSelectButtonText() {
+  const player = gameState.players?.find(p => p.id === socket.id);
+  const hasCharacter = player && player.characterType;
+  
+  if (hasCharacter) {
+    selectCharacterButton.textContent = 'Trocar Herói';
+    selectCharacterButton.disabled = false;
+    selectCharacterButton.setAttribute('data-mode', 'change');
+  } else {
+    selectCharacterButton.textContent = 'Selecionar';
+    selectCharacterButton.setAttribute('data-mode', 'select');
+    updateSelectButtonState();
+  }
+}
+
+// Function to reset character selection and show selection options again
+function resetCharacterSelection() {
+  // Show character selection options
+  const characterOptions = document.querySelector('.character-options');
+  if (characterOptions) {
+    characterOptions.classList.remove('hidden');
+    characterOptions.style.display = 'flex';
+  }
+  
+  // Hide character layout
+  const characterLayout = document.querySelector('.character-layout');
+  if (characterLayout) {
+    characterLayout.classList.remove('visible');
+  }
+  
+  // Show all cards for selection
+  characterCards.forEach(card => {
+    card.style.display = 'flex';
+    card.style.opacity = '1';
+    card.classList.remove('selected');
+  });
+  
+  // Reset temporary selection
+  selectedCharacterType = null;
+  
+  // Get current player from game state
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (player) {
+    // Clear player's character
+    const previousCharacter = player.characterType;
+    player.characterType = null;
+    player.characterBonuses = null;
+    
+    // Notify server about character change
+    if (socket && isOwnPlayer()) {
+      socket.emit('updatePlayerCharacter', {
+        characterType: null
+      });
+      
+      // Show notification about character change
+      if (previousCharacter) {
+        const characterName = characterTypes[previousCharacter]?.name || 'Personagem';
+        showNotification(`${characterName} removido. Selecione um novo personagem.`, 'info');
+      }
+    }
+  }
+  
+  // Update button text and state
+  updateSelectButtonText();
+  
+  // Add events to cards
+  addClickEventsToCards();
+  
+  // Update other players' characters display
+  updateOtherPlayersCharacters();
 } 

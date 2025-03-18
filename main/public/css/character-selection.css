@@ -393,6 +393,15 @@
   cursor: not-allowed;
 }
 
+/* Style for change character button */
+.character-select-button[data-mode="change"] {
+  background-color: #2196F3;
+}
+
+.character-select-button[data-mode="change"]:hover {
+  background-color: #0b7dda;
+}
+
 .character-reset-button {
   padding: 10px 20px;
   background-color: #f44336;
