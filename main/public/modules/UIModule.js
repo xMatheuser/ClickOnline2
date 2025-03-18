@@ -4,6 +4,7 @@ import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription,
 import { initHistory } from './HistoryModule.js';
 import { playSound, levelUpSound, tickSound, achievementSound } from './AudioModule.js';
 import { getClicksPerSecond } from './InputModule.js';
+import { getCharacterBonus, hasSelectedCharacter, getPlayerCharacter } from './CharacterModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -249,7 +250,12 @@ function updateUpgradeButtons() {
 }
 
 function getClickValue(player) {
-  return player.clickValue || 1;
+  // Apply character bonus if available
+  let clickValue = player.clickValue || 1;
+  if (player.characterBonuses && player.characterBonuses.clickPower) {
+    clickValue *= player.characterBonuses.clickPower;
+  }
+  return clickValue;
 }
 
 export function renderPlayers() {
@@ -266,11 +272,22 @@ export function renderPlayers() {
       playerTag.className = 'player-tag';
       playerTag.setAttribute('data-active', player.id === socket.id ? 'true' : 'false');
       
+      // Add character icon if available
+      let characterIcon = '';
+      if (player.characterType) {
+        const charIcon = player.characterType === 'warrior' ? '⚔️' : 
+                         player.characterType === 'archer' ? '🏹' : 
+                         player.characterType === 'mage' ? '🔮' : '';
+        if (charIcon) {
+          characterIcon = `<span class="character-icon-small">${charIcon}</span>`;
+        }
+      }
+      
       const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
       
       playerTag.innerHTML = `
         <div class="player-avatar" style="background-color: #007bff">${initials}</div>
-        ${player.name}
+        ${player.name} ${characterIcon}
       `;
       playerList.appendChild(playerTag);
     } catch (error) {
@@ -668,13 +685,22 @@ function updateBonusStats() {
 function getUpgradeEffectValue(upgrade) {
   if (!upgrade) return 0;
   
+  // Apply character bonus for auto-clicker upgrades
+  let characterBonus = 1;
+  if (upgrade.id.includes('auto-clicker')) {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (player && player.characterBonuses && player.characterBonuses.autoClicker) {
+      characterBonus = player.characterBonuses.autoClicker;
+    }
+  }
+  
   switch (upgrade.id) {
     case 'click-power':
     case 'click-power-2':
       return upgrade.level + 1;
     case 'auto-clicker':
     case 'auto-clicker-2':
-      return upgrade.level * (upgrade.tier === 1 ? 1 : 2);
+      return (upgrade.level * (upgrade.tier === 1 ? 1 : 2)) * characterBonus;
     case 'coin-boost':
     case 'coin-boost-2':
       return 1 + upgrade.level * (upgrade.tier === 1 ? 0.2 : 0.4);
@@ -759,10 +785,17 @@ function updateClicksPerSecond() {
   const autoClicker2 = gameState.upgrades.find(u => u.id === 'auto-clicker-2');
   const autoClicker3 = gameState.upgrades.find(u => u.id === 'auto-clicker-3');
   
-  const autoClicksPerSecond = 
+  // Apply character bonus for auto-clicker if available
+  let characterBonus = 1;
+  if (player.characterBonuses && player.characterBonuses.autoClicker) {
+    characterBonus = player.characterBonuses.autoClicker;
+  }
+  
+  const autoClicksPerSecond = (
     (autoClicker?.level || 0) + 
     ((autoClicker2?.level || 0) * 2) +
-    ((autoClicker3?.level || 0) * 4);
+    ((autoClicker3?.level || 0) * 4)
+  ) * characterBonus;
   
   const manualClicksPerSecond = getClicksPerSecond();
   

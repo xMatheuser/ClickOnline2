@@ -85,6 +85,7 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - ThemeModule: Visual theme management
 - HistoryModule: Progress tracking
 - UtilsModule: Utility functions
+- CharacterModule: Character selection and management
 
 ### Networking
 - WebSocket-based real-time communication
@@ -103,6 +104,7 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - History overlay
 - Prestige skill tree
 - Theme customization
+- Character selection interface
 
 ## 🔄 Game Loop
 1. Player clicks generate progress
@@ -121,13 +123,38 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - Upgrade history
 - Garden progress
 - Prestige data
+- Character selection persistence
+
+## 🚧 Ongoing Development
+
+### Character Selection System
+- **New Character Classes**
+  - ⚔️ **Warrior**: High click power (25% stronger clicks), 10% decreased auto-clicker efficiency, 10% critical hit chance
+  - 🏹 **Archer**: Balanced click power, 20% increased auto-clicker efficiency, 15% double attack chance
+  - 🔮 **Mage**: Reduced click power (10% weaker clicks), 50% increased auto-clicker efficiency, 10% area-of-effect attack chance
+
+- **Character Interface**
+  - Intuitive character selection screen
+  - Class-specific stats and bonuses display
+  - Visual character representations with class icons
+  - Equipment slots for future expansion (4 left/4 right slots per character)
+  - Expandable inventory system for future items
+
+- **Gameplay Impact**
+  - Character class affects click power and auto-clicker efficiency
+  - Different character bonuses create unique gameplay styles
+  - Characters shown in player list with class icons
+  - Character selection saved between sessions
+  - Real-time synchronization of character selection between players
 
 ## 🎯 Future Development
 - [ ] New boss types
 - [ ] Additional garden seeds
-- [ ] More achievement
+- [ ] More achievements
 - [ ] Extended skill tree
 - [ ] Improve all game balance
+- [ ] Character equipment system
+- [ ] Class-specific abilities and skill trees
  
 ## 🤝 Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.

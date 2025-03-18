@@ -232,6 +232,17 @@ export function initSocket() {
     document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
   });
 
+  // Adicionar manipulador para receber tipos de personagem
+  socket.on('characterTypes', (types) => {
+    console.log('Received character types from server');
+    gameState.characterTypes = types;
+    
+    // Dispatch event for character module to update
+    document.dispatchEvent(new CustomEvent('characterTypesUpdated', { 
+      detail: { characterTypes: types } 
+    }));
+  });
+
   socket.on('bossResult', (result) => {
     // Preservar dados antes da atualização
     const savedAchievements = gameState.achievements;
@@ -347,8 +358,9 @@ export function updateGameState(newState) {
   const savedBoosts = gameState.achievementBoosts;
   const savedCategories = gameState.achievementCategories;
   const savedPrestige = {}; // Preservar dados de prestígio
+  const savedCharacterData = {}; // Preservar dados de personagem
   
-  // Salvar dados de prestígio para cada jogador
+  // Salvar dados de prestígio e personagem para cada jogador
   if (gameState.players) {
     gameState.players.forEach(player => {
       if (player.id) {
@@ -356,6 +368,14 @@ export function updateGameState(newState) {
           prestige: player.prestige || 0,
           prestigeMultiplier: player.prestigeMultiplier || 1
         };
+        
+        // Salvar dados de personagem
+        if (player.characterType) {
+          savedCharacterData[player.id] = {
+            characterType: player.characterType,
+            characterBonuses: player.characterBonuses || {}
+          };
+        }
       }
     });
   }
@@ -369,12 +389,21 @@ export function updateGameState(newState) {
   if (!gameState.achievementBoosts) gameState.achievementBoosts = savedBoosts;
   if (!gameState.achievementCategories) gameState.achievementCategories = savedCategories;
 
-  // Restaurar dados de prestígio para cada jogador
+  // Restaurar dados de prestígio e personagem para cada jogador
   if (gameState.players) {
     gameState.players.forEach(player => {
-      if (player.id && savedPrestige[player.id]) {
-        player.prestige = savedPrestige[player.id].prestige;
-        player.prestigeMultiplier = savedPrestige[player.id].prestigeMultiplier;
+      if (player.id) {
+        // Restaurar prestígio
+        if (savedPrestige[player.id]) {
+          player.prestige = savedPrestige[player.id].prestige;
+          player.prestigeMultiplier = savedPrestige[player.id].prestigeMultiplier;
+        }
+        
+        // Restaurar dados de personagem
+        if (savedCharacterData[player.id]) {
+          player.characterType = savedCharacterData[player.id].characterType;
+          player.characterBonuses = savedCharacterData[player.id].characterBonuses;
+        }
       }
     });
   }
