@@ -241,6 +241,11 @@ function renderCharacterSelection() {
         if (containerType === player.characterType) {
           container.style.display = 'flex';
           container.style.opacity = '1';
+          
+          // Initialize equipment slots with equipped items
+          if (player.equippedItems) {
+            renderEquippedItems(player, container);
+          }
         } else {
           container.style.display = 'none';
         }
@@ -297,6 +302,9 @@ function renderCharacterSelection() {
   
   // Atualiza a exibição dos personagens dos outros jogadores
   updateOtherPlayersCharacters();
+  
+  // Setup equipment slots for drag and drop
+  setupEquipmentSlots();
 }
 
 // Função separada para adicionar eventos de clique aos cards
@@ -396,6 +404,9 @@ function renderInventorySlots() {
     const slot = document.createElement('div');
     slot.className = 'inventory-slot';
     slot.setAttribute('data-inventory-slot', index);
+    slot.setAttribute('data-item-id', item.id);
+    slot.setAttribute('data-item-type', item.type);
+    slot.setAttribute('draggable', 'true');
     
     // Style based on rarity
     const rarityColors = {
@@ -451,9 +462,19 @@ function renderInventorySlots() {
     
     slot.setAttribute('data-tooltip', tooltipContent);
     
-    // Add click event to equip the item
-    slot.addEventListener('click', () => {
-      equipItem(item);
+    // Add drag start event
+    slot.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        itemId: item.id,
+        type: item.type,
+        slotIndex: index,
+        sourceType: 'inventory'
+      }));
+      slot.classList.add('dragging');
+    });
+    
+    slot.addEventListener('dragend', () => {
+      slot.classList.remove('dragging');
     });
     
     inventoryGrid.appendChild(slot);
@@ -467,11 +488,14 @@ function renderInventorySlots() {
   
   // Add tooltips to inventory slots
   addTooltipsToSlots();
+  
+  // Setup equipment slots for drag and drop
+  setupEquipmentSlots();
 }
 
 function createEmptySlot(index) {
   const slot = document.createElement('div');
-  slot.className = 'inventory-slot';
+  slot.className = 'inventory-slot empty';
   slot.setAttribute('data-inventory-slot', index);
   
   // Create a more visually appealing empty slot indicator
@@ -482,7 +506,237 @@ function createEmptySlot(index) {
   // Add tooltip showing slot number
   slot.setAttribute('title', `Slot ${index+1}`);
   
+  // Add drop event to empty inventory slots
+  slot.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes('text/plain')) {
+      slot.classList.add('dragover');
+    }
+  });
+  
+  slot.addEventListener('dragleave', () => {
+    slot.classList.remove('dragover');
+  });
+  
+  slot.addEventListener('drop', (e) => {
+    e.preventDefault();
+    slot.classList.remove('dragover');
+    
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      
+      // Only if coming from an equipment slot
+      if (data.sourceType === 'equipment') {
+        handleUnequipItem(data.itemId, data.slotType, slot);
+      }
+    } catch (error) {
+      console.error('Erro ao processar drop:', error);
+    }
+  });
+  
   inventoryGrid.appendChild(slot);
+}
+
+function setupEquipmentSlots() {
+  const equipmentSlots = document.querySelectorAll('.equipment-slot');
+  
+  equipmentSlots.forEach(slot => {
+    // Clear existing event listeners by cloning
+    const newSlot = slot.cloneNode(true);
+    if (slot.parentNode) {
+      slot.parentNode.replaceChild(newSlot, slot);
+    }
+    
+    // Set up new event listeners
+    newSlot.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      
+      // Get the slot type
+      const slotType = newSlot.getAttribute('data-slot');
+      
+      // Try to get data, but it might fail during dragover
+      let isValidTarget = false;
+      let draggedType = '';
+      
+      try {
+        // We can't actually access dataTransfer data during dragover
+        // So we check if it's the right type of data at least
+        if (e.dataTransfer.types.includes('text/plain')) {
+          // We'll have to assume it's an item for now
+          // The full validation happens on drop
+          isValidTarget = slotType === 'weapon';
+        }
+      } catch (error) {
+        // This is expected during dragover
+      }
+      
+      // Visual feedback
+      if (isValidTarget) {
+        newSlot.classList.add('valid-target');
+        e.dataTransfer.dropEffect = 'move';
+      } else {
+        newSlot.classList.add('invalid-target');
+        e.dataTransfer.dropEffect = 'none';
+      }
+    });
+    
+    newSlot.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      const slotType = newSlot.getAttribute('data-slot');
+      
+      // We can only know if it's valid on drop, but we'll show feedback based on slot type
+      if (slotType === 'weapon') {
+        newSlot.classList.add('dragover');
+      }
+    });
+    
+    newSlot.addEventListener('dragleave', () => {
+      newSlot.classList.remove('dragover');
+      newSlot.classList.remove('valid-target');
+      newSlot.classList.remove('invalid-target');
+    });
+    
+    newSlot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      newSlot.classList.remove('dragover');
+      newSlot.classList.remove('valid-target');
+      newSlot.classList.remove('invalid-target');
+      
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const slotType = newSlot.getAttribute('data-slot');
+        
+        // Process appropriate drops
+        if (data.sourceType === 'inventory') {
+          const isWeapon = ['sword', 'bow', 'staff'].includes(data.type);
+          
+          if (isWeapon && slotType === 'weapon') {
+            handleEquipItem(data.itemId, slotType, newSlot);
+          } else {
+            console.log('Item não pode ser equipado neste slot');
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar drop:', error);
+      }
+    });
+    
+    // For equipped items, allow them to be dragged back to inventory
+    if (newSlot.classList.contains('equipped')) {
+      const itemIcon = newSlot.querySelector('.item-icon');
+      if (itemIcon) {
+        newSlot.setAttribute('draggable', 'true');
+        
+        newSlot.addEventListener('dragstart', (e) => {
+          const player = gameState.players.find(p => p.id === socket.id);
+          if (!player || !player.equippedItems) return;
+          
+          const slotType = newSlot.getAttribute('data-slot');
+          const equippedItemId = player.equippedItems[slotType];
+          
+          if (equippedItemId) {
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+              itemId: equippedItemId,
+              slotType: slotType,
+              sourceType: 'equipment'
+            }));
+            newSlot.classList.add('dragging');
+          }
+        });
+        
+        newSlot.addEventListener('dragend', () => {
+          newSlot.classList.remove('dragging');
+        });
+      }
+    }
+  });
+}
+
+function handleEquipItem(itemId, slotType, targetSlot) {
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player || !player.inventory) return;
+  
+  const item = player.inventory.find(item => item.id === itemId);
+  if (!item) {
+    console.log('Item não encontrado no inventário');
+    return;
+  }
+  
+  // Clear the slot
+  targetSlot.innerHTML = '';
+  
+  // Create icon for the equipment
+  const itemIcon = document.createElement('div');
+  itemIcon.className = 'item-icon';
+  
+  // Choose icon based on equipment type
+  const icons = {
+    sword: '⚔️',
+    bow: '🏹',
+    staff: '🪄'
+  };
+  
+  itemIcon.textContent = icons[item.type] || '📦';
+  
+  // Add tooltip with item details
+  const rarityColors = {
+    normal: '#d4d4d4',
+    uncommon: '#4ade80',
+    rare: '#60a5fa',
+    epic: '#a855f7',
+    legendary: '#facc15'
+  };
+  
+  const borderColor = rarityColors[item.rarity] || '#d4d4d4';
+  targetSlot.style.borderColor = borderColor;
+  targetSlot.style.boxShadow = `0 0 5px ${borderColor}`;
+  
+  const tooltipContent = `
+    <div style="text-align: left; padding: 5px;">
+      <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
+      <div>Tipo: ${item.type}</div>
+      <div>Nível Requerido: ${item.requiredLevel}</div>
+      <div style="margin-top: 5px;">Stats:</div>
+      <ul style="margin: 0; padding-left: 15px;">
+        ${Object.entries(item.stats).map(([stat, value]) => {
+          const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
+          return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+        }).join('')}
+      </ul>
+    </div>
+  `;
+  
+  targetSlot.appendChild(itemIcon);
+  targetSlot.setAttribute('data-tooltip', tooltipContent);
+  targetSlot.classList.add('equipped');
+  targetSlot.setAttribute('draggable', 'true');
+  
+  // Save equipment to player state
+  socket.emit('equipItem', {
+    itemId: item.id,
+    slot: slotType
+  });
+  
+  console.log(`Equipamento equipado: ${item.name} no slot ${slotType}`);
+  
+  // Update the tooltips and setup equipment slots for drag and drop
+  addTooltipsToSlots();
+  setupEquipmentSlots();
+}
+
+function handleUnequipItem(itemId, slotType, targetSlot) {
+  // Emit unequip event to server
+  socket.emit('unequipItem', {
+    itemId: itemId,
+    slot: slotType
+  });
+  
+  console.log(`Item ${itemId} desvinculado do slot ${slotType}`);
+  
+  // Refresh the inventory display
+  setTimeout(() => {
+    renderInventorySlots();
+  }, 100);
 }
 
 function addTooltipsToSlots() {
@@ -786,109 +1040,70 @@ function resetCharacterSelection() {
   updateOtherPlayersCharacters();
 }
 
-// Add a new function to equip items
-function equipItem(item) {
-  const player = gameState.players.find(p => p.id === socket.id);
-  if (!player) return;
-  
-  // Determine which slot this item goes into based on its type
-  let slotType = '';
-  switch (item.type) {
-    case 'sword':
-      slotType = 'weapon';
-      break;
-    case 'bow':
-      slotType = 'weapon';
-      break;
-    case 'staff':
-      slotType = 'staff';
-      break;
-    default:
-      console.log('Tipo de equipamento desconhecido:', item.type);
-      return;
-  }
-  
-  // Find the corresponding character container based on item type
-  let characterContainer = null;
-  if (item.type === 'sword') {
-    characterContainer = document.querySelector('.character-container[data-character-type="warrior"]');
-  } else if (item.type === 'bow') {
-    characterContainer = document.querySelector('.character-container[data-character-type="archer"]');
-  } else if (item.type === 'staff') {
-    characterContainer = document.querySelector('.character-container[data-character-type="mage"]');
-  }
-  
-  if (!characterContainer) {
-    console.log('Container de personagem não encontrado para:', item.type);
-    return;
-  }
-  
-  // Find the equipment slot
-  const equipmentSlot = characterContainer.querySelector(`.equipment-slot[data-slot="${slotType}"]`);
-  if (!equipmentSlot) {
-    console.log('Slot de equipamento não encontrado:', slotType);
-    return;
-  }
-  
-  // Clear the slot
-  equipmentSlot.innerHTML = '';
-  
-  // Create icon for the equipment
-  const itemIcon = document.createElement('div');
-  itemIcon.className = 'item-icon';
-  
-  // Choose icon based on equipment type
-  const icons = {
-    sword: '⚔️',
-    bow: '🏹',
-    staff: '🪄'
-  };
-  
-  itemIcon.textContent = icons[item.type] || '📦';
-  
-  // Add tooltip with item details
-  const rarityColors = {
-    normal: '#d4d4d4',
-    uncommon: '#4ade80',
-    rare: '#60a5fa',
-    epic: '#a855f7',
-    legendary: '#facc15'
-  };
-  
-  const borderColor = rarityColors[item.rarity] || '#d4d4d4';
-  equipmentSlot.style.borderColor = borderColor;
-  equipmentSlot.style.boxShadow = `0 0 5px ${borderColor}`;
-  
-  const tooltipContent = `
-    <div style="text-align: left; padding: 5px;">
-      <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
-      <div>Tipo: ${item.type}</div>
-      <div>Nível Requerido: ${item.requiredLevel}</div>
-      <div style="margin-top: 5px;">Stats:</div>
-      <ul style="margin: 0; padding-left: 15px;">
-        ${Object.entries(item.stats).map(([stat, value]) => {
-          const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
-          return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
-        }).join('')}
-      </ul>
-    </div>
-  `;
-  
-  equipmentSlot.appendChild(itemIcon);
-  equipmentSlot.setAttribute('data-tooltip', tooltipContent);
-  equipmentSlot.classList.add('equipped');
-  
-  // Save equipment to player state (only on the client side for now)
-  socket.emit('equipItem', {
-    itemId: item.id,
-    slot: slotType
-  });
-  
-  console.log(`Equipamento equipado: ${item.name} no slot ${slotType}`);
-  
-  // Update the tooltips
-  addTooltipsToSlots();
-}
-
 // Export the renderInventorySlots function so it can be called from other modules
-export { renderInventorySlots }; 
+export { renderInventorySlots };
+
+// New function to render equipped items in equipment slots
+function renderEquippedItems(player, container) {
+  if (!player.equippedItems) return;
+  
+  // Loop through each equipped item
+  Object.entries(player.equippedItems).forEach(([slotType, itemId]) => {
+    // Find the equipment slot in the container
+    const equipmentSlot = container.querySelector(`.equipment-slot[data-slot="${slotType}"]`);
+    if (!equipmentSlot) return;
+    
+    // Find the item in the player's inventory
+    const item = player.inventory.find(item => item.id === itemId);
+    if (!item) return;
+    
+    // Clear the slot
+    equipmentSlot.innerHTML = '';
+    
+    // Create icon for the equipment
+    const itemIcon = document.createElement('div');
+    itemIcon.className = 'item-icon';
+    
+    // Choose icon based on equipment type
+    const icons = {
+      sword: '⚔️',
+      bow: '🏹',
+      staff: '🪄'
+    };
+    
+    itemIcon.textContent = icons[item.type] || '📦';
+    
+    // Add tooltip with item details
+    const rarityColors = {
+      normal: '#d4d4d4',
+      uncommon: '#4ade80',
+      rare: '#60a5fa',
+      epic: '#a855f7',
+      legendary: '#facc15'
+    };
+    
+    const borderColor = rarityColors[item.rarity] || '#d4d4d4';
+    equipmentSlot.style.borderColor = borderColor;
+    equipmentSlot.style.boxShadow = `0 0 5px ${borderColor}`;
+    
+    const tooltipContent = `
+      <div style="text-align: left; padding: 5px;">
+        <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
+        <div>Tipo: ${item.type}</div>
+        <div>Nível Requerido: ${item.requiredLevel}</div>
+        <div style="margin-top: 5px;">Stats:</div>
+        <ul style="margin: 0; padding-left: 15px;">
+          ${Object.entries(item.stats).map(([stat, value]) => {
+            const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
+            return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+          }).join('')}
+        </ul>
+      </div>
+    `;
+    
+    equipmentSlot.appendChild(itemIcon);
+    equipmentSlot.setAttribute('data-tooltip', tooltipContent);
+    equipmentSlot.classList.add('equipped');
+    equipmentSlot.setAttribute('draggable', 'true');
+  });
+} 

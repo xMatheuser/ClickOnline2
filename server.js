@@ -58,8 +58,8 @@ let gameState = {
     upgradeEffect: 1
   },
   activeBoss: null,
-  nextBossLevel: 5, // Primeiro boss aparece no nível 5
-  bossSpawnInterval: 10, // Intervalo de níveis entre cada boss
+  nextBossLevel: 2, // Primeiro boss aparece no nível 5
+  bossSpawnInterval: 2, // Intervalo de níveis entre cada boss
   isInBossFight: false, // Add flag for boss fight state
   gardens: {
     sharedGarden: {
@@ -1010,6 +1010,31 @@ io.on('connection', (socket) => {
     // Equip new item
     player.equippedItems[data.slot] = data.itemId;
     console.log(`Jogador ${player.name} equipou ${item.name} no slot ${data.slot}`);
+    
+    // Broadcast updated game state
+    broadcastGameState();
+  });
+
+  socket.on('unequipItem', function(data) {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    // Initialize equippedItems if needed
+    player.equippedItems = player.equippedItems || {};
+    
+    // Check if the item is actually equipped
+    if (player.equippedItems[data.slot] !== data.itemId) {
+      console.log(`Jogador ${player.name} tentou desequipar item que não está equipado: ${data.itemId}`);
+      return;
+    }
+    
+    // Get item name for logging
+    const item = player.inventory?.find(item => item.id === data.itemId);
+    const itemName = item ? item.name : data.itemId;
+    
+    // Remove item from slot
+    delete player.equippedItems[data.slot];
+    console.log(`Jogador ${player.name} removeu ${itemName} do slot ${data.slot}`);
     
     // Broadcast updated game state
     broadcastGameState();
