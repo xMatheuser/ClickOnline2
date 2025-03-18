@@ -107,7 +107,7 @@ export function initCharacterSelection() {
   });
 
   // Initialize with inventory slots
-  renderInventorySlots(5);
+  renderInventorySlots();
   
   // Make inventory expanded by default
   inventoryGrid.classList.add('expanded');
@@ -174,6 +174,23 @@ export function initCharacterSelection() {
         
         // Renderiza toda a tela de seleção para garantir que as opções sejam atualizadas
         renderCharacterSelection();
+      }
+    }
+  });
+
+  // Adicionar evento para atualizar o inventário quando gameState for atualizado
+  socket.on('gameStateUpdate', (state) => {
+    if (characterSelectionOverlay.classList.contains('active')) {
+      renderInventorySlots();
+    }
+  });
+  
+  // Adicionar evento para atualizar o inventário quando um boss for derrotado
+  socket.on('bossResult', (result) => {
+    if (result.victory && result.equipmentDrop) {
+      // Se a tela de personagem estiver aberta, atualizar imediatamente
+      if (characterSelectionOverlay.classList.contains('active')) {
+        renderInventorySlots();
       }
     }
   });
@@ -344,23 +361,141 @@ function saveSelectedCharacter(characterType) {
   updateOtherPlayersCharacters();
 }
 
-function renderInventorySlots(count) {
+function renderInventorySlots() {
   inventoryGrid.innerHTML = '';
-  for (let i = 0; i < count; i++) {
+  
+  // Get player's inventory
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player || !player.inventory) {
+    // If no inventory yet, create some empty slots
+    for (let i = 0; i < 10; i++) {
+      createEmptySlot(i);
+    }
+    return;
+  }
+  
+  // Render inventory items
+  player.inventory.forEach((item, index) => {
     const slot = document.createElement('div');
     slot.className = 'inventory-slot';
-    slot.setAttribute('data-inventory-slot', i);
+    slot.setAttribute('data-inventory-slot', index);
     
-    // Create a more visually appealing empty slot indicator
-    const emptySlot = document.createElement('span');
-    emptySlot.className = 'empty-slot';
-    slot.appendChild(emptySlot);
+    // Style based on rarity
+    const rarityColors = {
+      normal: '#d4d4d4',
+      uncommon: '#4ade80',
+      rare: '#60a5fa',
+      epic: '#a855f7',
+      legendary: '#facc15'
+    };
     
-    // Add tooltip showing slot number
-    slot.setAttribute('title', `Slot ${i+1}`);
+    const borderColor = rarityColors[item.rarity] || '#d4d4d4';
+    slot.style.borderColor = borderColor;
+    slot.style.boxShadow = `0 0 5px ${borderColor}`;
+    
+    // Add item icon and styling
+    const itemIcon = document.createElement('div');
+    itemIcon.className = 'item-icon';
+    
+    // Choose icon based on equipment type
+    const icons = {
+      sword: '⚔️',
+      bow: '🏹',
+      staff: '🪄'
+    };
+    
+    itemIcon.textContent = icons[item.type] || '📦';
+    itemIcon.style.fontSize = '24px';
+    
+    slot.appendChild(itemIcon);
+    
+    // Add tooltip with item details
+    const tooltipContent = `
+      <div style="text-align: left; padding: 5px;">
+        <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
+        <div>Tipo: ${item.type}</div>
+        <div>Nível Requerido: ${item.requiredLevel}</div>
+        <div style="margin-top: 5px;">Stats:</div>
+        <ul style="margin: 0; padding-left: 15px;">
+          ${Object.entries(item.stats).map(([stat, value]) => {
+            const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
+            return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+          }).join('')}
+        </ul>
+      </div>
+    `;
+    
+    slot.setAttribute('data-tooltip', tooltipContent);
+    
+    // Add click event to equip the item
+    slot.addEventListener('click', () => {
+      equipItem(item);
+    });
     
     inventoryGrid.appendChild(slot);
+  });
+  
+  // Add extra empty slots if needed (total at least 10 slots)
+  const totalSlots = Math.max(10, player.inventory.length + 3);
+  for (let i = player.inventory.length; i < totalSlots; i++) {
+    createEmptySlot(i);
   }
+  
+  // Add tooltips to inventory slots
+  addTooltipsToSlots();
+}
+
+function createEmptySlot(index) {
+  const slot = document.createElement('div');
+  slot.className = 'inventory-slot';
+  slot.setAttribute('data-inventory-slot', index);
+  
+  // Create a more visually appealing empty slot indicator
+  const emptySlot = document.createElement('span');
+  emptySlot.className = 'empty-slot';
+  slot.appendChild(emptySlot);
+  
+  // Add tooltip showing slot number
+  slot.setAttribute('title', `Slot ${index+1}`);
+  
+  inventoryGrid.appendChild(slot);
+}
+
+function addTooltipsToSlots() {
+  document.querySelectorAll('.inventory-slot[data-tooltip]').forEach(slot => {
+    slot.addEventListener('mouseenter', (e) => {
+      const tooltip = document.createElement('div');
+      tooltip.className = 'item-tooltip';
+      tooltip.innerHTML = slot.getAttribute('data-tooltip');
+      document.body.appendChild(tooltip);
+      
+      const rect = slot.getBoundingClientRect();
+      tooltip.style.left = `${rect.left + rect.width + 5}px`;
+      tooltip.style.top = `${rect.top}px`;
+      
+      slot.addEventListener('mouseleave', () => {
+        tooltip.remove();
+      }, { once: true });
+    });
+  });
+}
+
+function formatStatName(stat) {
+  const statNames = {
+    clickPower: 'Poder de Clique',
+    autoClicker: 'Auto Clicker',
+    critChance: 'Chance de Crítico',
+    coinBonus: 'Bônus de Moedas',
+    teamSynergy: 'Sinergia de Equipe',
+    doubleHitChance: 'Chance de Acerto Duplo',
+    progressBoost: 'Bônus de Progresso',
+    prestigeBonus: 'Bônus de Prestígio',
+    aoeChance: 'Chance de Efeito em Área',
+    powerUpDuration: 'Duração de Power-Ups',
+    fragmentBonus: 'Bônus de Fragmentos'
+  };
+  
+  return statNames[stat] || stat;
 }
 
 // Get current character info
@@ -625,4 +760,108 @@ function resetCharacterSelection() {
   
   // Update other players' characters display
   updateOtherPlayersCharacters();
+}
+
+// Add a new function to equip items
+function equipItem(item) {
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player) return;
+  
+  // Determine which slot this item goes into based on its type
+  let slotType = '';
+  switch (item.type) {
+    case 'sword':
+      slotType = 'weapon';
+      break;
+    case 'bow':
+      slotType = 'weapon';
+      break;
+    case 'staff':
+      slotType = 'staff';
+      break;
+    default:
+      console.log('Tipo de equipamento desconhecido:', item.type);
+      return;
+  }
+  
+  // Find the corresponding character container based on item type
+  let characterContainer = null;
+  if (item.type === 'sword') {
+    characterContainer = document.querySelector('.character-container[data-character-type="warrior"]');
+  } else if (item.type === 'bow') {
+    characterContainer = document.querySelector('.character-container[data-character-type="archer"]');
+  } else if (item.type === 'staff') {
+    characterContainer = document.querySelector('.character-container[data-character-type="mage"]');
+  }
+  
+  if (!characterContainer) {
+    console.log('Container de personagem não encontrado para:', item.type);
+    return;
+  }
+  
+  // Find the equipment slot
+  const equipmentSlot = characterContainer.querySelector(`.equipment-slot[data-slot="${slotType}"]`);
+  if (!equipmentSlot) {
+    console.log('Slot de equipamento não encontrado:', slotType);
+    return;
+  }
+  
+  // Clear the slot
+  equipmentSlot.innerHTML = '';
+  
+  // Create icon for the equipment
+  const itemIcon = document.createElement('div');
+  itemIcon.className = 'item-icon';
+  
+  // Choose icon based on equipment type
+  const icons = {
+    sword: '⚔️',
+    bow: '🏹',
+    staff: '🪄'
+  };
+  
+  itemIcon.textContent = icons[item.type] || '📦';
+  
+  // Add tooltip with item details
+  const rarityColors = {
+    normal: '#d4d4d4',
+    uncommon: '#4ade80',
+    rare: '#60a5fa',
+    epic: '#a855f7',
+    legendary: '#facc15'
+  };
+  
+  const borderColor = rarityColors[item.rarity] || '#d4d4d4';
+  equipmentSlot.style.borderColor = borderColor;
+  equipmentSlot.style.boxShadow = `0 0 5px ${borderColor}`;
+  
+  const tooltipContent = `
+    <div style="text-align: left; padding: 5px;">
+      <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
+      <div>Tipo: ${item.type}</div>
+      <div>Nível Requerido: ${item.requiredLevel}</div>
+      <div style="margin-top: 5px;">Stats:</div>
+      <ul style="margin: 0; padding-left: 15px;">
+        ${Object.entries(item.stats).map(([stat, value]) => {
+          const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
+          return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+        }).join('')}
+      </ul>
+    </div>
+  `;
+  
+  equipmentSlot.appendChild(itemIcon);
+  equipmentSlot.setAttribute('data-tooltip', tooltipContent);
+  equipmentSlot.classList.add('equipped');
+  
+  // Save equipment to player state (only on the client side for now)
+  socket.emit('equipItem', {
+    itemId: item.id,
+    slot: slotType
+  });
+  
+  console.log(`Equipamento equipado: ${item.name} no slot ${slotType}`);
+  
+  // Update the tooltips
+  addTooltipsToSlots();
 } 

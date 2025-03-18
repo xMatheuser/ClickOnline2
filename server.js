@@ -9,6 +9,7 @@ const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
 const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime, getResourceEmoji } = require('./main/gameModules/garden.js');
 const charactersModule = require('./main/gameModules/characters');
+const { RARITY, EQUIPMENT_TYPES, EQUIPMENT } = require('./main/gameModules/Equipment');
 
 const app = express();
 const server = http.createServer(app);
@@ -298,6 +299,8 @@ io.on('connection', (socket) => {
         playerData.contribution = 0;
         playerData.prestige = 0;
         playerData.prestigeMultiplier = 1;
+        playerData.inventory = [];
+        playerData.equippedItems = {};
         gameState.players.push(playerData);
         console.log(`[Novo Jogador] Jogador ${playerData.name} adicionado`);
         broadcastGameState();
@@ -362,12 +365,46 @@ io.on('connection', (socket) => {
               });
             });
 
+            // Gerar drop de equipamento para o jogador que derrotou o boss
+            const equipmentDrop = calculateEquipmentDrop(gameState.teamLevel);
+            let dropInfo = null;
+            
+            if (equipmentDrop) {
+              const equipment = EQUIPMENT[equipmentDrop];
+              console.log(`Boss derrotado por ${player.name} dropou: ${equipment.name} (${equipment.rarity.name})`);
+              
+              // Adicionar ao inventário do jogador
+              player.inventory = player.inventory || [];
+              player.inventory.push({
+                id: equipment.id,
+                name: equipment.name,
+                type: equipment.type.id,
+                rarity: equipment.rarity.id,
+                stats: equipment.stats,
+                requiredLevel: equipment.requiredLevel,
+                dateObtained: Date.now()
+              });
+              
+              // Preparar informações do drop para enviar ao cliente
+              dropInfo = {
+                id: equipment.id,
+                name: equipment.name,
+                rarity: {
+                  id: equipment.rarity.id,
+                  name: equipment.rarity.name,
+                  color: equipment.rarity.color
+                },
+                icon: equipment.type.icon
+              };
+            }
+
             io.emit('bossResult', {
               victory: true,
               coins: boss.rewards.coins,
               multiplier: boss.rewards.clickPowerMultiplier,
               duration: boss.rewards.clickPowerDuration,
-              killedBy: player.name
+              killedBy: player.name,
+              equipmentDrop: dropInfo
             });
 
             gameState.activeBoss = null;
@@ -947,6 +984,37 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('reconnect', function() {
+    console.log('Reconectado:', socket.id);
+  });
+
+  socket.on('equipItem', function(data) {
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (!player) return;
+    
+    // Verify item exists in player's inventory
+    const item = player.inventory?.find(item => item.id === data.itemId);
+    if (!item) {
+      console.log(`Jogador ${player.name} tentou equipar item inexistente: ${data.itemId}`);
+      return;
+    }
+    
+    // Initialize equippedItems if needed
+    player.equippedItems = player.equippedItems || {};
+    
+    // Unequip old item in the slot
+    if (player.equippedItems[data.slot]) {
+      console.log(`Jogador ${player.name} trocou ${player.equippedItems[data.slot]} por ${item.name}`);
+    }
+    
+    // Equip new item
+    player.equippedItems[data.slot] = data.itemId;
+    console.log(`Jogador ${player.name} equipou ${item.name} no slot ${data.slot}`);
+    
+    // Broadcast updated game state
+    broadcastGameState();
+  });
+
   socket.on('disconnect', () => {
     const playerIndex = gameState.players.findIndex(p => p.id === socket.id);
     if (playerIndex !== -1) {
@@ -1197,6 +1265,66 @@ function serializeGardenUpgrades() {
   }
   
   return gardenUpgrades;
+}
+
+// Função para determinar qual equipamento será dropado baseado no nível da fase
+function calculateEquipmentDrop(levelNumber) {
+  // Determinar se haverá drop (chance fixa de 100% para boss)
+  const dropChance = 1.0; // 100% de chance de drop para bosses
+  if (Math.random() > dropChance) {
+    return null;
+  }
+
+  // Array com todas as IDs de equipamentos disponíveis
+  const allEquipmentIds = Object.keys(EQUIPMENT);
+  
+  // Cálculo para determinar a raridade do equipamento
+  const rarityRoll = Math.random();
+  let selectedRarity;
+  // Quanto maior o nível, maior a chance de obter itens raros
+  // Fator de ajuste de nível (leve impacto na distribuição)
+  const levelFactor = Math.min(0.5, levelNumber * 0.01);
+  
+  // Ajuste das probabilidades de raridade baseado no nível
+  let adjustedProbabilities = {
+    normal: Math.max(0.3, RARITY.NORMAL.dropChance - levelFactor),
+    uncommon: Math.max(0.2, RARITY.UNCOMMON.dropChance),
+    rare: Math.min(0.25, RARITY.RARE.dropChance + levelFactor * 0.5),
+    epic: Math.min(0.15, RARITY.EPIC.dropChance + levelFactor * 0.3),
+    legendary: Math.min(0.1, RARITY.LEGENDARY.dropChance + levelFactor * 0.2)
+  };
+  
+  // Normalizar probabilidades para somarem 1
+  const sum = Object.values(adjustedProbabilities).reduce((a, b) => a + b, 0);
+  Object.keys(adjustedProbabilities).forEach(key => {
+    adjustedProbabilities[key] /= sum;
+  });
+  
+  // Determinar a raridade com base no roll e probabilidades ajustadas
+  let cumulativeProbability = 0;
+  for (const [rarityId, probability] of Object.entries(adjustedProbabilities)) {
+    cumulativeProbability += probability;
+    if (rarityRoll <= cumulativeProbability) {
+      selectedRarity = rarityId;
+      break;
+    }
+  }
+  
+  // Filtrar equipamentos pela raridade selecionada
+  const equipmentsByRarity = allEquipmentIds.filter(id => 
+    EQUIPMENT[id].rarity.id === selectedRarity
+  );
+  
+  // Se não houver equipamentos da raridade selecionada, usar normais
+  if (equipmentsByRarity.length === 0) {
+    const normalEquipment = allEquipmentIds.filter(id => 
+      EQUIPMENT[id].rarity.id === 'normal'
+    );
+    return normalEquipment[Math.floor(Math.random() * normalEquipment.length)];
+  }
+  
+  // Selecionar aleatoriamente um equipamento da raridade escolhida
+  return equipmentsByRarity[Math.floor(Math.random() * equipmentsByRarity.length)];
 }
 
 const port = process.env.PORT || 3000;

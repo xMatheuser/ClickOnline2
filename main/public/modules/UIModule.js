@@ -406,8 +406,20 @@ export function renderUpgrades() {
   });
 }
 
-export function showNotification(message) {
+export function showNotification(message, allowHTML = false) {
+  // Replace coin icon regardless
   message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
+  
+  // If HTML isn't allowed, escape HTML tags
+  if (!allowHTML) {
+    message = message
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+  
   notificationQueue.push(message);
   if (!isNotificationShowing) showNextNotification();
 }
