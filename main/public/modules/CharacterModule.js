@@ -122,6 +122,17 @@ export function initCharacterSelection() {
     if (selectedCharacterType) {
       saveSelectedCharacter(selectedCharacterType);
       
+      // After clicking the select button, hide non-selected cards with animation
+      characterCards.forEach(card => {
+        const cardType = card.getAttribute('data-character-type');
+        if (cardType !== selectedCharacterType) {
+          card.style.opacity = '0';
+          setTimeout(() => {
+            card.style.display = 'none';
+          }, 300);
+        }
+      });
+      
       // Esconde o card selecionado também usando classes CSS
       const characterOptions = document.querySelector('.character-options');
       if (characterOptions) {
@@ -172,66 +183,63 @@ function renderCharacterSelection() {
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
 
-  // Se já tiver um personagem selecionado, mantém o layout para o seu personagem
-  if (selectedCharacterType) {
-    // Verifica se as opções já estão escondidas
-    const characterOptions = document.querySelector('.character-options');
-    if (characterOptions && !characterOptions.classList.contains('hidden')) {
-      characterOptions.classList.add('hidden');
-    }
-
-    // Mostrar o layout de personagens
-    const characterLayout = document.querySelector('.character-layout');
-    if (characterLayout) {
+  // Hide all character containers initially
+  hideAllCharacterContainers();
+  
+  // Hide character layout unless the character is fully selected (saved)
+  const characterLayout = document.querySelector('.character-layout');
+  if (characterLayout) {
+    // Check if player has a saved character in gameState (not just temporarily selected)
+    const player = gameState.players.find(p => p.id === socket.id);
+    const hasSavedCharacter = player && player.characterType;
+    
+    if (hasSavedCharacter) {
       characterLayout.classList.add('visible');
-    }
-
-    // Esconde os cards não selecionados
-    characterCards.forEach(card => {
-      const cardType = card.getAttribute('data-character-type');
-      if (cardType === selectedCharacterType) {
-        card.classList.add('selected');
-        card.style.opacity = '1';
-        card.style.display = 'flex';
-      } else {
-        card.classList.remove('selected');
-        card.style.opacity = '0';
-        card.style.display = 'none';
+      
+      // Show only the container of the saved character
+      characterContainers.forEach(container => {
+        const containerType = container.getAttribute('data-character-type');
+        if (containerType === player.characterType) {
+          container.style.display = 'flex';
+          container.style.opacity = '1';
+        } else {
+          container.style.display = 'none';
+        }
+      });
+      
+      // Hide character options if player has saved character
+      const characterOptions = document.querySelector('.character-options');
+      if (characterOptions && !characterOptions.classList.contains('hidden')) {
+        characterOptions.classList.add('hidden');
       }
-    });
-    
-    // Mostra apenas o container do personagem selecionado
-    characterContainers.forEach(container => {
-      const containerType = container.getAttribute('data-character-type');
-      if (containerType === selectedCharacterType) {
-        container.style.display = 'flex';
-        container.style.opacity = '1';
-      } else {
-        container.style.display = 'none';
-      }
-    });
-  } else {
-    // Caso não tenha personagem selecionado, mostra todos os cards e containers
-    characterCards.forEach(card => {
-      card.style.display = 'flex';
-      card.style.opacity = '1';
-      card.classList.remove('selected');
-    });
-    
-    // Esconde todos os containers quando não há personagem selecionado
-    hideAllCharacterContainers();
-    
-    // Esconder o layout de personagens
-    const characterLayout = document.querySelector('.character-layout');
-    if (characterLayout) {
+    } else {
+      // No saved character, show selection options
       characterLayout.classList.remove('visible');
-    }
-    
-    // Restaura a exibição da seção de opções de personagens
-    const characterOptions = document.querySelector('.character-options');
-    if (characterOptions) {
-      characterOptions.classList.remove('hidden');
-      characterOptions.style.display = 'flex';
+      
+      // Show all cards for selection
+      characterCards.forEach(card => {
+        card.style.display = 'flex';
+        card.style.opacity = '1';
+      });
+      
+      // Restore display of character options
+      const characterOptions = document.querySelector('.character-options');
+      if (characterOptions) {
+        characterOptions.classList.remove('hidden');
+        characterOptions.style.display = 'flex';
+      }
+      
+      // Highlight the temporarily selected card if any
+      if (selectedCharacterType) {
+        characterCards.forEach(card => {
+          const cardType = card.getAttribute('data-character-type');
+          if (cardType === selectedCharacterType) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
+        });
+      }
     }
   }
 
@@ -274,35 +282,15 @@ function addClickEventsToCards() {
 function selectCharacter(characterType) {
   selectedCharacterType = characterType;
 
-  // Update UI to show selection
+  // Update UI to highlight the selected card, but don't show containers yet
   characterCards.forEach(card => {
     const cardType = card.getAttribute('data-character-type');
     
     if (cardType === characterType) {
       card.classList.add('selected');
     } else {
-      // Em vez de apenas remover a classe 'selected', esconde os cards não selecionados
       card.classList.remove('selected');
-      
-      // Usando opacity + setTimeout para uma transição suave
-      card.style.opacity = '0';
-      setTimeout(() => {
-        card.style.display = 'none';
-      }, 300);
-    }
-  });
-
-  // Mostra apenas o container do personagem selecionado
-  characterContainers.forEach(container => {
-    const containerType = container.getAttribute('data-character-type');
-    
-    if (containerType === characterType) {
-      container.classList.add('selected');
-      container.style.display = 'flex';
-      container.style.opacity = '1';
-    } else {
-      container.classList.remove('selected');
-      container.style.display = 'none';
+      // Don't hide other cards, just remove selection
     }
   });
 
@@ -421,6 +409,10 @@ function updateOtherPlayersCharacters() {
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
   
+  // Get current player
+  const currentPlayer = gameState.players.find(p => p.id === socket.id);
+  const hasSavedCharacter = currentPlayer && currentPlayer.characterType;
+  
   // Para o jogador atual, mostramos todos os personagens incluindo os dele
   // Atualizar a exibição dos containers para mostrar todos os personagens selecionados
   const characterLayout = document.querySelector('.character-layout');
@@ -442,21 +434,6 @@ function updateOtherPlayersCharacters() {
         characterLayout.style.gap = '20px';
         characterLayout.style.maxWidth = 'none';
       }
-      
-      // Se o jogador não escolheu um personagem, esconder os cards
-      if (selectedCharacterType) {
-        const characterOptions = document.querySelector('.character-options');
-        if (characterOptions) {
-          characterOptions.classList.add('hidden');
-        }
-      } else {
-        // Garantir que as opções estejam visíveis quando o jogador não tem personagem
-        const characterOptions = document.querySelector('.character-options');
-        if (characterOptions) {
-          characterOptions.classList.remove('hidden');
-          characterOptions.style.display = 'flex';
-        }
-      }
     }
     
     // Mostrar os containers dos personagens selecionados por qualquer jogador
@@ -465,61 +442,54 @@ function updateOtherPlayersCharacters() {
       
       if (selectedCharacters[containerType]) {
         // Este personagem foi selecionado por algum jogador
-        container.style.display = 'flex';
-        container.style.opacity = '1';
-        
-        // Adicionar identificação do jogador que selecionou
-        const playerId = selectedCharacters[containerType];
-        const player = gameState.players.find(p => p.id === playerId);
-        
-        // Verificar se já existe uma identificação
-        let playerLabel = container.querySelector('.player-identifier');
-        if (!playerLabel) {
-          playerLabel = document.createElement('div');
-          playerLabel.className = 'player-identifier';
-          container.appendChild(playerLabel);
+        // Só mostrar containers se o jogador atual já salvou seu personagem
+        if (hasSavedCharacter) {
+          container.style.display = 'flex';
+          container.style.opacity = '1';
+          
+          // Adicionar identificação do jogador que selecionou
+          const playerId = selectedCharacters[containerType];
+          const player = gameState.players.find(p => p.id === playerId);
+          
+          // Verificar se já existe uma identificação
+          let playerLabel = container.querySelector('.player-identifier');
+          if (!playerLabel) {
+            playerLabel = document.createElement('div');
+            playerLabel.className = 'player-identifier';
+            container.appendChild(playerLabel);
+          }
+          
+          // Destacar se é o jogador atual
+          const isCurrentPlayer = playerId === socket.id;
+          const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
+          playerLabel.textContent = isCurrentPlayer ? 'SEU PERSONAGEM' : `PERSONAGEM DE ${playerNumber}`;
+          playerLabel.classList.toggle('current-player', isCurrentPlayer);
+        } else {
+          // Se o jogador não salvou um personagem, esconde todos os containers
+          container.style.display = 'none';
         }
-        
-        // Destacar se é o jogador atual
-        const isCurrentPlayer = playerId === socket.id;
-        const playerNumber = gameState.players.findIndex(p => p.id === playerId) + 1;
-        playerLabel.textContent = isCurrentPlayer ? 'SEU PERSONAGEM' : `PERSONAGEM DE ${playerNumber}`;
-        playerLabel.classList.toggle('current-player', isCurrentPlayer);
-      } else if (!selectedCharacterType) {
-        // Se o jogador não selecionou um personagem, esconde todos os containers
+      } else {
+        // Este personagem não foi selecionado por nenhum jogador
         container.style.display = 'none';
       }
     });
   }
   
   // Atualizar a disponibilidade de todos os cards de personagens
-  if (!selectedCharacterType) {
+  if (!hasSavedCharacter) {
     // Limpar primeiro todos os cards
     characterCards.forEach(card => {
-      // Resetar o estado visual de todos os cards
-      card.style.display = 'none'; // Inicialmente escondido
+      // Resetar o estado visual de todos os cards, mas manter a seleção temporária
+      const cardType = card.getAttribute('data-character-type');
+      const isTemporarilySelected = cardType === selectedCharacterType;
+      
+      card.style.display = 'flex'; // Mostrar todos os cards inicialmente
+      card.style.opacity = '1';
       card.classList.remove('disabled');
+      card.classList.toggle('selected', isTemporarilySelected);
     });
       
-    // Primeiro, destacar claramente quais personagens ainda estão disponíveis
-    availableCharacterTypes.forEach(availableType => {
-      const availableCard = Array.from(characterCards).find(card => 
-        card.getAttribute('data-character-type') === availableType
-      );
-        
-      if (availableCard) {
-        // Este personagem está disponível para seleção
-        availableCard.style.display = 'flex';
-        availableCard.style.opacity = '1';
-        availableCard.style.pointerEvents = 'auto';
-        availableCard.style.cursor = 'pointer';
-        
-        // Adicionar um destaque visual para personagens disponíveis
-        availableCard.classList.add('available');
-      }
-    });
-      
-    // Depois, lidar com os personagens já selecionados
+    // Depois, desabilitar os personagens já selecionados por outros jogadores
     characterCards.forEach(card => {
       const cardType = card.getAttribute('data-character-type');
         
@@ -528,7 +498,6 @@ function updateOtherPlayersCharacters() {
         card.classList.add('disabled');
         card.style.opacity = '0.5';
         card.style.pointerEvents = 'none';
-        card.style.display = 'flex'; // Mostrar, mas desativado
           
         // Adicionar indicação visual de que está selecionado por outro jogador
         const playerInfo = document.createElement('div');
