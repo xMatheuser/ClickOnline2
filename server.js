@@ -371,34 +371,43 @@ io.on('connection', (socket) => {
               // Gerar drop de equipamento para o jogador que derrotou o boss
               const equipmentDrop = calculateEquipmentDrop(gameState.teamLevel);
               let dropInfo = null;
+              let inventoryIsFull = false;
               
               if (equipmentDrop) {
                 const equipment = EQUIPMENT[equipmentDrop];
                 console.log(`Boss derrotado por ${player.name} dropou: ${equipment.name} (${equipment.rarity.name})`);
                 
-                // Adicionar ao inventário do jogador
+                // Adicionar ao inventário do jogador se houver espaço
                 player.inventory = player.inventory || [];
-                player.inventory.push({
-                  id: equipment.id,
-                  name: equipment.name,
-                  type: equipment.type.id,
-                  rarity: equipment.rarity.id,
-                  stats: equipment.stats,
-                  requiredLevel: equipment.requiredLevel,
-                  dateObtained: Date.now()
-                });
                 
-                // Preparar informações do drop para enviar ao cliente
-                dropInfo = {
-                  id: equipment.id,
-                  name: equipment.name,
-                  rarity: {
-                    id: equipment.rarity.id,
-                    name: equipment.rarity.name,
-                    color: equipment.rarity.color
-                  },
-                  icon: equipment.type.icon
-                };
+                // Verificar se o inventário está cheio (limite de 10 slots)
+                if (player.inventory.length >= 10) {
+                  inventoryIsFull = true;
+                  console.log(`Inventário de ${player.name} está cheio. Item perdido: ${equipment.name}`);
+                } else {
+                  // Adicionar o item ao inventário
+                  player.inventory.push({
+                    id: equipment.id,
+                    name: equipment.name,
+                    type: equipment.type.id,
+                    rarity: equipment.rarity.id,
+                    stats: equipment.stats,
+                    requiredLevel: equipment.requiredLevel,
+                    dateObtained: Date.now()
+                  });
+                  
+                  // Preparar informações do drop para enviar ao cliente
+                  dropInfo = {
+                    id: equipment.id,
+                    name: equipment.name,
+                    rarity: {
+                      id: equipment.rarity.id,
+                      name: equipment.rarity.name,
+                      color: equipment.rarity.color
+                    },
+                    icon: equipment.type.icon
+                  };
+                }
               }
 
               io.emit('bossResult', {
@@ -407,7 +416,8 @@ io.on('connection', (socket) => {
                 multiplier: boss.rewards.clickPowerMultiplier,
                 duration: boss.rewards.clickPowerDuration,
                 killedBy: player.name,
-                equipmentDrop: dropInfo
+                equipmentDrop: dropInfo,
+                inventoryFull: inventoryIsFull
               });
 
               gameState.activeBoss = null;

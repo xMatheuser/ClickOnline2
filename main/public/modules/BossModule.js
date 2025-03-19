@@ -83,8 +83,13 @@ function handleBossResult(result) {
   if (result.victory) {
     let message = `Boss derrotado por ${result.killedBy}!\nRecompensa: ${result.coins} moedas\nPoder de clique multiplicado por ${result.multiplier}x por ${result.duration / 1000} segundos!`;
     
+    // Verificar se o inventário está cheio
+    if (result.inventoryFull) {
+      message += `\n\n⚠️ Seu inventário está cheio!\nVocê perdeu um item!`;
+      showNotification(message, 'warning');
+    }
     // Adicionar informação sobre o drop de equipamento
-    if (result.equipmentDrop) {
+    else if (result.equipmentDrop) {
       const rarity = result.equipmentDrop.rarity;
       message += `\n\nEquipamento obtido: ${result.equipmentDrop.icon} ${result.equipmentDrop.name}`;
       message += `\nRaridade: <span style="color:${rarity.color}">${rarity.name}</span>`;
@@ -97,11 +102,13 @@ function handleBossResult(result) {
           item: result.equipmentDrop
         }
       }));
+      
+      showNotification(message, 'success');
+    } else {
+      showNotification(message, 'success');
     }
-    
-    showNotification(message, true);
   } else {
-    showNotification(`Boss não foi derrotado a tempo!\nPenalidade: ${result.penalty} moedas perdidas...`);
+    showNotification(`Boss não foi derrotado a tempo!\nPenalidade: ${result.penalty} moedas perdidas...`, 'error');
   }
   hideBossFight();
 }

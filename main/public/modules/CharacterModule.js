@@ -485,8 +485,12 @@ function renderInventorySlots() {
     .filter(item => item.dateObtained && (now - item.dateObtained < 5000))
     .map(item => item.id);
   
-  // Render inventory items
-  player.inventory.forEach((item, index) => {
+  // Verificar se o inventário está cheio
+  const inventoryFull = player.inventory.length >= 10;
+  
+  // Render inventory items (até o limite de 10)
+  const itemsToRender = player.inventory.slice(0, 10);
+  itemsToRender.forEach((item, index) => {
     const slot = document.createElement('div');
     slot.className = 'inventory-slot';
     slot.setAttribute('data-inventory-slot', index);
@@ -524,33 +528,21 @@ function renderInventorySlots() {
     const icons = {
       sword: '⚔️',
       bow: '🏹',
-      staff: '🪄'
+      staff: '🪄',
+      helmet: '🪖',
+      armor: '🛡️',
+      boots: '👢',
+      gloves: '🧤',
+      ring: '💍',
+      amulet: '📿'
     };
     
-    itemIcon.textContent = icons[item.type] || '📦';
-    itemIcon.style.fontSize = '24px';
+    const typeIcon = icons[item.type] || '❓';
+    itemIcon.textContent = typeIcon;
     
     slot.appendChild(itemIcon);
     
-    // Add tooltip with item details
-    const tooltipContent = `
-      <div style="text-align: left; padding: 5px;">
-        <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
-        <div>Tipo: ${item.type}</div>
-        <div>Nível Requerido: ${item.requiredLevel}</div>
-        <div style="margin-top: 5px;">Stats:</div>
-        <ul style="margin: 0; padding-left: 15px;">
-          ${Object.entries(item.stats).map(([stat, value]) => {
-            const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
-            return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
-          }).join('')}
-        </ul>
-        <div style="margin-top: 8px; color: #ff9800; font-style: italic; text-align: center;">
-          Clique para desequipar
-        </div>
-      </div>
-    `;
-    
+    const tooltipContent = createTooltipContent(item);
     slot.setAttribute('data-tooltip', tooltipContent);
     
     // Add drag start event
@@ -601,59 +593,49 @@ function renderInventorySlots() {
       slot.classList.add('dragging');
     });
     
+    // Add dragend event
     slot.addEventListener('dragend', () => {
       slot.classList.remove('dragging');
-      // Limpar as informações do item arrastado
-      currentDraggedItem = null;
-      
       // Reabilitar tooltips após o arrasto
-      tooltipsEnabled = true;
+      setTimeout(() => {
+        tooltipsEnabled = true;
+      }, 100);
     });
     
     // Add dragover event for merging items
     slot.addEventListener('dragover', (e) => {
       e.preventDefault();
-      if (e.dataTransfer.types.includes('text/plain')) {
-        // Remover classes de estado anterior
-        slot.classList.remove('merge-valid', 'merge-invalid');
+      
+      // Impedir arrasto sobre si mesmo
+      if (currentDraggedItem && currentDraggedItem.slotIndex === index) {
+        return;
+      }
+      
+      // Verificar compatibilidade para fusão
+      if (currentDraggedItem && currentDraggedItem.sourceType === 'inventory') {
+        const canMerge = item.type === currentDraggedItem.type && 
+                          item.name === currentDraggedItem.name && 
+                          item.rarity === currentDraggedItem.rarity &&
+                          item.rarity !== 'legendary';
         
-        // Verificar se temos um item sendo arrastado
-        if (currentDraggedItem && currentDraggedItem.sourceType === 'inventory') {
-          // Obter índice do slot atual e do slot arrastado
-          const currentSlotIndex = parseInt(slot.getAttribute('data-inventory-slot'));
-          const draggedSlotIndex = currentDraggedItem.slotIndex;
-          
-          // VERIFICAÇÃO: Impedir apenas arrastar para o mesmo slot físico
-          // Não verificamos IDs de itens, pois queremos permitir fundir itens que são
-          // iguais (mesmo tipo, nome e raridade), mesmo que tenham IDs diferentes
-          if (currentSlotIndex === draggedSlotIndex) {
-            // Mostrar feedback visual de que não pode arrastar sobre o mesmo slot
-            slot.classList.add('merge-invalid'); // Mostrar borda vermelha
-            return;
-          }
-          
-          // Verificar compatibilidade
-          const isSameType = currentDraggedItem.type === item.type;
-          const isSameName = currentDraggedItem.name === item.name;
-          const isSameRarity = currentDraggedItem.rarity === item.rarity;
-          const isLegendary = item.rarity === 'legendary';
-          
-          // Mostrar indicação visual apropriada - itens compatíveis mostram borda verde
-          if (isSameType && isSameName && isSameRarity && !isLegendary) {
-            slot.classList.add('merge-valid'); // Mostrar borda verde
-          } else {
-            slot.classList.add('merge-invalid'); // Mostrar borda vermelha
-          }
+        if (canMerge) {
+          slot.classList.add('merge-valid');
+          slot.classList.remove('merge-invalid');
+          e.dataTransfer.dropEffect = 'move';
         } else {
-          // Adicionar apenas uma classe genérica de arrasto
-          slot.classList.add('dragover');
+          slot.classList.add('merge-invalid');
+          slot.classList.remove('merge-valid');
+          e.dataTransfer.dropEffect = 'none';
         }
+      } else if (currentDraggedItem && currentDraggedItem.sourceType === 'equipment') {
+        slot.classList.add('dragover');
+        e.dataTransfer.dropEffect = 'move';
       }
     });
     
+    // Add dragleave event
     slot.addEventListener('dragleave', () => {
       slot.classList.remove('dragover');
-      // Remover qualquer classe de estilo temporária
       slot.classList.remove('merge-valid');
       slot.classList.remove('merge-invalid');
     });
@@ -729,29 +711,49 @@ function renderInventorySlots() {
         }
       } catch (error) {
         console.error('Erro ao processar drop:', error);
-      } finally {
-        // Reabilitar tooltips mesmo em caso de erro
-        tooltipsEnabled = true;
       }
     });
     
     inventoryGrid.appendChild(slot);
   });
   
-  // Add extra empty slots if needed (total at least 10 slots)
-  const totalSlots = Math.max(10, player.inventory.length + 3);
-  for (let i = player.inventory.length; i < totalSlots; i++) {
-    createEmptySlot(i);
+  // Fill remaining slots with empty slots (if any)
+  const remainingSlots = 10 - itemsToRender.length;
+  for (let i = 0; i < remainingSlots; i++) {
+    createEmptySlot(itemsToRender.length + i);
   }
   
-  // Adicionar o botão de forja no inventário após renderizar os slots
-  addForgeButton();
+  // Adicionar indicador visual quando o inventário estiver cheio
+  if (inventoryFull) {
+    const inventorySection = document.querySelector('.inventory-section');
+    if (inventorySection) {
+      inventorySection.classList.add('inventory-full');
+      
+      // Verificar se já existe uma mensagem de inventário cheio
+      let fullMessage = document.querySelector('.inventory-full-message');
+      if (!fullMessage) {
+        fullMessage = document.createElement('div');
+        fullMessage.className = 'inventory-full-message';
+        fullMessage.textContent = '⚠️ Inventário cheio!';
+        inventorySection.insertBefore(fullMessage, inventoryGrid);
+      }
+    }
+  } else {
+    // Remover indicador visual e mensagem se o inventário não estiver mais cheio
+    const inventorySection = document.querySelector('.inventory-section');
+    if (inventorySection) {
+      inventorySection.classList.remove('inventory-full');
+      const fullMessage = document.querySelector('.inventory-full-message');
+      if (fullMessage) {
+        fullMessage.remove();
+      }
+    }
+  }
   
-  // Adicionar tooltips aos slots
-  addTooltipsToSlots();
+  // Setup tooltips for inventory slots
+  setupTooltips();
   
-  // Setup equipment slots for drag and drop
-  setupEquipmentSlots();
+  return inventoryGrid;
 }
 
 function createEmptySlot(index) {
@@ -1140,10 +1142,15 @@ function handleUnequipItem(itemId, slotType, targetSlot = null) {
 
 // Função para esconder todos os tooltips
 function hideAllTooltips() {
-  const tooltips = document.querySelectorAll('.tooltip-container');
-  tooltips.forEach(tooltip => {
+  // Remover tooltips antigos
+  const oldTooltips = document.querySelectorAll('.tooltip-container');
+  oldTooltips.forEach(tooltip => {
     tooltip.style.display = 'none';
   });
+  
+  // Remover tooltips novos
+  const newTooltips = document.querySelectorAll('.item-tooltip');
+  newTooltips.forEach(tooltip => tooltip.remove());
 }
 
 // Modificar a função addTooltipsToSlots para respeitar o estado de tooltipsEnabled
@@ -1189,10 +1196,7 @@ function addTooltipsToSlots() {
     });
     
     slot.addEventListener('mouseleave', () => {
-      const tooltips = document.querySelectorAll('.tooltip-container');
-      tooltips.forEach(tooltip => {
-        tooltip.remove();
-      });
+      hideAllTooltips();
     });
   });
 }
@@ -2119,9 +2123,7 @@ function updateCharacterTooltips() {
     });
     
     charType.addEventListener('mouseleave', () => {
-      document.querySelectorAll('.tooltip-container').forEach(tooltip => {
-        tooltip.remove();
-      });
+      hideAllTooltips();
     });
   });
 }
@@ -2408,3 +2410,76 @@ function showDiscardConfirmation(itemData) {
     overlay.remove();
   });
 }
+
+// Função para criar o conteúdo do tooltip de um item
+function createTooltipContent(item) {
+  // Definir cores baseadas na raridade
+  const rarityColors = {
+    normal: '#d4d4d4',
+    uncommon: '#4ade80',
+    rare: '#60a5fa',
+    epic: '#a855f7',
+    legendary: '#facc15'
+  };
+  
+  const borderColor = rarityColors[item.rarity] || '#d4d4d4';
+  
+  return `
+    <div style="text-align: left; padding: 5px;">
+      <div style="color: ${borderColor}; font-weight: bold; margin-bottom: 5px;">${item.name}</div>
+      <div>Tipo: ${item.type}</div>
+      <div>Nível Requerido: ${item.requiredLevel}</div>
+      <div style="margin-top: 5px;">Stats:</div>
+      <ul style="margin: 0; padding-left: 15px;">
+        ${Object.entries(item.stats).map(([stat, value]) => {
+          const formattedValue = value >= 0 ? `+${value * 100}%` : `${value * 100}%`;
+          return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+        }).join('')}
+      </ul>
+      <div style="margin-top: 8px; color: #ff9800; font-style: italic; text-align: center;">
+        Arraste para equipar ou fundir
+      </div>
+    </div>
+  `;
+}
+
+// Função para configurar tooltips para os slots de inventário
+function setupTooltips() {
+  const inventorySlots = document.querySelectorAll('.inventory-slot');
+  
+  inventorySlots.forEach(slot => {
+    const tooltipContent = slot.getAttribute('data-tooltip');
+    if (!tooltipContent) return;
+    
+    slot.addEventListener('mouseenter', (e) => {
+      if (!tooltipsEnabled) return;
+      
+      const tooltip = document.createElement('div');
+      tooltip.className = 'item-tooltip';
+      tooltip.innerHTML = tooltipContent;
+      
+      document.body.appendChild(tooltip);
+      
+      const rect = slot.getBoundingClientRect();
+      const tooltipWidth = 250; // Largura aproximada do tooltip
+      
+      // Posicionar o tooltip à direita ou à esquerda do item, dependendo da posição na tela
+      const isRightSide = rect.left + rect.width + tooltipWidth > window.innerWidth;
+      
+      if (isRightSide) {
+        tooltip.style.right = window.innerWidth - rect.left + 10 + 'px';
+      } else {
+        tooltip.style.left = rect.left + rect.width + 10 + 'px';
+      }
+      
+      tooltip.style.top = rect.top + 'px';
+    });
+    
+    slot.addEventListener('mouseleave', () => {
+      hideAllTooltips();
+    });
+  });
+}
+
+// A função hideAllTooltips já está definida anteriormente no arquivo (linha 1143)
+// Não é necessário redefini-la aqui

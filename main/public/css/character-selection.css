@@ -1165,3 +1165,26 @@
   z-index: 10001;
   animation: fadeIn 0.3s ease;
 }
+
+/* Estilos para o inventário cheio */
+.inventory-section.inventory-full {
+  border-color: #ff5050;
+  box-shadow: 0 0 15px rgba(255, 80, 80, 0.3);
+}
+
+.inventory-full-message {
+  background-color: rgba(255, 80, 80, 0.2);
+  color: #ff5050;
+  padding: 8px 15px;
+  margin: 0;
+  text-align: center;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255, 80, 80, 0.3);
+  animation: pulseWarning 2s infinite;
+}
+
+@keyframes pulseWarning {
+  0% { background-color: rgba(255, 80, 80, 0.2); }
+  50% { background-color: rgba(255, 80, 80, 0.4); }
+  100% { background-color: rgba(255, 80, 80, 0.2); }
+}
