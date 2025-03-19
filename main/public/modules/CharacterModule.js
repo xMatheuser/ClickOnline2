@@ -5,7 +5,7 @@ export const openCharacterSelectionBtn = document.getElementById('open-character
 export const closeCharacterSelectionBtn = document.getElementById('close-character-selection');
 export const characterSelectionOverlay = document.getElementById('character-selection-overlay');
 export const characterSelectionContent = document.getElementById('character-selection-content');
-export const selectCharacterButton = document.getElementById('select-character-button');
+export const selectCharacterButton = document.getElementById('character-select-button');
 export const inventoryToggle = document.getElementById('inventory-toggle');
 export const inventoryGrid = document.getElementById('inventory-grid');
 
@@ -34,6 +34,10 @@ let tooltipsEnabled = true;
 
 // Definir uma variável para o seletor de tipos de personagem
 let characterTypeSelector = document.querySelector('.character-options');
+
+// Variáveis para o sistema de forja
+let forgeMode = false;
+let selectedForgeItem = null;
 
 export function initCharacterSelection() {
   // Não carrega mais do localStorage - apenas verifica no gameState
@@ -128,47 +132,51 @@ export function initCharacterSelection() {
   inventoryGrid.classList.add('expanded');
   inventoryToggle.textContent = '▲';
 
-  // Character selection button
-  selectCharacterButton.addEventListener('click', () => {
-    const player = gameState.players?.find(p => p.id === socket.id);
-    const hasCharacter = player && player.characterType;
-    
-    if (hasCharacter) {
-      // If player already has a character, show character selection options
-      resetCharacterSelection();
-    } else if (selectedCharacterType) {
-      // If no character yet but one is selected, save it
-      saveSelectedCharacter(selectedCharacterType);
+  // Garantir que o botão existe antes de adicionar o listener
+  if (selectCharacterButton) {
+    selectCharacterButton.addEventListener('click', () => {
+      const player = gameState.players?.find(p => p.id === socket.id);
+      const hasCharacter = player && player.characterType;
       
-      // After clicking the select button, hide non-selected cards with animation
-      characterCards.forEach(card => {
-        const cardType = card.getAttribute('data-character-type');
-        if (cardType !== selectedCharacterType) {
-          card.style.opacity = '0';
-          setTimeout(() => {
-            card.style.display = 'none';
-          }, 300);
+      if (hasCharacter) {
+        // If player already has a character, show character selection options
+        resetCharacterSelection();
+      } else if (selectedCharacterType) {
+        // If no character yet but one is selected, save it
+        saveSelectedCharacter(selectedCharacterType);
+        
+        // After clicking the select button, hide non-selected cards with animation
+        characterCards.forEach(card => {
+          const cardType = card.getAttribute('data-character-type');
+          if (cardType !== selectedCharacterType) {
+            card.style.opacity = '0';
+            setTimeout(() => {
+              card.style.display = 'none';
+            }, 300);
+          }
+        });
+        
+        // Esconde o card selecionado também usando classes CSS
+        const characterOptions = document.querySelector('.character-options');
+        if (characterOptions) {
+          characterOptions.classList.add('hidden');
         }
-      });
-      
-      // Esconde o card selecionado também usando classes CSS
-      const characterOptions = document.querySelector('.character-options');
-      if (characterOptions) {
-        characterOptions.classList.add('hidden');
-      }
-      
-      // Show notification
-      const characterName = getCharacterType(selectedCharacterType)?.name || selectedCharacterType;
-      showNotification(`Personagem ${characterName} selecionado!`, 'success');
+        
+        // Show notification
+        const characterName = getCharacterType(selectedCharacterType)?.name || selectedCharacterType;
+        showNotification(`Personagem ${characterName} selecionado!`, 'success');
 
-      // Update button text
-      updateSelectButtonText();
-      
-      // Deixar overlay aberto para que o jogador possa ver os outros personagens
-      // Atualiza a exibição para mostrar os personagens dos outros jogadores
-      updateOtherPlayersCharacters();
-    }
-  });
+        // Update button text
+        updateSelectButtonText();
+        
+        // Deixar overlay aberto para que o jogador possa ver os outros personagens
+        // Atualiza a exibição para mostrar os personagens dos outros jogadores
+        updateOtherPlayersCharacters();
+      }
+    });
+  } else {
+    console.error('Select character button not found');
+  }
 
   // Listen for character updates from server
   socket.on('playerCharacterUpdate', (data) => {
@@ -242,6 +250,15 @@ export function initCharacterSelection() {
       showNotification(result.message || 'Falha na fusão de itens', 'error');
     }
   });
+
+  // Mover a criação do botão de forja para renderInventorySlots
+  // para garantir que seja criado quando o inventário estiver visível
+  
+  // Criar overlay de forja
+  createForgeOverlay();
+  
+  // Listen for forge results from server
+  socket.on('forgeResult', handleForgeResult);
 }
 
 // Function to hide all character containers
@@ -253,6 +270,12 @@ function hideAllCharacterContainers() {
 }
 
 function renderCharacterSelection() {
+  // Add early return if button doesn't exist
+  if (!selectCharacterButton) {
+    console.error('Select character button not found');
+    return;
+  }
+
   characterCards = document.querySelectorAll('.character-card');
   characterContainers = document.querySelectorAll('.character-container');
 
@@ -499,7 +522,9 @@ function renderInventorySlots() {
             return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
           }).join('')}
         </ul>
-        <div style="margin-top: 5px; font-style: italic; color: #888;">Arraste sobre outro item igual para fundir</div>
+        <div style="margin-top: 8px; color: #ff9800; font-style: italic; text-align: center;">
+          Clique para desequipar
+        </div>
       </div>
     `;
     
@@ -696,7 +721,10 @@ function renderInventorySlots() {
     createEmptySlot(i);
   }
   
-  // Add tooltips to inventory slots
+  // Adicionar o botão de forja no inventário após renderizar os slots
+  addForgeButton();
+  
+  // Adicionar tooltips aos slots
   addTooltipsToSlots();
   
   // Setup equipment slots for drag and drop
@@ -1024,6 +1052,9 @@ function handleEquipItem(itemId, slotType, targetSlot) {
           return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
         }).join('')}
       </ul>
+      <div style="margin-top: 8px; color: #ff9800; font-style: italic; text-align: center;">
+        Clique para desequipar
+      </div>
     </div>
   `;
   
@@ -1354,6 +1385,11 @@ function updateStatLabels() {
 
 // Function to update select button text based on player state
 function updateSelectButtonText() {
+  if (!selectCharacterButton) {
+    console.error('Select character button not found');
+    return;
+  }
+
   const player = gameState.players?.find(p => p.id === socket.id);
   const hasCharacter = player && player.characterType;
   
@@ -1423,6 +1459,478 @@ function resetCharacterSelection() {
   
   // Update other players' characters display
   updateOtherPlayersCharacters();
+}
+
+// Criar o overlay de forja
+function createForgeOverlay() {
+  // Verificar se já existe
+  if (document.querySelector('.forge-overlay')) return;
+  
+  const forgeOverlay = document.createElement('div');
+  forgeOverlay.className = 'forge-overlay';
+  
+  forgeOverlay.innerHTML = `
+    <div class="forge-container">
+      <button class="forge-close">✖</button>
+      <h2 class="forge-title">Forja de Itens</h2>
+      
+      <div class="forge-item">
+        <div class="forge-item-icon"></div>
+        <div class="forge-item-name"></div>
+        <div class="forge-item-rarity"></div>
+        <div class="forge-stats"></div>
+      </div>
+      
+      <div class="forge-info">
+        <div class="forge-chance">
+          <span>Chance de Sucesso:</span>
+          <span class="forge-chance-value"></span>
+        </div>
+        <div class="forge-cost">
+          <span>Custo:</span>
+          <span class="forge-cost-value"></span>
+        </div>
+      </div>
+      
+      <div class="forge-result"></div>
+      
+      <div class="forge-buttons">
+        <button class="forge-confirm">Forjar</button>
+        <button class="forge-cancel">Cancelar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(forgeOverlay);
+  
+  // Adicionar event listeners
+  const closeButton = forgeOverlay.querySelector('.forge-close');
+  const cancelButton = forgeOverlay.querySelector('.forge-cancel');
+  const confirmButton = forgeOverlay.querySelector('.forge-confirm');
+  
+  closeButton.addEventListener('click', closeForgeOverlay);
+  cancelButton.addEventListener('click', closeForgeOverlay);
+  confirmButton.addEventListener('click', confirmForge);
+  
+  // Fechar overlay quando clicar fora do container
+  forgeOverlay.addEventListener('click', (e) => {
+    if (e.target === forgeOverlay) {
+      closeForgeOverlay();
+    }
+  });
+}
+
+// Alterna o modo de forja
+function toggleForgeMode() {
+  // Buscar inventoryGrid diretamente pelo ID, que é mais confiável
+  const inventoryGrid = document.getElementById('inventory-grid');
+  const inventoryContainer = document.querySelector('.inventory-container, .inventory-section');
+  forgeMode = !forgeMode;
+  
+  // Verificar se os elementos necessários existem
+  if (!inventoryGrid && !inventoryContainer) {
+    console.error('Não foi possível encontrar o contêiner de inventário');
+    showForgeNotification('Erro ao ativar modo forja: contêiner de inventário não encontrado', 'error');
+    return;
+  }
+  
+  // Usar o contêiner que foi encontrado
+  const targetContainer = inventoryGrid || inventoryContainer;
+  
+  if (forgeMode) {
+    // Adicionar classe ao contêiner
+    targetContainer.classList.add('forge-mode');
+    
+    // Atualizar aparência do botão de forja (verificar se existe primeiro)
+    const forgeButton = document.querySelector('.forge-button');
+    if (forgeButton) {
+      forgeButton.classList.add('active');
+      forgeButton.style.backgroundColor = '#ff5722';
+    }
+    
+    // Adicionar event listeners para os slots de inventário no modo forja
+    const inventorySlots = document.querySelectorAll('.inventory-slot:not(.empty)');
+    inventorySlots.forEach(slot => {
+      slot.addEventListener('click', handleItemForgeClick);
+      
+      // Garantir que o estilo do cursor seja aplicado diretamente
+      slot.style.cursor = 'pointer';
+      // Adicionar borda destacada para mostrar que está no modo forja
+      slot.style.borderColor = '#ff9800';
+      slot.style.boxShadow = '0 0 10px rgba(255, 152, 0, 0.5)';
+    });
+    
+    showForgeNotification('Modo Forja ativado! Clique em um item para forjá-lo.', 'info');
+  } else {
+    // Remover classe do contêiner
+    targetContainer.classList.remove('forge-mode');
+    
+    // Atualizar aparência do botão de forja (verificar se existe primeiro)
+    const forgeButton = document.querySelector('.forge-button');
+    if (forgeButton) {
+      forgeButton.classList.remove('active');
+      forgeButton.style.backgroundColor = '#ff9800';
+    }
+    
+    // Remover event listeners
+    const inventorySlots = document.querySelectorAll('.inventory-slot:not(.empty)');
+    inventorySlots.forEach(slot => {
+      slot.removeEventListener('click', handleItemForgeClick);
+      
+      // Restaurar o estilo original
+      slot.style.cursor = '';
+      // Restaurar cores originais com base na raridade do item
+      const itemRarity = slot.getAttribute('data-item-rarity');
+      if (itemRarity) {
+        const rarityColors = {
+          normal: '#d4d4d4',
+          uncommon: '#4ade80',
+          rare: '#60a5fa',
+          epic: '#a855f7',
+          legendary: '#facc15'
+        };
+        slot.style.borderColor = rarityColors[itemRarity] || '#d4d4d4';
+        slot.style.boxShadow = `0 0 5px ${rarityColors[itemRarity] || '#d4d4d4'}`;
+      }
+    });
+    
+    showForgeNotification('Modo Forja desativado!', 'info');
+  }
+}
+
+// Lidar com o clique em um item durante o modo forja
+function handleItemForgeClick(e) {
+  if (!forgeMode) return;
+  
+  const itemId = e.currentTarget.getAttribute('data-item-id');
+  if (!itemId) return;
+  
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (!player || !player.inventory) return;
+  
+  const item = player.inventory.find(item => item.id === itemId);
+  if (!item) return;
+  
+  // Se for um item lendário, não pode ser forjado
+  if (item.rarity === 'legendary') {
+    showForgeNotification('Itens Lendários já possuem a raridade máxima!', 'error');
+    return;
+  }
+  
+  // Define o item selecionado para forja
+  selectedForgeItem = item;
+  
+  // Exibir dados do item no overlay de forja
+  openForgeOverlay(item);
+}
+
+// Abrir o overlay de forja com os dados do item
+function openForgeOverlay(item) {
+  const player = gameState.players?.find(p => p.id === socket.id);
+  if (!player) return;
+  
+  const forgeOverlay = document.querySelector('.forge-overlay');
+  
+  // Mapear próxima raridade
+  const raridadeAtual = item.rarity;
+  let proximaRaridade;
+  switch (raridadeAtual) {
+    case 'normal': proximaRaridade = 'uncommon'; break;
+    case 'uncommon': proximaRaridade = 'rare'; break;
+    case 'rare': proximaRaridade = 'epic'; break;
+    case 'epic': proximaRaridade = 'legendary'; break;
+    default: return; // Não deve acontecer
+  }
+  
+  // Mapear chance de sucesso
+  let chanceDeSuccesso;
+  switch (raridadeAtual) {
+    case 'normal': chanceDeSuccesso = '25%'; break;
+    case 'uncommon': chanceDeSuccesso = '15%'; break;
+    case 'rare': chanceDeSuccesso = '5%'; break;
+    case 'epic': chanceDeSuccesso = '0.1%'; break;
+    default: chanceDeSuccesso = '0%';
+  }
+  
+  // Calcular custo 
+  let custoPercentual;
+  switch (raridadeAtual) {
+    case 'normal': custoPercentual = 0.30; break;
+    case 'uncommon': custoPercentual = 0.35; break;
+    case 'rare': custoPercentual = 0.40; break;
+    case 'epic': custoPercentual = 0.50; break;
+    default: custoPercentual = 0;
+  }
+  
+  // Usar as moedas da equipe para o cálculo
+  const teamCoins = gameState.teamCoins || 0;
+  const custoEmMoedas = Math.floor(teamCoins * custoPercentual);
+  
+  // Ícones para os tipos de equipamento
+  const icons = {
+    sword: '⚔️',
+    bow: '🏹',
+    staff: '🪄'
+  };
+  
+  // Cores para as raridades
+  const rarityColors = {
+    normal: '#d4d4d4',
+    uncommon: '#4ade80',
+    rare: '#60a5fa',
+    epic: '#a855f7',
+    legendary: '#facc15'
+  };
+  
+  // Nomes das raridades em português
+  const rarityNames = {
+    normal: 'Normal',
+    uncommon: 'Incomum',
+    rare: 'Raro',
+    epic: 'Épico',
+    legendary: 'Lendário'
+  };
+  
+  // Preencher as informações no overlay
+  const iconElement = forgeOverlay.querySelector('.forge-item-icon');
+  const nameElement = forgeOverlay.querySelector('.forge-item-name');
+  const rarityElement = forgeOverlay.querySelector('.forge-item-rarity');
+  const statsElement = forgeOverlay.querySelector('.forge-stats');
+  const chanceElement = forgeOverlay.querySelector('.forge-chance-value');
+  const costElement = forgeOverlay.querySelector('.forge-cost-value');
+  const resultElement = forgeOverlay.querySelector('.forge-result');
+  
+  // Esconder resultado anterior
+  resultElement.style.display = 'none';
+  resultElement.classList.remove('forge-success', 'forge-failure');
+  
+  iconElement.textContent = icons[item.type] || '📦';
+  nameElement.textContent = item.name;
+  nameElement.style.color = rarityColors[item.rarity];
+  
+  rarityElement.innerHTML = `
+    <span style="color: ${rarityColors[item.rarity]};">${rarityNames[item.rarity]}</span> → 
+    <span style="color: ${rarityColors[proximaRaridade]};">${rarityNames[proximaRaridade]}</span>
+  `;
+  
+  // Mostrar stats
+  statsElement.innerHTML = `
+    <h3>Estatísticas</h3>
+    <ul style="list-style: none; padding: 0; margin: 5px 0;">
+      ${Object.entries(item.stats).map(([stat, value]) => {
+        const formattedValue = value >= 0 ? `+${(value * 100).toFixed(0)}%` : `${(value * 100).toFixed(0)}%`;
+        return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
+      }).join('')}
+    </ul>
+  `;
+  
+  chanceElement.textContent = chanceDeSuccesso;
+  costElement.textContent = `${custoEmMoedas.toLocaleString()} moedas (${(custoPercentual * 100).toFixed(0)}% do total)`;
+  
+  // Verificar se o jogador tem moedas suficientes
+  const confirmButton = forgeOverlay.querySelector('.forge-confirm');
+  if (teamCoins < custoEmMoedas) {
+    confirmButton.disabled = true;
+    confirmButton.textContent = 'Moedas Insuficientes';
+    confirmButton.style.backgroundColor = '#777';
+  } else {
+    confirmButton.disabled = false;
+    confirmButton.textContent = 'Forjar';
+    confirmButton.style.backgroundColor = '#ff9800';
+  }
+  
+  // Exibir o overlay
+  forgeOverlay.style.display = 'flex';
+}
+
+// Fechar o overlay de forja
+function closeForgeOverlay() {
+  const forgeOverlay = document.querySelector('.forge-overlay');
+  forgeOverlay.style.display = 'none';
+  selectedForgeItem = null;
+}
+
+// Confirmar a forja
+function confirmForge() {
+  if (!selectedForgeItem) return;
+  
+  // Desativar o botão de confirmação para evitar cliques duplos
+  const confirmButton = document.querySelector('.forge-confirm');
+  confirmButton.disabled = true;
+  confirmButton.textContent = 'Forjando...';
+  
+  // Mostrar animação de forja
+  showForgeAnimation();
+  
+  // Enviar solicitação de forja para o servidor
+  socket.emit('forgeItem', {
+    itemId: selectedForgeItem.id
+  });
+}
+
+// Animação de forja
+function showForgeAnimation() {
+  // Criar elementos de animação
+  const animation = document.createElement('div');
+  animation.className = 'forge-animation';
+  
+  const hammer = document.createElement('div');
+  hammer.className = 'forge-hammer';
+  hammer.textContent = '🔨';
+  
+  const sparks = document.createElement('div');
+  sparks.className = 'forge-sparks';
+  
+  animation.appendChild(hammer);
+  animation.appendChild(sparks);
+  document.body.appendChild(animation);
+  
+  // Tentar reproduzir o som, mas não bloquear a animação se falhar
+  try {
+    // Verificar se o arquivo de som existe, se não, usar apenas a animação visual
+    const audioPath = '/assets/sounds/hammer.mp3';
+    
+    // Verificar se o arquivo existe fazendo uma requisição HEAD
+    fetch(audioPath, { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          const hammerSound = new Audio(audioPath);
+          hammerSound.volume = 0.3;
+          hammerSound.play().catch(e => console.log('Não foi possível reproduzir o som de forja', e));
+        }
+      })
+      .catch(error => {
+        console.log('Arquivo de som não encontrado, prosseguindo com animação visual');
+      });
+  } catch (error) {
+    console.log('Erro ao tentar reproduzir o som:', error);
+  }
+  
+  // Reproduzir sons de pancada
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      // Efeito visual de impacto
+      const impact = document.createElement('div');
+      impact.className = 'forge-impact';
+      impact.style.position = 'absolute';
+      impact.style.width = '80px';
+      impact.style.height = '80px';
+      impact.style.borderRadius = '50%';
+      impact.style.backgroundColor = 'rgba(255, 152, 0, 0.3)';
+      impact.style.animation = 'impact 0.3s ease-out';
+      animation.appendChild(impact);
+      
+      setTimeout(() => impact.remove(), 300);
+    }, i * 350);
+  }
+  
+  // Remover a animação após término
+  setTimeout(() => {
+    animation.remove();
+  }, 1500);
+}
+
+// Lidar com o resultado da forja
+function handleForgeResult(result) {
+  const resultElement = document.querySelector('.forge-result');
+  
+  if (result.success) {
+    // Forja bem-sucedida
+    resultElement.textContent = result.message;
+    resultElement.classList.add('forge-success');
+    resultElement.classList.remove('forge-failure');
+    
+    // Atualizar o inventário
+    setTimeout(() => {
+      renderInventorySlots();
+      closeForgeOverlay();
+    }, 2000);
+    
+    // Notificar o sucesso
+    showForgeNotification(`${result.message} O item foi aprimorado para ${result.newRarity.toUpperCase()}.`, 'success');
+  } else {
+    // Forja fracassada
+    resultElement.textContent = result.message;
+    resultElement.classList.add('forge-failure');
+    resultElement.classList.remove('forge-success');
+    
+    // Atualizar o inventário
+    setTimeout(() => {
+      renderInventorySlots();
+      closeForgeOverlay();
+    }, 2000);
+    
+    // Notificar a falha
+    if (result.message.includes('destruído')) {
+      showForgeNotification(result.message, 'error');
+    } else {
+      showForgeNotification(result.message, 'warning');
+    }
+  }
+  
+  // Exibir o resultado
+  resultElement.style.display = 'block';
+}
+
+// Substituir a função showNotification atual por uma função privada com nome único
+function showForgeNotification(message, type = 'info') {
+  // Verificar se já existe uma função global de notificação
+  if (typeof window.showNotification === 'function') {
+    window.showNotification(message, type);
+    return;
+  }
+  
+  // Remover notificações antigas do mesmo tipo para evitar acúmulo
+  document.querySelectorAll(`.notification.${type}`).forEach(oldNotification => {
+    oldNotification.remove();
+  });
+  
+  // Implementação simplificada caso não exista
+  const notification = document.createElement('div');
+  notification.textContent = message;
+  notification.className = `notification ${type}`;
+  notification.style.position = 'fixed';
+  notification.style.bottom = '20px';
+  notification.style.right = '20px';
+  notification.style.padding = '10px 20px';
+  notification.style.borderRadius = '5px';
+  notification.style.zIndex = '9999';
+  notification.style.maxWidth = '300px';
+  notification.style.animation = 'fadeIn 0.3s ease';
+  
+  // Definir cores de acordo com o tipo
+  switch (type) {
+    case 'success':
+      notification.style.backgroundColor = 'rgba(76, 175, 80, 0.9)';
+      notification.style.color = 'white';
+      break;
+    case 'error':
+      notification.style.backgroundColor = 'rgba(244, 67, 54, 0.9)';
+      notification.style.color = 'white';
+      break;
+    case 'warning':
+      notification.style.backgroundColor = 'rgba(255, 152, 0, 0.9)';
+      notification.style.color = 'white';
+      break;
+    default: // info
+      notification.style.backgroundColor = 'rgba(33, 150, 243, 0.9)';
+      notification.style.color = 'white';
+  }
+  
+  // Adicionar ao DOM
+  document.body.appendChild(notification);
+  
+  // Definir a animação e remover após um tempo
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 300);
+    }
+  }, 3000);
 }
 
 // Export the renderInventorySlots function so it can be called from other modules
@@ -1593,4 +2101,146 @@ function updateCharacterTooltips() {
       });
     });
   });
-} 
+}
+
+// Função separada para adicionar o botão de forja
+function addForgeButton() {
+  // Remover botão existente para evitar duplicatas
+  const existingButton = document.querySelector('.forge-button');
+  if (existingButton) {
+    existingButton.remove();
+  }
+  
+  // Remover também o rótulo existente se houver
+  const existingLabel = document.querySelector('.forge-label');
+  if (existingLabel) {
+    existingLabel.remove();
+  }
+  
+  console.log('Tentando adicionar botão de forja...');
+  
+  // Localizar o header e a seção de botões
+  const headerButtons = document.querySelector('.character-selection-header .header-buttons');
+  const closeButton = document.getElementById('close-character-selection');
+  
+  if (!headerButtons) {
+    console.log('Header buttons não encontrado!');
+    return;
+  }
+  
+  // Criar o botão com estilos inline garantidos
+  const forgeButton = document.createElement('button');
+  forgeButton.className = 'forge-button';
+  forgeButton.innerHTML = '<span style="font-size: 16px; margin-right: 5px;">🔨</span>FORJA';
+  forgeButton.setAttribute('title', 'Modo Forja - Melhore a raridade dos seus itens');
+  
+  // Adicionar estilos inline para um visual mais destacado e temático
+  Object.assign(forgeButton.style, {
+    padding: '8px 16px',
+    backgroundColor: '#ff6d00',
+    color: 'white',
+    border: '2px solid #ffcc80',
+    borderRadius: '5px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 0 10px rgba(255, 152, 0, 0.5)',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+    transition: 'all 0.3s ease',
+    letterSpacing: '1px',
+    position: 'relative',
+    overflow: 'hidden'
+  });
+  
+  // Adicionar efeito de brilho no hover
+  forgeButton.addEventListener('mouseover', function() {
+    this.style.backgroundColor = '#ff9100';
+    this.style.boxShadow = '0 0 15px rgba(255, 152, 0, 0.8)';
+    this.style.transform = 'scale(1.05)';
+  });
+  
+  forgeButton.addEventListener('mouseout', function() {
+    this.style.backgroundColor = '#ff6d00';
+    this.style.boxShadow = '0 0 10px rgba(255, 152, 0, 0.5)';
+    this.style.transform = 'scale(1)';
+  });
+  
+  // Criar pseudoelemento para efeito de fogo
+  const fireEffect = document.createElement('div');
+  fireEffect.className = 'forge-fire-effect';
+  Object.assign(fireEffect.style, {
+    position: 'absolute',
+    bottom: '0',
+    left: '0',
+    width: '100%',
+    height: '5px',
+    background: 'linear-gradient(to right, #ff9800, #ff5722, #ff9800)',
+    animation: 'fireFlicker 1.5s infinite alternate'
+  });
+  forgeButton.appendChild(fireEffect);
+  
+  // Adicionar regra de animação para o efeito de fogo
+  if (!document.getElementById('forge-animations')) {
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'forge-animations';
+    styleSheet.textContent = `
+      @keyframes fireFlicker {
+        0% { opacity: 0.6; height: 3px; }
+        100% { opacity: 1; height: 6px; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+  }
+  
+  // Adicionar evento de clique
+  forgeButton.addEventListener('click', function(e) {
+    e.preventDefault();
+    console.log('Botão de forja clicado!');
+    
+    // Efeito visual de clique
+    this.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      this.style.transform = 'scale(1)';
+    }, 150);
+    
+    // Adicionar efeito sonoro de martelo, se disponível
+    try {
+      const hammerSound = new Audio('/assets/sounds/hammer_short.mp3');
+      hammerSound.volume = 0.3;
+      hammerSound.play().catch(e => console.log('Não foi possível reproduzir o som'));
+    } catch (error) {
+      console.log('Erro ao tentar reproduzir o som');
+    }
+    
+    toggleForgeMode();
+  });
+  
+  // Inserir o botão antes do botão de fechar
+  headerButtons.insertBefore(forgeButton, closeButton);
+  
+  console.log('Botão de forja criado e adicionado ao header');
+}
+
+// Garantir que o botão seja adicionado sempre que a tela de personagem for aberta
+document.addEventListener('DOMContentLoaded', function() {
+  // Adicionar evento ao botão de abrir seleção de personagem
+  const openCharacterBtn = document.getElementById('open-character-selection');
+  if (openCharacterBtn) {
+    openCharacterBtn.addEventListener('click', function() {
+      // Pequeno delay para garantir que o overlay esteja visível
+      setTimeout(addForgeButton, 100);
+    });
+  }
+  
+  // Verificar periodicamente se o overlay está visível
+  setInterval(function() {
+    const characterOverlay = document.getElementById('character-selection-overlay');
+    if (characterOverlay && characterOverlay.classList.contains('active') && 
+        !document.querySelector('.forge-button')) {
+      addForgeButton();
+    }
+  }, 1000);
+});

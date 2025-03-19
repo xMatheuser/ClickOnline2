@@ -257,9 +257,143 @@ const EQUIPMENT = {
   }
 };
 
+// Sistema de Forja
+const FORGE_SYSTEM = {
+  // Chances de sucesso para cada transição de raridade
+  SUCCESS_CHANCES: {
+    normal_to_uncommon: 0.25,    // 25% de chance (Normal para Incomum)
+    uncommon_to_rare: 0.15,      // 15% de chance (Incomum para Raro)
+    rare_to_epic: 0.05,          // 5% de chance (Raro para Épico)
+    epic_to_legendary: 0.001     // 0.1% de chance (Épico para Lendário)
+  },
+  
+  // Custo em moedas (porcentagem das moedas totais do jogador)
+  COSTS: {
+    normal_to_uncommon: 0.30,    // 30% das moedas (Normal para Incomum)
+    uncommon_to_rare: 0.35,      // 35% das moedas (Incomum para Raro)
+    rare_to_epic: 0.40,          // 40% das moedas (Raro para Épico)
+    epic_to_legendary: 0.50      // 50% das moedas (Épico para Lendário)
+  },
+  
+  // Mapeamento de raridades para o próximo nível
+  NEXT_RARITY: {
+    'normal': 'uncommon',
+    'uncommon': 'rare',
+    'rare': 'epic',
+    'epic': 'legendary'
+  }
+};
+
+// Função para tentar forjar um item
+function attemptForge(player, itemId) {
+  // Verificar se o jogador existe
+  if (!player) return { success: false, message: 'Jogador não encontrado' };
+  
+  // Verificar se o item existe no inventário do jogador
+  const itemIndex = player.inventory.findIndex(item => item.id === itemId);
+  if (itemIndex === -1) return { success: false, message: 'Item não encontrado no inventário' };
+  
+  const item = player.inventory[itemIndex];
+  const currentRarity = item.rarity;
+  
+  // Verificar se a raridade atual pode ser aprimorada
+  if (currentRarity === 'legendary') {
+    return { success: false, message: 'Este item já possui a raridade máxima' };
+  }
+  
+  // Determinar a próxima raridade
+  const nextRarity = FORGE_SYSTEM.NEXT_RARITY[currentRarity];
+  if (!nextRarity) {
+    return { success: false, message: 'Não foi possível determinar a próxima raridade' };
+  }
+  
+  // Determinar o custo da forja
+  const forgeCostPercentage = FORGE_SYSTEM.COSTS[`${currentRarity}_to_${nextRarity}`];
+  const forgeCost = Math.floor(player.coins * forgeCostPercentage);
+  
+  // Verificar se o jogador tem moedas suficientes
+  if (player.coins < forgeCost) {
+    return { 
+      success: false, 
+      message: 'Moedas insuficientes', 
+      requiresCoins: forgeCost,
+      currentCoins: player.coins
+    };
+  }
+  
+  // Deduzir o custo das moedas do jogador
+  player.coins -= forgeCost;
+  
+  // Determinar a chance de sucesso
+  const successChance = FORGE_SYSTEM.SUCCESS_CHANCES[`${currentRarity}_to_${nextRarity}`];
+  
+  // Testar a sorte!
+  const roll = Math.random();
+  const isSuccess = roll <= successChance;
+  
+  if (isSuccess) {
+    // Sucesso! Atualizar a raridade do item
+    const newItem = {
+      ...item,
+      rarity: nextRarity,
+      
+      // Obter o novo multiplicador de estatísticas da raridade
+      stats: {}
+    };
+    
+    // Obter multiplicador da nova raridade
+    const statMultiplier = RARITY[nextRarity.toUpperCase()].statMultiplier;
+    const oldStatMultiplier = RARITY[currentRarity.toUpperCase()].statMultiplier;
+    
+    // Aplicar o multiplicador em cada estatística
+    for (const [stat, value] of Object.entries(item.stats)) {
+      // Calcular o novo valor baseado no multiplicador da nova raridade
+      // Tomamos como base o valor atual dividido pelo multiplicador da raridade atual
+      // e então multiplicamos pelo novo multiplicador
+      const baseStatValue = value / oldStatMultiplier;
+      newItem.stats[stat] = baseStatValue * statMultiplier;
+    }
+    
+    // Substituir o item no inventário
+    player.inventory[itemIndex] = newItem;
+    
+    return {
+      success: true,
+      message: 'Forja bem-sucedida!',
+      oldRarity: currentRarity,
+      newRarity: nextRarity,
+      itemId: item.id,
+      cost: forgeCost
+    };
+  } else {
+    // Falha! Remover o item do inventário
+    player.inventory.splice(itemIndex, 1);
+    
+    // Verificar se o item estava equipado e removê-lo
+    if (player.equipment) {
+      for (const [slot, equippedItemId] of Object.entries(player.equipment)) {
+        if (equippedItemId === itemId) {
+          delete player.equipment[slot];
+          break;
+        }
+      }
+    }
+    
+    return {
+      success: false,
+      message: 'Forja fracassada! O item foi destruído.',
+      oldRarity: currentRarity,
+      attemptedRarity: nextRarity,
+      cost: forgeCost
+    };
+  }
+}
+
 // Export everything
 module.exports = {
   RARITY,
   EQUIPMENT_TYPES,
-  EQUIPMENT
+  EQUIPMENT,
+  FORGE_SYSTEM,
+  attemptForge
 };

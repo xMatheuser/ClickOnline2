@@ -9,7 +9,8 @@ const prestigeUpgrades = require('./main/gameModules/prestigeUpgrades');
 const bosses = require('./main/gameModules/bossFights');
 const { SEEDS, GARDEN_UPGRADES, getSeedUnlockCost, isSeedVisible, processSeedUnlock, calculateGrowthTime, calculateHarvestYield, getSeedGrowthTime, getResourceEmoji } = require('./main/gameModules/garden.js');
 const charactersModule = require('./main/gameModules/characters');
-const { RARITY, EQUIPMENT_TYPES, EQUIPMENT } = require('./main/gameModules/Equipment');
+const equipmentModule = require('./main/gameModules/Equipment');
+const { RARITY, EQUIPMENT_TYPES, EQUIPMENT } = equipmentModule;
 
 const app = express();
 const server = http.createServer(app);
@@ -1219,6 +1220,42 @@ io.on('connection', (socket) => {
         wasEquipped: !!equipmentSlot
       });
 
+      broadcastGameState();
+    });
+
+    // Evento para forjar um item
+    socket.on('forgeItem', (data) => {
+      console.log(`Tentativa de forja recebida para o item: ${data.itemId}`);
+      
+      const player = gameState.players.find(p => p.id === socket.id);
+      if (!player) {
+        socket.emit('forgeResult', { 
+          success: false, 
+          message: 'Jogador não encontrado' 
+        });
+        return;
+      }
+      
+      // Tentar forjar o item utilizando a função do módulo de equipamentos
+      // Criar um objeto temporário com os dados do jogador + moedas
+      const playerWithCoins = { 
+        ...player,
+        coins: gameState.teamCoins // Adicionar as moedas da equipe ao jogador temporariamente
+      };
+      
+      const result = equipmentModule.attemptForge(playerWithCoins, data.itemId);
+      
+      // Se a forja foi bem-sucedida ou falhou após tentar, atualizar as moedas da equipe
+      if (result.cost) {
+        // A função attemptForge já deduz as moedas do objeto playerWithCoins
+        // então precisamos sincronizar com as moedas da equipe
+        gameState.teamCoins = playerWithCoins.coins;
+      }
+      
+      // Responder ao cliente com o resultado
+      socket.emit('forgeResult', result);
+      
+      // Atualizar o estado do jogo para todos os jogadores
       broadcastGameState();
     });
   }
