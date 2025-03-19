@@ -24,6 +24,8 @@
   <link rel="stylesheet" href="css/skill-tree.css">
   <link rel="stylesheet" href="css/rpgui.css">
   <link rel="stylesheet" href="css/character-selection.css">
+  <link rel="stylesheet" href="css/wiki.css">
+  <link rel="stylesheet" href="css/split-button.css">
 </head>
 <body class="nes-container">
   <div class="animated-background"></div>
@@ -282,12 +284,13 @@
     </div>
   </div>
 
-  <div class="split-button" style="display: none">
-    <button class="main-button" id="layout-menu-toggle">⚙️</button>
-    <div class="split-content">
-      <button class="editor-button" id="editor-toggle">🔧 Editor</button>
-      <button class="save-button" id="save-layout" disabled>💾 Salvar</button>
-      <button class="restore-button" id="restore-layout">🔄 Restaurar</button>
+  <div class="split-button">
+    <button class="main-button" id="layout-menu-toggle" aria-label="Menu Principal" aria-haspopup="true" aria-expanded="false">⚙️</button>
+    <div class="split-content" aria-hidden="true" role="menu">
+      <button class="editor-button" id="editor-toggle" role="menuitem">🔧 Editor</button>
+      <button class="save-button" id="save-layout" disabled role="menuitem">💾 Salvar</button>
+      <button class="restore-button" id="restore-layout" role="menuitem">🔄 Restaurar</button>
+      <button class="wiki-button" id="open-wiki" role="menuitem">📚 Wiki</button>
     </div>
   </div>
 
@@ -435,6 +438,29 @@
               <!-- Inventory slots will be generated dynamically -->
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Wiki Overlay -->
+  <div class="wiki-overlay" id="wiki-overlay">
+    <div class="wiki-popup nes-container is-rounded">
+      <div class="wiki-header">
+        <h2>Wiki do Jogo</h2>
+        <button class="close-wiki" id="close-wiki">×</button>
+      </div>
+      <div class="wiki-content">
+        <div class="wiki-sidebar">
+          <div class="wiki-search">
+            <input type="text" id="wiki-search" placeholder="Pesquisar na wiki..." class="nes-input">
+          </div>
+          <div class="wiki-categories" id="wiki-categories">
+            <!-- Categorias serão adicionadas dinamicamente -->
+          </div>
+        </div>
+        <div class="wiki-main" id="wiki-main">
+          <!-- Conteúdo da wiki será adicionado dinamicamente -->
         </div>
       </div>
     </div>
