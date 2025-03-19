@@ -830,8 +830,19 @@ function handleUnequipItem(itemId, slotType, targetSlot = null) {
 }
 
 function addTooltipsToSlots() {
-  document.querySelectorAll('.inventory-slot[data-tooltip]').forEach(slot => {
+  // Remover tooltips órfãos que possam estar na tela
+  document.querySelectorAll('.item-tooltip').forEach(tooltip => {
+    tooltip.remove();
+  });
+
+  // Aplicar tooltips tanto para slots de inventário quanto para slots de equipamento
+  document.querySelectorAll('.inventory-slot[data-tooltip], .equipment-slot[data-tooltip]').forEach(slot => {
     slot.addEventListener('mouseenter', (e) => {
+      // Remover qualquer tooltip existente primeiro
+      document.querySelectorAll('.item-tooltip').forEach(tooltip => {
+        tooltip.remove();
+      });
+      
       const tooltip = document.createElement('div');
       tooltip.className = 'item-tooltip';
       tooltip.innerHTML = slot.getAttribute('data-tooltip');
@@ -841,9 +852,22 @@ function addTooltipsToSlots() {
       tooltip.style.left = `${rect.left + rect.width + 5}px`;
       tooltip.style.top = `${rect.top}px`;
       
-      slot.addEventListener('mouseleave', () => {
+      // Adicionar listener para mouseleave no slot
+      const handleMouseLeave = () => {
         tooltip.remove();
-      }, { once: true });
+        slot.removeEventListener('mouseleave', handleMouseLeave);
+      };
+      
+      slot.addEventListener('mouseleave', handleMouseLeave);
+      
+      // Garantir que o tooltip seja removido se o usuário clicar em qualquer lugar
+      const handleDocumentClick = () => {
+        tooltip.remove();
+        document.removeEventListener('click', handleDocumentClick);
+        slot.removeEventListener('mouseleave', handleMouseLeave);
+      };
+      
+      document.addEventListener('click', handleDocumentClick);
     });
   });
 }
@@ -1137,6 +1161,11 @@ export { renderInventorySlots };
 function renderEquippedItems(player, container) {
   if (!player.equippedItems) return;
   
+  // Remover tooltips órfãos que possam estar na tela
+  document.querySelectorAll('.item-tooltip').forEach(tooltip => {
+    tooltip.remove();
+  });
+  
   // Loop through each equipped item
   Object.entries(player.equippedItems).forEach(([slotType, itemId]) => {
     // Find the equipment slot in the container
@@ -1147,8 +1176,11 @@ function renderEquippedItems(player, container) {
     const item = player.inventory.find(item => item.id === itemId);
     if (!item) return;
     
-    // Clear the slot
-    equipmentSlot.innerHTML = '';
+    // Clear the slot and remove old event listeners using cloning
+    const newSlot = equipmentSlot.cloneNode(false);
+    if (equipmentSlot.parentNode) {
+      equipmentSlot.parentNode.replaceChild(newSlot, equipmentSlot);
+    }
     
     // Create icon for the equipment
     const itemIcon = document.createElement('div');
@@ -1173,8 +1205,8 @@ function renderEquippedItems(player, container) {
     };
     
     const borderColor = rarityColors[item.rarity] || '#d4d4d4';
-    equipmentSlot.style.borderColor = borderColor;
-    equipmentSlot.style.boxShadow = `0 0 5px ${borderColor}`;
+    newSlot.style.borderColor = borderColor;
+    newSlot.style.boxShadow = `0 0 5px ${borderColor}`;
     
     const tooltipContent = `
       <div style="text-align: left; padding: 5px;">
@@ -1194,17 +1226,25 @@ function renderEquippedItems(player, container) {
       </div>
     `;
     
-    equipmentSlot.appendChild(itemIcon);
-    equipmentSlot.setAttribute('data-tooltip', tooltipContent);
-    equipmentSlot.classList.add('equipped');
-    equipmentSlot.setAttribute('draggable', 'true');
+    newSlot.appendChild(itemIcon);
+    newSlot.setAttribute('data-tooltip', tooltipContent);
+    newSlot.classList.add('equipped');
+    newSlot.setAttribute('draggable', 'true');
     // Also set a title attribute for native browser tooltip
-    equipmentSlot.setAttribute('title', `${item.name} (Clique para desequipar)`);
+    newSlot.setAttribute('title', `${item.name} (Clique para desequipar)`);
     
     // Add click event to unequip the item
-    equipmentSlot.addEventListener('click', () => {
+    newSlot.addEventListener('click', () => {
+      // Remover qualquer tooltip existente quando o item for desvinculado
+      document.querySelectorAll('.item-tooltip').forEach(tooltip => {
+        tooltip.remove();
+      });
+      
       handleUnequipItem(itemId, slotType);
       console.log(`Item ${item.name} desvinculado do slot ${slotType} por clique`);
     });
   });
+  
+  // Aplicar tooltips após renderizar todos os itens
+  addTooltipsToSlots();
 } 
