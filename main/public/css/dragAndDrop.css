@@ -834,5 +834,153 @@
   }
   
   body.dark-mode .saved-player-item:hover {
-    background: rgba(101, 67, 33, 0.9);
+    background-color: #444;
+  }
+
+  /* Estilos para fusão de itens */
+  .inventory-slot.merge-valid {
+    border-color: #4ade80 !important; /* Verde */
+    box-shadow: 0 0 15px #4ade80 !important;
+    animation: pulseGreen 1s infinite;
+  }
+
+  .inventory-slot.merge-invalid {
+    border-color: #ef4444 !important; /* Vermelho */
+    box-shadow: 0 0 15px #ef4444 !important;
+    animation: pulseRed 1s infinite;
+  }
+
+  .inventory-slot.merging {
+    animation: mergeAnimation 1.5s forwards;
+    z-index: 10;
+  }
+
+  .inventory-slot.merge-success {
+    animation: successGlow 2s ease-in-out;
+  }
+
+  @keyframes pulseGreen {
+    0% {
+      box-shadow: 0 0 5px #4ade80;
+    }
+    50% {
+      box-shadow: 0 0 15px #4ade80;
+    }
+    100% {
+      box-shadow: 0 0 5px #4ade80;
+    }
+  }
+
+  @keyframes pulseRed {
+    0% {
+      box-shadow: 0 0 5px #ef4444;
+    }
+    50% {
+      box-shadow: 0 0 15px #ef4444;
+    }
+    100% {
+      box-shadow: 0 0 5px #ef4444;
+    }
+  }
+
+  @keyframes mergeAnimation {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+      filter: brightness(1.5);
+    }
+    80% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes successGlow {
+    0% {
+      box-shadow: 0 0 5px gold;
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 30px gold;
+      transform: scale(1.2);
+    }
+    100% {
+      box-shadow: 0 0 5px gold;
+      transform: scale(1);
+    }
+  }
+
+  /* Tooltip hint para fusão de itens */
+  .tooltip-container .fusion-hint {
+    font-style: italic;
+    margin-top: 8px;
+    color: #888;
+    font-size: 0.9em;
+  }
+
+  /* Estilo do container de tooltip */
+  .tooltip-container {
+    position: absolute;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    border-radius: 5px;
+    padding: 10px;
+    max-width: 250px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    font-size: 0.9rem;
+  }
+
+  .tooltip-container:after {
+    content: "";
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+  }
+
+  body.dark-mode .tooltip-container {
+    background-color: rgba(30, 30, 30, 0.95);
+    color: #e0e0e0;
+    border: 1px solid #444;
+  }
+
+  body.dark-mode .tooltip-container:after {
+    border-color: #444 transparent transparent transparent;
+  }
+
+  /* Ajuste do estilo de arrasto */
+  .inventory-slot.dragover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-style: dashed;
+  }
+
+  /* Efeito de item novo após fusão */
+  .inventory-slot.new-fusion {
+    animation: newFusionGlow 3s ease-in-out;
+  }
+
+  @keyframes newFusionGlow {
+    0% {
+      box-shadow: 0 0 10px gold;
+    }
+    50% {
+      box-shadow: 0 0 30px gold;
+    }
+    100% {
+      box-shadow: 0 0 10px gold;
+    }
   }

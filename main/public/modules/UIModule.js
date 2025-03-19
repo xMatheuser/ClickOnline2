@@ -406,49 +406,60 @@ export function renderUpgrades() {
   });
 }
 
-export function showNotification(message, allowHTML = false) {
-  // Replace coin icon regardless
-  message = message.replace(/🪙/g, '<span class="coin-icon"></span>');
+export function showNotification(message, type = 'info', duration = 3000) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = message;
   
-  // If HTML isn't allowed, escape HTML tags
-  if (!allowHTML) {
-    message = message
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  document.body.appendChild(notification);
   
-  notificationQueue.push(message);
-  if (!isNotificationShowing) showNextNotification();
-}
-
-function showNextNotification() {
-  if (notificationQueue.length === 0) {
-    isNotificationShowing = false;
-    return;
-  }
-  isNotificationShowing = true;
-  const message = notificationQueue.shift();
-  notification.classList.remove('show');
-  notification.innerHTML = message.replace(/\n/g, '<br>');
-  void notification.offsetWidth;
-  notification.classList.add('show');
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+  
   setTimeout(() => {
     notification.classList.remove('show');
     setTimeout(() => {
-      isNotificationShowing = false;
-      showNextNotification();
+      notification.remove();
     }, 300);
-  }, 5000);
+  }, duration);
 }
 
-export function updateUpgradesUI() {
-  const upgradesContainer = document.getElementById('upgrades-container');
-  if (!upgradesContainer) return;
+// Função para mostrar dica de fusão de itens
+export function showMergeTip() {
+  // Verificar se já mostramos a dica antes
+  if (localStorage.getItem('mergeTipShown')) {
+    return;
+  }
   
-  const visibleUpgrades = renderUpgrades(upgradesContainer);
+  const message = `
+    <div class="merge-tip">
+      <h3>Dica: Fusão de Itens</h3>
+      <p>Você pode fundir dois itens iguais (mesmo tipo, nome e raridade) arrastando um sobre o outro.</p>
+      <p>Itens fundidos criam um novo item de raridade superior com estatísticas melhores!</p>
+      <p>Tente fundir suas espadas ou outros equipamentos para criar itens mais poderosos.</p>
+      <button id="close-merge-tip" class="btn">Entendi</button>
+    </div>
+  `;
+  
+  showNotification(message, 'tip', 15000);
+  
+  // Adicionar evento para fechar e salvar que a dica foi mostrada
+  setTimeout(() => {
+    const closeBtn = document.getElementById('close-merge-tip');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        const notifications = document.querySelectorAll('.notification.tip');
+        notifications.forEach(notif => {
+          notif.classList.remove('show');
+          setTimeout(() => notif.remove(), 300);
+        });
+        
+        // Salvar que a dica foi mostrada
+        localStorage.setItem('mergeTipShown', 'true');
+      });
+    }
+  }, 100);
 }
 
 function updateStatDisplays() {

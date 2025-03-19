@@ -1,5 +1,5 @@
 import { socket, gameState, isOwnPlayer } from './CoreModule.js';
-import { showNotification } from './UIModule.js';
+import { showNotification, showMergeTip } from './UIModule.js';
 
 export const openCharacterSelectionBtn = document.getElementById('open-character-selection');
 export const closeCharacterSelectionBtn = document.getElementById('close-character-selection');
@@ -25,6 +25,15 @@ function getCharacterType(type) {
 let selectedCharacterType = null;
 let characterCards;
 let characterContainers;
+
+// Definir uma variável global para armazenar informações do item sendo arrastado
+let currentDraggedItem = null;
+
+// Definir uma variável global para controlar o estado de tooltip
+let tooltipsEnabled = true;
+
+// Definir uma variável para o seletor de tipos de personagem
+let characterTypeSelector = document.querySelector('.character-options');
 
 export function initCharacterSelection() {
   // Não carrega mais do localStorage - apenas verifica no gameState
@@ -66,6 +75,9 @@ export function initCharacterSelection() {
     
     // Atualizar o inventário sempre que a tela de personagem for aberta
     renderInventorySlots();
+    
+    // Mostrar dica de fusão
+    showMergeTip();
     
     // Update button text based on current state
     updateSelectButtonText();
@@ -205,6 +217,31 @@ export function initCharacterSelection() {
       renderInventorySlots();
     }
   });
+
+  // Adicionar evento de socket para receber resultado da fusão
+  socket.on('mergingResult', (result) => {
+    console.log('Resultado da fusão recebido:', result);
+    
+    if (result.success) {
+      console.log('Fusão bem-sucedida! Novo item:', result.newItem);
+      // Tocar som de fusão
+      const audio = new Audio('/assets/sounds/levelUp.mp3');
+      audio.play();
+      
+      // Mostrar animação de fusão concluída
+      showMergeAnimation(result.itemId);
+      
+      // Atualizar inventário
+      renderInventorySlots();
+      
+      // Mostrar notificação de sucesso
+      showNotification(`Fusão concluída! Você criou: ${result.newItem.name}`, 'success');
+    } else {
+      console.log('Fusão falhou:', result.message);
+      // Mostrar mensagem de erro
+      showNotification(result.message || 'Falha na fusão de itens', 'error');
+    }
+  });
 }
 
 // Function to hide all character containers
@@ -243,7 +280,7 @@ function renderCharacterSelection() {
           container.style.opacity = '1';
           
           // Initialize equipment slots with equipped items
-          if (player.equippedItems) {
+          if (player.equipment) {
             renderEquippedItems(player, container);
           }
         } else {
@@ -305,6 +342,9 @@ function renderCharacterSelection() {
   
   // Setup equipment slots for drag and drop
   setupEquipmentSlots();
+  
+  // Atualizar tooltips dos personagens
+  updateCharacterTooltips();
 }
 
 // Função separada para adicionar eventos de clique aos cards
@@ -406,6 +446,8 @@ function renderInventorySlots() {
     slot.setAttribute('data-inventory-slot', index);
     slot.setAttribute('data-item-id', item.id);
     slot.setAttribute('data-item-type', item.type);
+    slot.setAttribute('data-item-rarity', item.rarity);
+    slot.setAttribute('data-item-name', item.name);
     slot.setAttribute('draggable', 'true');
     
     // Style based on rarity
@@ -457,6 +499,7 @@ function renderInventorySlots() {
             return `<li>${formatStatName(stat)}: ${formattedValue}</li>`;
           }).join('')}
         </ul>
+        <div style="margin-top: 5px; font-style: italic; color: #888;">Arraste sobre outro item igual para fundir</div>
       </div>
     `;
     
@@ -464,17 +507,184 @@ function renderInventorySlots() {
     
     // Add drag start event
     slot.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/plain', JSON.stringify({
+      const itemData = {
         itemId: item.id,
         type: item.type,
+        name: item.name,
+        rarity: item.rarity,
         slotIndex: index,
         sourceType: 'inventory'
-      }));
+      };
+      
+      console.log('Iniciando arrasto do item:', {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        rarity: item.rarity,
+        slotIndex: index,
+        slot: slot.getAttribute('data-inventory-slot')
+      });
+      
+      // Desabilitar tooltips durante o arrasto
+      tooltipsEnabled = false;
+      hideAllTooltips();
+      
+      // Armazenar informações do item que está sendo arrastado
+      currentDraggedItem = itemData;
+      
+      // Serializar os dados e verificar se a conversão foi bem-sucedida
+      try {
+        const jsonData = JSON.stringify(itemData);
+        if (!jsonData) {
+          console.error('Falha ao serializar dados do item para arrasto');
+          e.preventDefault(); // Cancelar o arrasto se os dados não puderem ser serializados
+          return;
+        }
+        
+        // Definir os dados de transferência
+        e.dataTransfer.setData('text/plain', jsonData);
+        e.dataTransfer.effectAllowed = 'move';
+      } catch (error) {
+        console.error('Erro ao configurar dataTransfer:', error);
+        e.preventDefault(); // Cancelar o arrasto em caso de erro
+        return;
+      }
+      
       slot.classList.add('dragging');
     });
     
     slot.addEventListener('dragend', () => {
       slot.classList.remove('dragging');
+      // Limpar as informações do item arrastado
+      currentDraggedItem = null;
+      
+      // Reabilitar tooltips após o arrasto
+      tooltipsEnabled = true;
+    });
+    
+    // Add dragover event for merging items
+    slot.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.types.includes('text/plain')) {
+        // Remover classes de estado anterior
+        slot.classList.remove('merge-valid', 'merge-invalid');
+        
+        // Verificar se temos um item sendo arrastado
+        if (currentDraggedItem && currentDraggedItem.sourceType === 'inventory') {
+          // Obter índice do slot atual e do slot arrastado
+          const currentSlotIndex = parseInt(slot.getAttribute('data-inventory-slot'));
+          const draggedSlotIndex = currentDraggedItem.slotIndex;
+          
+          // VERIFICAÇÃO: Impedir apenas arrastar para o mesmo slot físico
+          // Não verificamos IDs de itens, pois queremos permitir fundir itens que são
+          // iguais (mesmo tipo, nome e raridade), mesmo que tenham IDs diferentes
+          if (currentSlotIndex === draggedSlotIndex) {
+            // Mostrar feedback visual de que não pode arrastar sobre o mesmo slot
+            slot.classList.add('merge-invalid'); // Mostrar borda vermelha
+            return;
+          }
+          
+          // Verificar compatibilidade
+          const isSameType = currentDraggedItem.type === item.type;
+          const isSameName = currentDraggedItem.name === item.name;
+          const isSameRarity = currentDraggedItem.rarity === item.rarity;
+          const isLegendary = item.rarity === 'legendary';
+          
+          // Mostrar indicação visual apropriada - itens compatíveis mostram borda verde
+          if (isSameType && isSameName && isSameRarity && !isLegendary) {
+            slot.classList.add('merge-valid'); // Mostrar borda verde
+          } else {
+            slot.classList.add('merge-invalid'); // Mostrar borda vermelha
+          }
+        } else {
+          // Adicionar apenas uma classe genérica de arrasto
+          slot.classList.add('dragover');
+        }
+      }
+    });
+    
+    slot.addEventListener('dragleave', () => {
+      slot.classList.remove('dragover');
+      // Remover qualquer classe de estilo temporária
+      slot.classList.remove('merge-valid');
+      slot.classList.remove('merge-invalid');
+    });
+    
+    // Add drop event for item merging
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      slot.classList.remove('dragover');
+      slot.classList.remove('merge-valid');
+      slot.classList.remove('merge-invalid');
+      
+      try {
+        const rawData = e.dataTransfer.getData('text/plain');
+        
+        // Verificar se os dados não estão vazios
+        if (!rawData || rawData.trim() === '') {
+          console.error('Dados de transferência vazios durante o drop');
+          return;
+        }
+        
+        const data = JSON.parse(rawData);
+        console.log('Item solto:', data);
+        
+        // Check if another inventory item was dropped
+        if (data.sourceType === 'inventory') {
+          // Obter índice do slot atual e do slot arrastado para evitar fundir o mesmo item físico
+          const currentSlotIndex = parseInt(slot.getAttribute('data-inventory-slot'));
+          const draggedSlotIndex = data.slotIndex;
+          
+          // VERIFICAÇÃO: Impedir apenas arrastar para o mesmo slot físico
+          // Não verificamos IDs de itens, pois queremos permitir fundir itens que são
+          // iguais (mesmo tipo, nome e raridade), mesmo que tenham IDs diferentes
+          if (currentSlotIndex === draggedSlotIndex) {
+            console.log('Tentativa de arrastar item sobre ele mesmo (mesmo slot), ignorando');
+            showNotification('Fusão falhou: Não é possível fundir um item consigo mesmo!', 'error');
+            return;
+          }
+          
+          // Check if the items are compatible for merging (same type, name, and rarity)
+          const isSameType = data.type === item.type;
+          const isSameName = data.name === item.name;
+          const isSameRarity = data.rarity === item.rarity;
+          const isLegendary = item.rarity === 'legendary';
+          
+          console.log('Verificando compatibilidade para fusão:');
+          console.log(`Mesmo tipo: ${isSameType} (${data.type} vs ${item.type})`);
+          console.log(`Mesmo nome: ${isSameName} (${data.name} vs ${item.name})`);
+          console.log(`Mesma raridade: ${isSameRarity} (${data.rarity} vs ${item.rarity})`);
+          console.log(`Lendário: ${isLegendary}`);
+          console.log(`Slot origem: ${draggedSlotIndex}, Slot destino: ${currentSlotIndex}`);
+          
+          // IMPORTANTE: Se os itens têm mesmo tipo, nome e raridade, PERMITIR a fusão
+          // mesmo que tenham características semelhantes - isso é ESPERADO para a fusão
+          if (isSameType && isSameName && isSameRarity && !isLegendary) {
+            console.log('Itens compatíveis, iniciando fusão...');
+            // Add animation for merging
+            slot.classList.add('merging');
+            
+            // Emit event to server for handling the merge
+            socket.emit('mergeItems', {
+              itemId1: item.id,
+              itemId2: data.itemId
+            });
+            console.log('Evento mergeItems emitido:', item.id, data.itemId);
+          } else {
+            console.log('Itens incompatíveis para fusão');
+            // Notificar o usuário se os itens não são compatíveis
+            showNotification('Itens incompatíveis para fusão! Precisam ser do mesmo tipo, nome e raridade.', 'error');
+          }
+        } else if (data.sourceType === 'equipment') {
+          // Handle equipment dropping on inventory slot as before
+          handleUnequipItem(data.itemId, data.slotType, slot);
+        }
+      } catch (error) {
+        console.error('Erro ao processar drop:', error);
+      } finally {
+        // Reabilitar tooltips mesmo em caso de erro
+        tooltipsEnabled = true;
+      }
     });
     
     inventoryGrid.appendChild(slot);
@@ -523,7 +733,15 @@ function createEmptySlot(index) {
     slot.classList.remove('dragover');
     
     try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      const rawData = e.dataTransfer.getData('text/plain');
+      
+      // Verificar se os dados não estão vazios
+      if (!rawData || rawData.trim() === '') {
+        console.error('Dados de transferência vazios durante o drop em slot vazio');
+        return;
+      }
+      
+      const data = JSON.parse(rawData);
       
       // Only if coming from an equipment slot
       if (data.sourceType === 'equipment') {
@@ -554,7 +772,10 @@ function createEmptySlot(index) {
         handleUnequipItem(data.itemId, data.slotType, slot);
       }
     } catch (error) {
-      console.error('Erro ao processar drop:', error);
+      console.error('Erro ao processar drop em slot vazio:', error);
+    } finally {
+      // Reabilitar tooltips mesmo em caso de erro
+      tooltipsEnabled = true;
     }
   });
   
@@ -627,7 +848,15 @@ function setupEquipmentSlots() {
       newSlot.classList.remove('invalid-target');
       
       try {
-        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const rawData = e.dataTransfer.getData('text/plain');
+        
+        // Verificar se os dados não estão vazios
+        if (!rawData || rawData.trim() === '') {
+          console.error('Dados de transferência vazios durante o drop em slot de equipamento');
+          return;
+        }
+        
+        const data = JSON.parse(rawData);
         const slotType = newSlot.getAttribute('data-slot');
         
         // Process appropriate drops
@@ -641,7 +870,10 @@ function setupEquipmentSlots() {
           }
         }
       } catch (error) {
-        console.error('Erro ao processar drop:', error);
+        console.error('Erro ao processar drop em slot de equipamento:', error);
+      } finally {
+        // Reabilitar tooltips mesmo em caso de erro
+        tooltipsEnabled = true;
       }
     });
     
@@ -658,10 +890,10 @@ function setupEquipmentSlots() {
         // Add a click event to unequip
         newSlot.addEventListener('click', () => {
           const player = gameState.players.find(p => p.id === socket.id);
-          if (!player || !player.equippedItems) return;
+          if (!player || !player.equipment) return;
           
           const slotType = newSlot.getAttribute('data-slot');
-          const equippedItemId = player.equippedItems[slotType];
+          const equippedItemId = player.equipment[slotType];
           
           if (equippedItemId) {
             // Find the item to get its name for the console log
@@ -693,20 +925,43 @@ function setupEquipmentSlots() {
         // Update the dragstart event to track if dragging
         newSlot.addEventListener('dragstart', (e) => {
           const player = gameState.players.find(p => p.id === socket.id);
-          if (!player || !player.equippedItems) return;
+          if (!player || !player.equipment) return;
           
           const slotType = newSlot.getAttribute('data-slot');
-          const equippedItemId = player.equippedItems[slotType];
+          const equippedItemId = player.equipment[slotType];
           
           if (equippedItemId) {
             // Set a flag to prevent click from triggering during drag operations
             newSlot.classList.add('dragging');
             
-            e.dataTransfer.setData('text/plain', JSON.stringify({
+            // Desabilitar tooltips durante o arrasto
+            tooltipsEnabled = false;
+            hideAllTooltips();
+            
+            const dragData = {
               itemId: equippedItemId,
               slotType: slotType,
               sourceType: 'equipment'
-            }));
+            };
+            
+            // Armazenar informações do item que está sendo arrastado para referência
+            currentDraggedItem = dragData;
+            
+            try {
+              const jsonData = JSON.stringify(dragData);
+              if (!jsonData) {
+                console.error('Falha ao serializar dados do equipamento para arrasto');
+                e.preventDefault();
+                return;
+              }
+              
+              e.dataTransfer.setData('text/plain', jsonData);
+              e.dataTransfer.effectAllowed = 'move';
+            } catch (error) {
+              console.error('Erro ao configurar dataTransfer para equipamento:', error);
+              e.preventDefault();
+              return;
+            }
           }
         });
         
@@ -829,45 +1084,61 @@ function handleUnequipItem(itemId, slotType, targetSlot = null) {
   }, 100);
 }
 
-function addTooltipsToSlots() {
-  // Remover tooltips órfãos que possam estar na tela
-  document.querySelectorAll('.item-tooltip').forEach(tooltip => {
-    tooltip.remove();
+// Função para esconder todos os tooltips
+function hideAllTooltips() {
+  const tooltips = document.querySelectorAll('.tooltip-container');
+  tooltips.forEach(tooltip => {
+    tooltip.style.display = 'none';
   });
+}
 
-  // Aplicar tooltips tanto para slots de inventário quanto para slots de equipamento
-  document.querySelectorAll('.inventory-slot[data-tooltip], .equipment-slot[data-tooltip]').forEach(slot => {
+// Modificar a função addTooltipsToSlots para respeitar o estado de tooltipsEnabled
+function addTooltipsToSlots() {
+  // Remover tooltips antigos
+  const oldTooltips = document.querySelectorAll('.tooltip-container');
+  oldTooltips.forEach(tooltip => tooltip.remove());
+  
+  // Aplicar tooltips a todos os slots com data-tooltip
+  const slots = document.querySelectorAll('[data-tooltip]');
+  
+  slots.forEach(slot => {
     slot.addEventListener('mouseenter', (e) => {
-      // Remover qualquer tooltip existente primeiro
-      document.querySelectorAll('.item-tooltip').forEach(tooltip => {
-        tooltip.remove();
-      });
+      if (!tooltipsEnabled) return; // Não mostrar tooltip se estiverem desabilitados
       
+      const content = slot.getAttribute('data-tooltip');
+      
+      // Criar tooltip container
       const tooltip = document.createElement('div');
-      tooltip.className = 'item-tooltip';
-      tooltip.innerHTML = slot.getAttribute('data-tooltip');
+      tooltip.className = 'tooltip-container';
+      tooltip.innerHTML = content;
+      
+      // Posicionar tooltip próximo ao slot
       document.body.appendChild(tooltip);
       
       const rect = slot.getBoundingClientRect();
-      tooltip.style.left = `${rect.left + rect.width + 5}px`;
-      tooltip.style.top = `${rect.top}px`;
+      const tooltipRect = tooltip.getBoundingClientRect();
       
-      // Adicionar listener para mouseleave no slot
-      const handleMouseLeave = () => {
+      tooltip.style.top = `${rect.top + window.scrollY - tooltipRect.height - 10}px`;
+      tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltipRect.width / 2)}px`;
+      
+      // Reposicionar se estiver fora da tela
+      const viewportWidth = window.innerWidth;
+      const tooltipRight = parseInt(tooltip.style.left) + tooltipRect.width;
+      
+      if (tooltipRight > viewportWidth) {
+        tooltip.style.left = `${viewportWidth - tooltipRect.width - 10}px`;
+      }
+      
+      if (parseInt(tooltip.style.left) < 0) {
+        tooltip.style.left = '10px';
+      }
+    });
+    
+    slot.addEventListener('mouseleave', () => {
+      const tooltips = document.querySelectorAll('.tooltip-container');
+      tooltips.forEach(tooltip => {
         tooltip.remove();
-        slot.removeEventListener('mouseleave', handleMouseLeave);
-      };
-      
-      slot.addEventListener('mouseleave', handleMouseLeave);
-      
-      // Garantir que o tooltip seja removido se o usuário clicar em qualquer lugar
-      const handleDocumentClick = () => {
-        tooltip.remove();
-        document.removeEventListener('click', handleDocumentClick);
-        slot.removeEventListener('mouseleave', handleMouseLeave);
-      };
-      
-      document.addEventListener('click', handleDocumentClick);
+      });
     });
   });
 }
@@ -1159,7 +1430,7 @@ export { renderInventorySlots };
 
 // New function to render equipped items in equipment slots
 function renderEquippedItems(player, container) {
-  if (!player.equippedItems) return;
+  if (!player.equipment) return;
   
   // Remover tooltips órfãos que possam estar na tela
   document.querySelectorAll('.item-tooltip').forEach(tooltip => {
@@ -1167,7 +1438,7 @@ function renderEquippedItems(player, container) {
   });
   
   // Loop through each equipped item
-  Object.entries(player.equippedItems).forEach(([slotType, itemId]) => {
+  Object.entries(player.equipment).forEach(([slotType, itemId]) => {
     // Find the equipment slot in the container
     const equipmentSlot = container.querySelector(`.equipment-slot[data-slot="${slotType}"]`);
     if (!equipmentSlot) return;
@@ -1247,4 +1518,79 @@ function renderEquippedItems(player, container) {
   
   // Aplicar tooltips após renderizar todos os itens
   addTooltipsToSlots();
+}
+
+// Função para verificar compatibilidade de fusão durante o arrastar
+function checkMergeCompatibility(sourceItem, targetItem) {
+  if (!sourceItem || !targetItem) return false;
+  
+  // Verificar se os itens são do mesmo tipo, nome e raridade
+  // Essa verificação permite fundir dois itens diferentes que têm as mesmas características
+  // É INTENCIONAL permitir fundir itens com IDs diferentes desde que tenham:
+  // - Mesmo tipo (ex: espada, arco)
+  // - Mesmo nome (ex: "Espada de Fogo")
+  // - Mesma raridade (ex: comum, raro)
+  const isSameType = sourceItem.type === targetItem.type;
+  const isSameName = sourceItem.name === targetItem.name;
+  const isSameRarity = sourceItem.rarity === targetItem.rarity;
+  
+  // Itens lendários não podem ser fundidos
+  const isLegendary = targetItem.rarity === 'legendary';
+  
+  return isSameType && isSameName && isSameRarity && !isLegendary;
+}
+
+// Função para mostrar animação de fusão
+function showMergeAnimation(itemId) {
+  const itemSlot = document.querySelector(`[data-item-id="${itemId}"]`);
+  if (itemSlot) {
+    itemSlot.classList.add('merge-success');
+    setTimeout(() => {
+      itemSlot.classList.remove('merge-success');
+    }, 2000);
+  }
+}
+
+// Adicionar estilo de hover para mostrar a classe do personagem no tooltip
+function updateCharacterTooltips() {
+  characterTypeSelector = document.querySelector('.character-options');
+  if (!characterTypeSelector) return;
+  
+  const characterTypes = characterTypeSelector.querySelectorAll('.character-type');
+  characterTypes.forEach(charType => {
+    charType.addEventListener('mouseenter', () => {
+      if (!tooltipsEnabled) return; // Não mostrar tooltip durante arrasto
+      
+      const type = charType.getAttribute('data-type');
+      const characterInfo = getCharacterType(type);
+      if (!characterInfo) return;
+      
+      // Criar tooltip com as informações do personagem
+      const tooltip = document.createElement('div');
+      tooltip.className = 'tooltip-container';
+      tooltip.innerHTML = `
+        <h3>${characterInfo.name}</h3>
+        <p>${characterInfo.description}</p>
+        <div class="character-stats">
+          <div><strong>Bônus de Clique:</strong> +${(characterInfo.bonuses.clickPower - 1) * 100}%</div>
+          <div><strong>Bônus de Auto-Clicker:</strong> +${(characterInfo.bonuses.autoClicker - 1) * 100}%</div>
+        </div>
+      `;
+      
+      document.body.appendChild(tooltip);
+      
+      // Posicionar acima do elemento
+      const rect = charType.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      tooltip.style.top = `${rect.top - tooltipRect.height - 10}px`;
+      tooltip.style.left = `${rect.left + (rect.width / 2) - (tooltipRect.width / 2)}px`;
+    });
+    
+    charType.addEventListener('mouseleave', () => {
+      document.querySelectorAll('.tooltip-container').forEach(tooltip => {
+        tooltip.remove();
+      });
+    });
+  });
 } 
