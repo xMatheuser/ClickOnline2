@@ -41,48 +41,39 @@ export default class WikiModule {
                 <h1>Começando no Jogo</h1>
                 <p>Bem-vindo ao Coop! Este guia vai te ajudar a entender os conceitos básicos do jogo.</p>
                 
-                <h2>Como Jogar</h2>
-                <p>O jogo é baseado em cliques e cooperação entre jogadores. Aqui estão os conceitos básicos:</p>
+                <h2>Mecânicas Base</h2>
                 <ul>
-                  <li>Clique na área de clique para gerar moedas</li>
-                  <li>Use as moedas para comprar upgrades</li>
-                  <li>Trabalhe em equipe para derrotar bosses</li>
-                  <li>Use o sistema de prestígio para reiniciar com bônus</li>
+                  <li>Cada clique gera moedas base + bônus</li>
+                  <li>Auto-clicker gera 1 clique a cada segundo inicialmente</li>
+                  <li>Níveis são ganhos a cada 100% de progresso</li>
                 </ul>
 
-                <h2>Interface Principal</h2>
-                <p>A interface do jogo é composta por várias janelas e elementos:</p>
+                <h2>Fórmulas Básicas</h2>
                 <ul>
-                  <li><strong>Área de Clique:</strong> Onde você clica para gerar moedas</li>
-                  <li><strong>Upgrades:</strong> Melhorias que aumentam sua produção</li>
-                  <li><strong>Estatísticas:</strong> Mostra suas informações e progresso</li>
-                  <li><strong>Jardim:</strong> Sistema de cultivo de recursos</li>
-                </ul>
-              `
-            },
-            {
-              id: 'clicking',
-              title: 'Sistema de Cliques',
-              content: `
-                <h1>Sistema de Cliques</h1>
-                <p>O sistema de cliques é a base do jogo. Cada clique gera moedas que podem ser usadas para melhorar sua produção.</p>
-                
-                <h2>Como Funciona</h2>
-                <p>Quando você clica:</p>
-                <ul>
-                  <li>Gera moedas baseadas no seu poder de clique</li>
-                  <li>Contribui para o progresso do nível da equipe</li>
-                  <li>Pode ativar power-ups especiais</li>
+                  <li>Moedas por clique = Base (1) × Multiplicadores × Bônus de Personagem</li>
+                  <li>Progresso do nível = (Total de Cliques × 100) / Meta do Nível</li>
+                  <li>Auto-clicker = (Cliques/s Base) × Melhorias × Bônus</li>
                 </ul>
 
-                <h2>Poder de Clique</h2>
-                <p>Seu poder de clique pode ser aumentado através de:</p>
-                <ul>
-                  <li>Upgrades básicos</li>
-                  <li>Power-ups temporários</li>
-                  <li>Bônus de personagens</li>
-                  <li>Melhorias do jardim</li>
-                </ul>
+                <h2>Contribuição em Equipe</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Ação</th>
+                    <th>Contribuição</th>
+                  </tr>
+                  <tr>
+                    <td>Clique Manual</td>
+                    <td>100% do valor</td>
+                  </tr>
+                  <tr>
+                    <td>Auto-clicker</td>
+                    <td>50% do valor</td>
+                  </tr>
+                  <tr>
+                    <td>Boss Damage</td>
+                    <td>200% do valor</td>
+                  </tr>
+                </table>
               `
             }
           ]
@@ -93,172 +84,39 @@ export default class WikiModule {
           articles: [
             {
               id: 'basic-upgrades',
-              title: 'Upgrades Básicos',
+              title: 'Sistema de Upgrades',
               content: `
-                <h1>Upgrades Básicos</h1>
-                <p>Os upgrades básicos são melhorias permanentes que aumentam sua produção de moedas.</p>
+                <h1>Sistema de Upgrades</h1>
                 
-                <h2>Tipos de Upgrades</h2>
-                <ul>
-                  <li><strong>Poder de Clique:</strong> Aumenta a quantidade de moedas por clique</li>
-                  <li><strong>Auto-Clicker:</strong> Gera cliques automaticamente</li>
-                  <li><strong>Multiplicador:</strong> Aumenta a produção total</li>
-                </ul>
+                <h2>Tipos de Upgrades e Benefícios</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Upgrade</th>
+                    <th>Efeito Base</th>
+                    <th>Crescimento</th>
+                  </tr>
+                  <tr>
+                    <td>Poder de Clique</td>
+                    <td>+100% por nível</td>
+                    <td>×2 a cada 10 níveis</td>
+                  </tr>
+                  <tr>
+                    <td>Auto-Clicker</td>
+                    <td>+1 clique/s</td>
+                    <td>+50% a cada nível</td>
+                  </tr>
+                  <tr>
+                    <td>Multiplicador</td>
+                    <td>×2 todos bônus</td>
+                    <td>×1.5 por nível</td>
+                  </tr>
+                </table>
 
-                <h2>Como Comprar</h2>
-                <p>Para comprar upgrades:</p>
-                <ol>
-                  <li>Acumule moedas clicando</li>
-                  <li>Abra a janela de upgrades</li>
-                  <li>Selecione o upgrade desejado</li>
-                  <li>Clique em comprar</li>
-                </ol>
-              `
-            }
-          ]
-        },
-        {
-          id: 'prestige',
-          title: '⚡ Sistema de Prestígio',
-          articles: [
-            {
-              id: 'prestige-basics',
-              title: 'Básicos do Prestígio',
-              content: `
-                <h1>Sistema de Prestígio</h1>
-                <p>O sistema de prestígio permite que você reinicie o jogo com bônus especiais.</p>
-                
-                <h2>Como Funciona</h2>
-                <p>Quando você prestigia:</p>
+                <h2>Fórmulas de Custo</h2>
                 <ul>
-                  <li>Seu progresso é resetado</li>
-                  <li>Você recebe fragmentos de prestígio</li>
-                  <li>Pode desbloquear melhorias permanentes</li>
-                </ul>
-
-                <h2>Fragmentos de Prestígio</h2>
-                <p>Os fragmentos podem ser usados para:</p>
-                <ul>
-                  <li>Desbloquear novas habilidades</li>
-                  <li>Melhorar bônus existentes</li>
-                  <li>Desbloquear novos personagens</li>
-                </ul>
-              `
-            }
-          ]
-        },
-        {
-          id: 'garden',
-          title: '🌻 Jardim',
-          articles: [
-            {
-              id: 'garden-basics',
-              title: 'Básicos do Jardim',
-              content: `
-                <h1>Sistema de Jardim</h1>
-                <p>O jardim é um sistema de cultivo que fornece recursos especiais.</p>
-                
-                <h2>Como Funciona</h2>
-                <p>No jardim você pode:</p>
-                <ul>
-                  <li>Plantar diferentes tipos de flores</li>
-                  <li>Colher recursos automaticamente</li>
-                  <li>Usar recursos para melhorias especiais</li>
-                </ul>
-
-                <h2>Tipos de Flores</h2>
-                <ul>
-                  <li><strong>Girassol:</strong> Gera moedas automaticamente</li>
-                  <li><strong>Tulipa:</strong> Aumenta o poder de clique</li>
-                  <li><strong>Rosa:</strong> Melhora a produção de fragmentos</li>
-                </ul>
-              `
-            }
-          ]
-        },
-        {
-          id: 'power-ups',
-          title: '🚀 Power-Ups',
-          articles: [
-            {
-              id: 'power-up-basics',
-              title: 'Básicos dos Power-Ups',
-              content: `
-                <h1>Sistema de Power-Ups</h1>
-                <p>Power-ups são bônus temporários que aumentam sua produção.</p>
-                
-                <h2>Tipos de Power-Ups</h2>
-                <ul>
-                  <li><strong>Frenesi de Cliques:</strong> Aumenta o poder de clique</li>
-                  <li><strong>Multiplicador de Moedas:</strong> Dobra a produção de moedas</li>
-                  <li><strong>Auto-Clicker Turbo:</strong> Aumenta a velocidade do auto-clicker</li>
-                </ul>
-
-                <h2>Como Usar</h2>
-                <p>Para ativar um power-up:</p>
-                <ol>
-                  <li>Espere o power-up aparecer</li>
-                  <li>Clique no botão de ativação</li>
-                  <li>Aproveite o bônus temporário</li>
-                </ol>
-              `
-            }
-          ]
-        },
-        {
-          id: 'achievements',
-          title: '🏆 Conquistas',
-          articles: [
-            {
-              id: 'achievement-basics',
-              title: 'Básicos das Conquistas',
-              content: `
-                <h1>Sistema de Conquistas</h1>
-                <p>As conquistas são objetivos que recompensam seu progresso no jogo.</p>
-                
-                <h2>Tipos de Conquistas</h2>
-                <ul>
-                  <li><strong>Cliques:</strong> Baseadas em quantidade de cliques</li>
-                  <li><strong>Upgrades:</strong> Relacionadas a melhorias compradas</li>
-                  <li><strong>Prestígio:</strong> Baseadas em reinícios</li>
-                </ul>
-
-                <h2>Recompensas</h2>
-                <p>Completar conquistas pode te dar:</p>
-                <ul>
-                  <li>Bônus permanentes</li>
-                  <li>Fragmentos de prestígio</li>
-                  <li>Desbloqueio de recursos especiais</li>
-                </ul>
-              `
-            }
-          ]
-        },
-        {
-          id: 'bosses',
-          title: '👹 Bosses',
-          articles: [
-            {
-              id: 'boss-basics',
-              title: 'Básicos dos Bosses',
-              content: `
-                <h1>Sistema de Bosses</h1>
-                <p>Os bosses são desafios especiais que requerem cooperação entre jogadores.</p>
-                
-                <h2>Como Funciona</h2>
-                <p>Durante uma luta contra boss:</p>
-                <ul>
-                  <li>Todos os jogadores trabalham juntos</li>
-                  <li>O boss tem uma barra de vida compartilhada</li>
-                  <li>Você tem um tempo limitado para derrotá-lo</li>
-                </ul>
-
-                <h2>Recompensas</h2>
-                <p>Derrotar um boss pode te dar:</p>
-                <ul>
-                  <li>Moedas extras</li>
-                  <li>Fragmentos de prestígio</li>
-                  <li>Desbloqueio de recursos especiais</li>
+                  <li>Custo Base × (1.15 ^ Nível atual)</li>
+                  <li>Custos dobram a cada 25 níveis</li>
+                  <li>Compra em massa tem 2% desconto por item</li>
                 </ul>
               `
             }
@@ -269,55 +127,294 @@ export default class WikiModule {
           title: '👤 Personagens',
           articles: [
             {
-              id: 'character-basics',
-              title: 'Básicos dos Personagens',
+              id: 'character-basics', 
+              title: 'Sistema de Personagens',
               content: `
                 <h1>Sistema de Personagens</h1>
-                <p>Os personagens são heróis especiais que fornecem bônus únicos.</p>
-                
-                <h2>Como Funciona</h2>
-                <p>Com personagens você pode:</p>
-                <ul>
-                  <li>Desbloquear diferentes heróis</li>
-                  <li>Ganhar bônus específicos</li>
-                  <li>Melhorar suas habilidades</li>
-                </ul>
 
-                <h2>Tipos de Personagens</h2>
+                <h2>Classes e Bônus</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Classe</th>
+                    <th>Bônus Principal</th>
+                    <th>Bônus Secundário</th>
+                  </tr>
+                  <tr>
+                    <td>Guerreiro</td>
+                    <td>+200% Poder de Clique</td>
+                    <td>+50% Dano Boss</td>
+                  </tr>
+                  <tr>
+                    <td>Mago</td>
+                    <td>+150% Moedas</td>
+                    <td>+100% Power-up</td>
+                  </tr>
+                  <tr>
+                    <td>Arqueiro</td>
+                    <td>+300% Auto-click</td>
+                    <td>+75% Crítico</td>
+                  </tr>
+                </table>
+
+                <h2>Sistema de Equipamentos</h2>
+                <p>Cada personagem pode equipar:</p>
                 <ul>
-                  <li><strong>Guerreiro:</strong> Aumenta o poder de clique</li>
-                  <li><strong>Mago:</strong> Melhora a produção de moedas</li>
-                  <li><strong>Arqueiro:</strong> Aumenta a velocidade do auto-clicker</li>
+                  <li>1 Arma (100% do bônus base)</li>
+                  <li>1 Armadura (75% do bônus base)</li>
+                  <li>2 Acessórios (50% do bônus base cada)</li>
                 </ul>
               `
             }
           ]
         },
         {
-          id: 'equipment',
-          title: '⚔️ Equipamentos',
+          id: 'garden',
+          title: '🌻 Jardim',
           articles: [
             {
-              id: 'equipment-basics',
-              title: 'Básicos dos Equipamentos',
+              id: 'garden-mechanics',
+              title: 'Mecânicas do Jardim',
               content: `
-                <h1>Sistema de Equipamentos</h1>
-                <p>Os equipamentos são itens que podem ser equipados para melhorar suas habilidades.</p>
-                
-                <h2>Tipos de Equipamentos</h2>
+                <h1>Sistema do Jardim</h1>
+
+                <h2>Plantas e Recursos</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Planta</th>
+                    <th>Tempo Base</th>
+                    <th>Recurso</th>
+                    <th>Efeito</th>
+                  </tr>
+                  <tr>
+                    <td>Girassol</td>
+                    <td>30s</td>
+                    <td>Sol</td>
+                    <td>+10% Moedas</td>
+                  </tr>
+                  <tr>
+                    <td>Tulipa</td>
+                    <td>60s</td>
+                    <td>Energia</td>
+                    <td>+20% Click</td>
+                  </tr>
+                  <tr>
+                    <td>Rosa</td>
+                    <td>120s</td>
+                    <td>Essência</td>
+                    <td>+15% Todos</td>
+                  </tr>
+                </table>
+
+                <h2>Melhorias do Jardim</h2>
                 <ul>
-                  <li><strong>Armas:</strong> Aumentam o poder de clique</li>
-                  <li><strong>Armaduras:</strong> Melhoram a produção de moedas</li>
-                  <li><strong>Acessórios:</strong>Fornecem bônus especiais</li>
+                  <li>Slots: 500 moedas base, dobra a cada slot</li>
+                  <li>Velocidade: -5% tempo por nível (máx 75%)</li>
+                  <li>Fertilizante: +25% recursos por nível</li>
+                </ul>
+              `
+            }
+          ]
+        },
+        {
+          id: 'bosses',
+          title: '👹 Bosses',
+          articles: [
+            {
+              id: 'boss-mechanics',
+              title: 'Mecânicas de Boss',
+              content: `
+                <h1>Sistema de Bosses</h1>
+
+                <h2>Propriedades do Boss</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Nível</th>
+                    <th>Vida</th>
+                    <th>Tempo</th>
+                    <th>Recompensa</th>
+                  </tr>
+                  <tr>
+                    <td>1-10</td>
+                    <td>1000 × Nível</td>
+                    <td>60s</td>
+                    <td>100% bônus</td>
+                  </tr>
+                  <tr>
+                    <td>11-25</td>
+                    <td>2500 × Nível</td>
+                    <td>90s</td>
+                    <td>150% bônus</td>
+                  </tr>
+                  <tr>
+                    <td>26+</td>
+                    <td>5000 × Nível</td>
+                    <td>120s</td>
+                    <td>200% bônus</td>
+                  </tr>
+                </table>
+
+                <h2>Dano e Contribuição</h2>
+                <ul>
+                  <li>Dano Base = Poder de Clique × 2</li>
+                  <li>Crítico = 150% dano (chance base 10%)</li>
+                  <li>Bônus em Equipe = +20% por jogador</li>
                 </ul>
 
-                <h2>Como Usar</h2>
-                <p>Para equipar itens:</p>
-                <ol>
-                  <li>Abra o inventário</li>
-                  <li>Selecione o equipamento</li>
-                  <li>Clique em equipar</li>
-                </ol>
+                <h2>Recompensas de Boss</h2>
+                <ul>
+                  <li>Moedas = Dano Total × Multiplicador</li>
+                  <li>Fragmentos = 1 por 10% de dano</li>
+                  <li>Itens = 5% chance base por derrota</li>
+                </ul>
+              `
+            }
+          ]
+        },
+        {
+          id: 'equipment-systems',
+          title: '⚔️ Sistemas de Equipamento',
+          articles: [
+            {
+              id: 'fusion-system',
+              title: 'Sistema de Fusão',
+              content: `
+                <h1>Sistema de Fusão de Itens</h1>
+                <p>O sistema de fusão permite combinar dois itens idênticos para criar uma versão mais poderosa.</p>
+
+                <h2>Requisitos para Fusão</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Critério</th>
+                    <th>Requisito</th>
+                  </tr>
+                  <tr>
+                    <td>Tipo</td>
+                    <td>Deve ser o mesmo (ex: espada com espada)</td>
+                  </tr>
+                  <tr>
+                    <td>Nome</td>
+                    <td>Deve ser idêntico</td>
+                  </tr>
+                  <tr>
+                    <td>Raridade</td>
+                    <td>Deve ser a mesma</td>
+                  </tr>
+                  <tr>
+                    <td>Estado</td>
+                    <td>Não pode ser item lendário</td>
+                  </tr>
+                </table>
+
+                <h2>Progressão de Raridade</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Fusão</th>
+                    <th>Resultado</th>
+                    <th>Bônus de Stats</th>
+                  </tr>
+                  <tr>
+                    <td>Normal + Normal</td>
+                    <td>Incomum</td>
+                    <td>×1.5 stats base</td>
+                  </tr>
+                  <tr>
+                    <td>Incomum + Incomum</td>
+                    <td>Raro</td>
+                    <td>×2.0 stats base</td>
+                  </tr>
+                  <tr>
+                    <td>Raro + Raro</td>
+                    <td>Épico</td>
+                    <td>×2.5 stats base</td>
+                  </tr>
+                  <tr>
+                    <td>Épico + Épico</td>
+                    <td>Lendário</td>
+                    <td>×3.0 stats base</td>
+                  </tr>
+                </table>
+              `
+            },
+            {
+              id: 'forge-system',
+              title: 'Sistema de Forja',
+              content: `
+                <h1>Sistema de Forja</h1>
+                <p>A forja permite tentar melhorar um item para uma raridade superior, com risco de perda.</p>
+
+                <h2>Chances de Sucesso</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Raridade Atual</th>
+                    <th>Chance Base</th>
+                    <th>Custo (% das Moedas)</th>
+                  </tr>
+                  <tr>
+                    <td>Normal → Incomum</td>
+                    <td>25%</td>
+                    <td>30% das moedas</td>
+                  </tr>
+                  <tr>
+                    <td>Incomum → Raro</td>
+                    <td>15%</td>
+                    <td>35% das moedas</td>
+                  </tr>
+                  <tr>
+                    <td>Raro → Épico</td>
+                    <td>5%</td>
+                    <td>40% das moedas</td>
+                  </tr>
+                  <tr>
+                    <td>Épico → Lendário</td>
+                    <td>0.1%</td>
+                    <td>50% das moedas</td>
+                  </tr>
+                </table>
+
+                <h2>Sistema de Risco</h2>
+                <ul>
+                  <li>Em caso de falha, o item é <strong>destruído</strong></li>
+                  <li>Itens equipados precisam ser desequipados antes da forja</li>
+                  <li>O custo é baseado no total de moedas da equipe</li>
+                  <li>As moedas são consumidas independente do resultado</li>
+                </ul>
+
+                <h2>Melhorias de Estatísticas</h2>
+                <table class="wiki-table">
+                  <tr>
+                    <th>Resultado</th>
+                    <th>Multiplicador</th>
+                    <th>Bônus Extra</th>
+                  </tr>
+                  <tr>
+                    <td>Incomum</td>
+                    <td>×1.5</td>
+                    <td>+1 Stat Aleatório</td>
+                  </tr>
+                  <tr>
+                    <td>Raro</td>
+                    <td>×2.0</td>
+                    <td>+2 Stats Aleatórios</td>
+                  </tr>
+                  <tr>
+                    <td>Épico</td>
+                    <td>×2.5</td>
+                    <td>+3 Stats Aleatórios</td>
+                  </tr>
+                  <tr>
+                    <td>Lendário</td>
+                    <td>×3.0</td>
+                    <td>Todos os Stats</td>
+                  </tr>
+                </table>
+
+                <h2>Dicas</h2>
+                <ul>
+                  <li>Recomenda-se fazer backup de itens importantes através da fusão</li>
+                  <li>Use itens de menor valor para testar sua sorte</li>
+                  <li>Colete fragmentos em batalhas contra bosses</li>
+                  <li>Aguarde ter fragmentos suficientes antes de tentar</li>
+                </ul>
               `
             }
           ]
@@ -652,4 +749,4 @@ export function initWiki(socket, gameModules) {
   const wikiModule = new WikiModule(socket, gameModules);
   wikiModule.init();
   return wikiModule;
-} 
+}

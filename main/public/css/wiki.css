@@ -453,6 +453,35 @@
   font-weight: bold;
 }
 
+.wiki-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.wiki-table th,
+.wiki-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wiki-table th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: bold;
+}
+
+.wiki-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wiki-table tr:last-child td {
+  border-bottom: none;
+}
+
 @media (max-width: 768px) {
   .wiki-content {
     flex-direction: column;
@@ -472,4 +501,4 @@
   .wiki-article-content:before {
     display: none;
   }
-} 
+}
