@@ -6,9 +6,8 @@ import { initWiki } from './modules/WikiModule.js';
 
 window.onload = function() {
   initStartScreen();
-  const socket = io();
-  initHistory(socket);
+  initHistory();
   initSplitButtonVisibility();
-  initCharacterSelection(socket);
-  initWiki(socket);
+  initCharacterSelection();
+  initWiki();
 };

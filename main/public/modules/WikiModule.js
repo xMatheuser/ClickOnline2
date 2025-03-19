@@ -3,10 +3,12 @@
  * Módulo responsável pela funcionalidade de Wiki do jogo.
  * Permite aos jogadores acessar informações detalhadas sobre todas as mecânicas do jogo.
  */
+import { socket, gameState } from './CoreModule.js';
+
 export default class WikiModule {
-  constructor(socket, gameModules) {
+  constructor() {
     this.socket = socket;
-    this.gameModules = gameModules;
+    this.gameState = gameState;
     this.wikiData = null;
     this.currentArticle = null;
     this.currentCategory = null;
@@ -745,8 +747,8 @@ export default class WikiModule {
 }
 
 // Adicionar função de inicialização exportada
-export function initWiki(socket, gameModules) {
-  const wikiModule = new WikiModule(socket, gameModules);
+export function initWiki() {
+  const wikiModule = new WikiModule();
   wikiModule.init();
   return wikiModule;
 }
