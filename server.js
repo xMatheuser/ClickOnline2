@@ -1223,7 +1223,65 @@ io.on('connection', (socket) => {
       broadcastGameState();
     });
 
-    // Evento para forjar um item
+    // Adicionar socket para processar descarte de itens
+    socket.on('discardItem', (data) => {
+      console.log('Tentativa de descarte recebida:', data);
+      const { itemId } = data;
+      
+      const player = gameState.players.find(p => p.id === socket.id);
+      if (!player || !player.inventory) {
+        console.log('Erro: Inventário não encontrado!');
+        socket.emit('discardResult', {
+          success: false,
+          message: 'Inventário não encontrado!'
+        });
+        return;
+      }
+      
+      // Verificar se o jogador está ativo
+      if (!isPlayerActive(socket.id)) {
+        console.log('Erro: Jogador não ativo!');
+        socket.emit('discardResult', {
+          success: false,
+          message: 'Você só pode descartar itens quando for o jogador ativo!'
+        });
+        return;
+      }
+      
+      // Encontrar o item no inventário
+      const itemIndex = player.inventory.findIndex(item => item.id === itemId);
+      
+      if (itemIndex === -1) {
+        console.log('Erro: Item não encontrado no inventário!');
+        socket.emit('discardResult', {
+          success: false,
+          message: 'Item não encontrado no inventário!'
+        });
+        return;
+      }
+      
+      // Armazenar informações do item para log
+      const item = player.inventory[itemIndex];
+      console.log(`Descartando item: ${item.name} (${item.rarity}) do jogador ${player.name}`);
+      
+      // Remover o item do inventário
+      player.inventory.splice(itemIndex, 1);
+      
+      // Enviar resposta ao cliente que solicitou a operação
+      socket.emit('discardResult', {
+        success: true,
+        message: 'Item descartado com sucesso'
+      });
+      
+      // Emitir uma atualização de estado para todos os clientes
+      // para garantir que o inventário seja atualizado para todos
+      broadcastGameState();
+      
+      // Log do descarte
+      console.log(`Item ${item.name} (${item.rarity}) descartado pelo jogador ${player.name}`);
+    });
+
+    // Adicionar socket para processar a forja de itens
     socket.on('forgeItem', (data) => {
       console.log(`Tentativa de forja recebida para o item: ${data.itemId}`);
       

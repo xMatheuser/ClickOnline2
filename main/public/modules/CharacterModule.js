@@ -8,6 +8,7 @@ export const characterSelectionContent = document.getElementById('character-sele
 export const selectCharacterButton = document.getElementById('character-select-button');
 export const inventoryToggle = document.getElementById('inventory-toggle');
 export const inventoryGrid = document.getElementById('inventory-grid');
+export const trashZone = document.getElementById('trash-zone');
 
 // Character types now come from the server via gameState
 // We'll provide a function to access them
@@ -248,6 +249,28 @@ export function initCharacterSelection() {
       console.log('Fusão falhou:', result.message);
       // Mostrar mensagem de erro
       showNotification(result.message || 'Falha na fusão de itens', 'error');
+    }
+  });
+  
+  // Configurar a zona de lixeira para descartar itens
+  setupTrashZone();
+  
+  // Adicionar evento de socket para receber confirmação de descarte de item
+  socket.on('discardResult', (result) => {
+    if (result.success) {
+      showNotification(`Item descartado com sucesso`, 'success');
+      // Forçar uma atualização imediata do inventário
+      renderInventorySlots();
+      
+      // Emitir evento para outros módulos que possam depender do inventário
+      document.dispatchEvent(new CustomEvent('inventoryUpdated'));
+      
+      // Reproduzir som de descarte
+      const audio = new Audio('/assets/sounds/trash.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.log('Erro ao reproduzir som:', e));
+    } else {
+      showNotification(result.message || 'Erro ao descartar item', 'error');
     }
   });
 
@@ -2244,3 +2267,144 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1000);
 });
+
+// Função para configurar a zona de lixeira
+function setupTrashZone() {
+  if (!trashZone) return;
+  
+  // Adicionar eventos para arrastar sobre a lixeira
+  trashZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    trashZone.classList.add('dragover');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  
+  trashZone.addEventListener('dragleave', () => {
+    trashZone.classList.remove('dragover');
+  });
+  
+  // Adicionar evento de drop na lixeira
+  trashZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    trashZone.classList.remove('dragover');
+    
+    try {
+      const rawData = e.dataTransfer.getData('text/plain');
+      
+      if (!rawData || rawData.trim() === '') {
+        console.error('Dados de transferência vazios durante o drop na lixeira');
+        return;
+      }
+      
+      const data = JSON.parse(rawData);
+      console.log('Item arrastado para lixeira:', data);
+      
+      // Verificar se o item vem do inventário
+      if (data.sourceType === 'inventory') {
+        // Mostrar popup de confirmação
+        showDiscardConfirmation(data);
+      } else {
+        showNotification('Apenas itens do inventário podem ser descartados', 'error');
+      }
+    } catch (error) {
+      console.error('Erro ao processar drop na lixeira:', error);
+    }
+  });
+}
+
+// Função para mostrar popup de confirmação de descarte
+function showDiscardConfirmation(itemData) {
+  // Verificar se já existe um popup aberto e removê-lo
+  const existingPopup = document.querySelector('.discard-confirmation');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+  
+  // Remover overlay existente se houver
+  const existingOverlay = document.querySelector('.discard-overlay');
+  if (existingOverlay) {
+    existingOverlay.remove();
+  }
+  
+  // Criar overlay de fundo
+  const overlay = document.createElement('div');
+  overlay.className = 'discard-overlay';
+  document.body.appendChild(overlay);
+  
+  // Criar o popup de confirmação
+  const confirmationPopup = document.createElement('div');
+  confirmationPopup.className = 'discard-confirmation';
+  
+  // Obter dados do item
+  const player = gameState.players.find(p => p.id === socket.id);
+  const item = player?.inventory?.find(i => i.id === itemData.itemId);
+  
+  if (!item) {
+    showNotification('Item não encontrado no inventário', 'error');
+    return;
+  }
+  
+  // Definir ícones baseados no tipo de equipamento
+  const icons = {
+    sword: '⚔️',
+    bow: '🏹',
+    staff: '🪄',
+    helmet: '🪖',
+    armor: '🛡️',
+    boots: '👢',
+    gloves: '🧤',
+    ring: '💍',
+    amulet: '📿'
+  };
+  
+  // Definir cores baseadas na raridade
+  const rarityColors = {
+    normal: '#d4d4d4',
+    uncommon: '#4ade80',
+    rare: '#60a5fa',
+    epic: '#a855f7',
+    legendary: '#facc15'
+  };
+  
+  const icon = icons[item.type] || '❓';
+  const rarityColor = rarityColors[item.rarity] || '#d4d4d4';
+  
+  confirmationPopup.innerHTML = `
+    <h3>Descartar Item</h3>
+    <p>Tem certeza que deseja descartar este item?</p>
+    <div class="item-preview">
+      <div class="item-icon">${icon}</div>
+      <div class="item-name" style="color: ${rarityColor}">${item.name}</div>
+    </div>
+    <p><span style="color: #ff5050;">⚠️ Atenção:</span> Esta ação não pode ser desfeita!</p>
+    <div class="discard-buttons">
+      <button class="cancel-discard">Cancelar</button>
+      <button class="confirm-discard">Descartar</button>
+    </div>
+  `;
+  
+  // Adicionar o popup ao DOM
+  document.body.appendChild(confirmationPopup);
+  
+  // Adicionar eventos aos botões
+  const cancelButton = confirmationPopup.querySelector('.cancel-discard');
+  const confirmButton = confirmationPopup.querySelector('.confirm-discard');
+  
+  cancelButton.addEventListener('click', () => {
+    confirmationPopup.remove();
+    overlay.remove();
+  });
+  
+  confirmButton.addEventListener('click', () => {
+    // Enviar solicitação de descarte para o servidor
+    socket.emit('discardItem', { itemId: item.id });
+    confirmationPopup.remove();
+    overlay.remove();
+  });
+  
+  // Adicionar evento para fechar ao clicar no overlay
+  overlay.addEventListener('click', () => {
+    confirmationPopup.remove();
+    overlay.remove();
+  });
+}
