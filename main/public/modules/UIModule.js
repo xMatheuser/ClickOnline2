@@ -4,7 +4,7 @@ import { getVisibleUpgrades, calculateUpgradePrice, getUpgradeEffectDescription,
 import { initHistory } from './HistoryModule.js';
 import { playSound, levelUpSound, tickSound, achievementSound } from './AudioModule.js';
 import { getClicksPerSecond } from './InputModule.js';
-import { getCharacterBonus, hasSelectedCharacter, getPlayerCharacter } from './CharacterModule.js';
+import { getCharacterBonus, hasSelectedCharacter, getPlayerCharacter, characterSelectionOverlay, renderInventorySlots } from './CharacterModule.js';
 
 export const clicksDisplay = document.getElementById('clicks');
 export const levelDisplay = document.getElementById('level');
@@ -42,6 +42,9 @@ let lastRenderedAchievements = null; // Para conquistas
 
 export const bulkBuyOptions = [1, 10, 100, 'max'];
 let selectedBulkBuy = 1;
+
+let lastInventoryHash = null;
+let tooltipsEnabled = true;
 
 export function initUI() {
   socket.on('gameStateUpdate', handleGameStateUpdate);
@@ -156,55 +159,131 @@ export function initUI() {
 export function handleGameStateUpdate(newState) {
   if (!newState) return;
 
-  if (achievementsOverlay.classList.contains('active') && newState.type !== 'autoclick') {
-    updateAchievementStats();
-    if (shouldRenderAchievements(newState)) {
-      renderAchievementsScreen();
-      lastRenderedAchievements = JSON.stringify(newState.achievements);
-    }
-  }
-  
   if (newState.type === 'autoclick') {
-    updateGameState({
-      ...gameState,
-      teamCoins: newState.teamCoins,
-      levelProgressRemaining: Math.max(0, newState.levelProgressRemaining),
-      players: newState.players,
-      totalClicks: newState.totalClicks,
-      clicks: newState.clicks,
-      upgrades: newState.upgrades || gameState.upgrades,
-      teamLevel: newState.teamLevel || gameState.teamLevel
-    });
-    updateStatDisplays();
-    updateUpgradeButtons(); // Atualiza botões para auto-clicks
+    handleAutoClickUpdate(newState);
   } else {
-    updateGameState(newState);
-    const ownPlayer = newState.players?.find(player => player?.id === socket.id);
-    if (ownPlayer) {
-      clicksDisplay.textContent = formatNumber(newState.totalClicks || 0);
-      levelDisplay.textContent = ownPlayer.level;
-      teamCoinsDisplay.textContent = formatNumber(newState.teamCoins);
-      clickPowerDisplay.textContent = getClickValue(ownPlayer).toFixed(1);
-      activePlayerDisplay.textContent = ownPlayer.name;
-      teamGoalDisplay.textContent = newState.teamLevel;
+    handleFullUpdate(newState);
+  }
 
-      const currentHP = newState.levelProgressRemaining;
-      const maxHP = newState.teamLevel * 100;
-      const percentage = (currentHP / maxHP * 100).toFixed(0);
-      teamSharedProgressBar.style.width = `${percentage}%`;
-      progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+  updateClicksPerSecond();
 
-      renderPlayers();
-      renderContributions();
-
-      if (shouldRenderUpgrades(newState)) {
-        renderUpgrades();
-        lastRenderedUpgrades = JSON.stringify(newState.upgrades);
+  // Only update inventory if relevant changes occurred and overlay is defined
+  if (characterSelectionOverlay?.classList.contains('active')) {
+    const player = newState.players?.find(p => p.id === socket.id);
+    if (player) {
+      const currentHash = JSON.stringify(player.inventory);
+      if (currentHash !== lastInventoryHash) {
+        renderInventorySlots();
+        lastInventoryHash = currentHash;
       }
-      updateUpgradeButtons(); // Atualiza botões para qualquer mudança no estado
     }
   }
-  updateClicksPerSecond();
+}
+
+function handleAutoClickUpdate(newState) {
+  updateGameState({
+    ...gameState,
+    teamCoins: newState.teamCoins,
+    levelProgressRemaining: Math.max(0, newState.levelProgressRemaining),
+    players: newState.players,
+    totalClicks: newState.totalClicks,
+    clicks: newState.clicks,
+    upgrades: newState.upgrades || gameState.upgrades,
+    teamLevel: newState.teamLevel || gameState.teamLevel
+  });
+  updateStatDisplays();
+  updateUpgradeButtons();
+}
+
+function handleFullUpdate(newState) {
+  updateGameState(newState);
+  const ownPlayer = newState.players?.find(player => player?.id === socket.id);
+  
+  if (ownPlayer) {
+    updatePlayerDisplay(ownPlayer, newState);
+    renderPlayers();
+    renderContributions();
+
+    if (shouldRenderUpgrades(newState)) {
+      renderUpgrades();
+      lastRenderedUpgrades = JSON.stringify(newState.upgrades);
+    }
+    updateUpgradeButtons();
+  }
+}
+
+function updatePlayerDisplay(player, state) {
+  clicksDisplay.textContent = formatNumber(state.totalClicks || 0);
+  levelDisplay.textContent = player.level;
+  teamCoinsDisplay.textContent = formatNumber(state.teamCoins);
+  clickPowerDisplay.textContent = getClickValue(player).toFixed(1);
+  activePlayerDisplay.textContent = player.name;
+  teamGoalDisplay.textContent = state.teamLevel;
+
+  updateProgressBar(state);
+}
+
+function updateProgressBar(state) {
+  const currentHP = state.levelProgressRemaining;
+  const maxHP = state.teamLevel * 100;
+  const percentage = (currentHP / maxHP * 100).toFixed(0);
+  
+  if (teamSharedProgressBar) {
+    teamSharedProgressBar.style.width = `${percentage}%`;
+  }
+  if (progressPercentage) {
+    progressPercentage.textContent = `${Math.ceil(currentHP)}/${maxHP} HP`;
+  }
+}
+
+export function showNotification(message, type = 'info', duration = 3000) {
+  const notification = createNotification(message, type);
+  
+  if (isNotificationShowing) {
+    notificationQueue.push({ notification, duration });
+    return;
+  }
+
+  showNextNotification(notification, duration);
+}
+
+function createNotification(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = message;
+  document.body.appendChild(notification);
+  return notification;
+}
+
+function showNextNotification(notification, duration) {
+  isNotificationShowing = true;
+  
+  requestAnimationFrame(() => {
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+      hideNotification(notification, () => {
+        showQueuedNotification();
+      });
+    }, duration);
+  });
+}
+
+function hideNotification(notification, callback) {
+  notification.classList.remove('show');
+  
+  setTimeout(() => {
+    notification.remove();
+    isNotificationShowing = false;
+    if (callback) callback();
+  }, 300);
+}
+
+function showQueuedNotification() {
+  if (notificationQueue.length > 0) {
+    const { notification, duration } = notificationQueue.shift();
+    showNextNotification(notification, duration);
+  }
 }
 
 function shouldRenderUpgrades(newState) {
@@ -282,9 +361,8 @@ export function renderPlayers() {
           characterIcon = `<span class="character-icon-small">${charIcon}</span>`;
         }
       }
-      
+
       const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
-      
       playerTag.innerHTML = `
         <div class="player-avatar" style="background-color: #007bff">${initials}</div>
         ${player.name} ${characterIcon}
@@ -316,7 +394,7 @@ export function renderContributions() {
       const percentage = totalContribution > 0 ? (player.contribution / totalContribution * 100) : 0;
       const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
       const initials = player.name?.slice(0, 2)?.toUpperCase() || '??';
-      
+
       const contributionElement = document.createElement('div');
       contributionElement.className = 'player-contribution';
       contributionElement.innerHTML = `
@@ -333,7 +411,6 @@ export function renderContributions() {
       barFill.className = 'contribution-fill';
       barFill.style.width = `${percentage}%`;
       barFill.style.backgroundColor = '#007bff';
-      
       barContainer.appendChild(barFill);
       contributionElement.appendChild(barContainer);
       contributionContainer.appendChild(contributionElement);
@@ -351,7 +428,6 @@ export function renderUpgrades() {
   if (!ownPlayer) return;
 
   const visibleUpgrades = getVisibleUpgrades();
-  
   visibleUpgrades.forEach(upgrade => {
     const { cost: totalPrice, levels: purchaseLevels } = calculateBulkPrice(upgrade, selectedBulkBuy);
     const canAfford = gameState.teamCoins >= totalPrice;
@@ -406,32 +482,12 @@ export function renderUpgrades() {
   });
 }
 
-export function showNotification(message, type = 'info', duration = 3000) {
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.innerHTML = message;
-  
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.classList.add('show');
-  }, 10);
-  
-  setTimeout(() => {
-    notification.classList.remove('show');
-    setTimeout(() => {
-      notification.remove();
-    }, 300);
-  }, duration);
-}
-
-// Função para mostrar dica de fusão de itens
 export function showMergeTip() {
   // Verificar se já mostramos a dica antes
   if (localStorage.getItem('mergeTipShown')) {
     return;
   }
-  
+
   const message = `
     <div class="merge-tip">
       <h3>Dica: Fusão de Itens</h3>
@@ -441,7 +497,6 @@ export function showMergeTip() {
       <button id="close-merge-tip" class="btn">Entendi</button>
     </div>
   `;
-  
   showNotification(message, 'tip', 15000);
   
   // Adicionar evento para fechar e salvar que a dica foi mostrada
@@ -471,7 +526,6 @@ function updateStatDisplays() {
     const currentHP = Math.max(0, gameState.levelProgressRemaining || 0);
     const maxHP = (gameState.teamLevel || 1) * 100;
     const percentage = Math.min(100, Math.max(0, (currentHP / maxHP * 100))).toFixed(0);
-    
     if (teamSharedProgressBar) {
       teamSharedProgressBar.style.width = `${percentage}%`;
     }
@@ -707,7 +761,7 @@ function updateBonusStats() {
 
 function getUpgradeEffectValue(upgrade) {
   if (!upgrade) return 0;
-  
+
   // Apply character bonus for auto-clicker upgrades
   let characterBonus = 1;
   if (upgrade.id.includes('auto-clicker')) {
@@ -716,7 +770,7 @@ function getUpgradeEffectValue(upgrade) {
       characterBonus = player.characterBonuses.autoClicker;
     }
   }
-  
+
   switch (upgrade.id) {
     case 'click-power':
     case 'click-power-2':
@@ -756,10 +810,8 @@ export function showDamageNumber(x, y, amount) {
   const damageNumber = document.createElement('div');
   damageNumber.className = 'damage-number';
   damageNumber.textContent = formatNumber(amount);
-
   const offsetX = (Math.random() - 0.5) * 40;
   const offsetY = (Math.random() - 0.5) * 40;
-  
   damageNumber.style.left = `${x + offsetX}px`;
   damageNumber.style.top = `${y + offsetY}px`;
   
@@ -800,7 +852,7 @@ document.addEventListener('keydown', (e) => {
 
 function updateClicksPerSecond() {
   if (!clicksPerSecondDisplay || !gameState?.upgrades) return;
-  
+
   const player = gameState.players.find(p => p.id === socket.id);
   if (!player) return;
 
@@ -813,7 +865,7 @@ function updateClicksPerSecond() {
   if (player.characterBonuses && player.characterBonuses.autoClicker) {
     characterBonus = player.characterBonuses.autoClicker;
   }
-  
+
   const autoClicksPerSecond = (
     (autoClicker?.level || 0) + 
     ((autoClicker2?.level || 0) * 2) +
@@ -821,21 +873,20 @@ function updateClicksPerSecond() {
   ) * characterBonus;
   
   const manualClicksPerSecond = getClicksPerSecond();
-  
   const clickValue = getClickValue(player);
   const totalDamagePerSecond = (autoClicksPerSecond + manualClicksPerSecond) * clickValue;
   
   clicksPerSecondDisplay.textContent = totalDamagePerSecond.toFixed(1);
 }
 
+const SNAP_THRESHOLD = 20;
 let isEditMode = false;
+const editorToggle = document.getElementById('editor-toggle');
+const saveLayout = document.getElementById('save-layout');
+const restoreLayout = document.getElementById('restore-layout');
 
 function initDraggableWindows() {
   const draggables = document.querySelectorAll('.draggable');
-  const SNAP_THRESHOLD = 20;
-  const editorToggle = document.getElementById('editor-toggle');
-  const saveLayout = document.getElementById('save-layout');
-  const restoreLayout = document.getElementById('restore-layout');
   
   // Criar guias de alinhamento
   const guides = {
@@ -847,9 +898,6 @@ function initDraggableWindows() {
   guides.horizontal.className = 'alignment-guide horizontal';
   document.body.appendChild(guides.vertical);
   document.body.appendChild(guides.horizontal);
-
-  // Carregar layout salvo
-  loadWindowLayouts();
 
   editorToggle.addEventListener('click', () => {
     isEditMode = !isEditMode;
@@ -863,7 +911,6 @@ function initDraggableWindows() {
     saveLayout.disabled = true;
   });
 
-  // Add restore button handler
   restoreLayout.addEventListener('click', () => {
     setDefaultPositions();
     saveLayout.disabled = false;
@@ -912,10 +959,10 @@ function initDraggableWindows() {
       if (e.target.classList.contains('resizer')) return;
       if (e.target.closest('button') || 
           e.target.closest('input') || 
-          e.target.closest('.click-area') ||
+          e.target.closest('.click-area') || 
           e.target.closest('.upgrade-item') ||
           e.target.closest('.contribution-bar')) return;
-      
+
       isDragging = true;
       initialX = e.clientX - xOffset;
       initialY = e.clientY - yOffset;
@@ -933,7 +980,6 @@ function initDraggableWindows() {
     document.addEventListener('mouseup', () => {
       if (isDragging) {
         draggable.classList.remove('dragging');
-        // Garantir que as guias sempre somem ao soltar
         guides.vertical.style.display = 'none';
         guides.horizontal.style.display = 'none';
       }
@@ -998,8 +1044,6 @@ function initDraggableWindows() {
       // Atualizar dimensões e posição
       draggable.style.width = `${newWidth}px`;
       draggable.style.height = `${newHeight}px`;
-      
-      // Atualizar posição apenas se mudou
       if (newLeft !== initialLeft) {
         draggable.style.left = `${newLeft}px`;
       }
@@ -1009,23 +1053,9 @@ function initDraggableWindows() {
       saveLayout.disabled = false;
     }
 
-    function dragStart(e) {
-      if (!isEditMode || e.target.classList.contains('resizer')) return;
-      if (e.target.closest('button') || 
-          e.target.closest('input') || 
-          e.target.closest('.click-area') ||
-          e.target.closest('.upgrade-item') ||
-          e.target.closest('.contribution-bar')) return;
-
-      isDragging = true;
-      initialX = e.clientX - xOffset;
-      initialY = e.clientY - yOffset;
-      draggable.classList.add('dragging');
-    }
-
     function drag(e) {
       if (!isEditMode || !isDragging) return;
-      
+
       e.preventDefault();
       currentX = e.clientX - initialX;
       currentY = e.clientY - initialY;
@@ -1065,20 +1095,6 @@ function initDraggableWindows() {
       yOffset = currentY;
       saveLayout.disabled = false;
     }
-
-    function dragEnd() {
-      if (isDragging) {
-        draggable.classList.remove('dragging');
-        guides.vertical.style.display = 'none';
-        guides.horizontal.style.display = 'none';
-      }
-      isResizing = false;
-      isDragging = false;
-    }
-
-    function setTranslate(xPos, yPos, el) {
-      el.style.transform = `translate(${xPos}px, ${yPos}px)`;
-    }
   });
 }
 
@@ -1090,7 +1106,7 @@ function saveWindowLayouts() {
       width: window.style.width,
       height: window.style.height,
       transform: window.style.transform,
-      left: window.style.left, 
+      left: window.style.left,
       top: window.style.top
     };
   });
@@ -1127,7 +1143,6 @@ function loadWindowLayouts() {
     Object.entries(layouts).forEach(([id, style]) => {
       const window = document.getElementById(id);
       if (!window) return;
-
       Object.entries(style).forEach(([prop, value]) => {
         if (value) window.style[prop] = value;
       });

@@ -40,6 +40,9 @@ let characterTypeSelector = document.querySelector('.character-options');
 let forgeMode = false;
 let selectedForgeItem = null;
 
+// Variável para armazenar o hash do inventário
+let lastInventoryHash = '';
+
 export function initCharacterSelection() {
   // Não carrega mais do localStorage - apenas verifica no gameState
   const player = gameState.players?.find(p => p.id === socket.id);
@@ -464,13 +467,20 @@ function saveSelectedCharacter(characterType) {
   
   // Atualizar a exibição para mostrar os personagens dos outros jogadores
   updateOtherPlayersCharacters();
-}
+} // Limpa todo o grid
 
 function renderInventorySlots() {
+  const player = gameState.players.find(p => p.id === socket.id);
+  if (!player || !player.inventory) return;
+
+  // Verifica se o inventário realmente mudou antes de atualizar
+  const inventoryHash = JSON.stringify(player.inventory);
+  if (inventoryHash === lastInventoryHash) return;
+  lastInventoryHash = inventoryHash;
+
   inventoryGrid.innerHTML = '';
   
   // Get player's inventory
-  const player = gameState.players.find(p => p.id === socket.id);
   if (!player || !player.inventory) {
     // If no inventory yet, create some empty slots
     for (let i = 0; i < 10; i++) {

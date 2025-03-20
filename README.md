@@ -37,9 +37,6 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - Persistent game saves
 - Event-driven architecture
 - Modular code structure
-- Character class system
-- Equipment system
-- Advanced progression tracking
 
 ## 📊 Game Systems
 
@@ -48,18 +45,12 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - Fragments
 - Experience/Level Progress
 - Prestige Points
-- Class Tokens
-- Equipment Materials
-- Skill Points
 
 ### Upgrade Systems
 - Tier 1/2/3 Upgrades
 - Prestige Upgrades
 - Garden Upgrades
 - Achievement Boosts
-- Class-Specific Upgrades
-- Equipment Enhancement
-- Skill Tree Progression
 
 ### Bonus Stats
 - Click Power
@@ -71,10 +62,6 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - Achievement Bonus
 - Prestige Multiplier
 - Power-up Bonus
-- Class-Specific Bonuses
-- Equipment Stats
-- Skill Tree Effects
-- Team Composition Bonus
 
 ### Interactive Elements
 - Click Area
@@ -82,33 +69,6 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - Garden Management
 - Power-up Activation
 - Skill Tree Navigation
-
-### Character Equipment System
-- Weapon Slots (2)
-- Armor Slots (3)
-- Accessory Slots (3)
-- Enhancement System
-- Material Collection
-- Equipment Rarity Tiers
-- Set Bonuses
-- Equipment Trading
-
-### Skill System
-- Class-Specific Skills
-- Active Abilities
-- Passive Bonuses
-- Skill Point Distribution
-- Team Synergy Skills
-- Ultimate Abilities
-- Skill Combinations
-
-### Team Mechanics
-- Class Composition Bonuses
-- Team Formation Benefits
-- Joint Skills
-- Resource Sharing
-- Team Achievements
-- Guild System Integration
 
 ## 🔧 Technical Architecture
 
@@ -150,13 +110,11 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 1. Player clicks generate progress
 2. Auto-clickers contribute passive progress
 3. Team level increases with progress
-4. Coins and materials earned through progression
-5. Equipment and skills enhance player power
-6. Class abilities provide unique advantages
-7. Boss fights require team coordination
-8. Achievements unlock through actions
-9. Equipment upgrades strengthen characters
-10. Prestige system for meta-progression
+4. Coins earned through progression
+5. Upgrades purchased with coins
+6. Boss fights trigger at intervals
+7. Achievements unlock through actions
+8. Prestige system for meta-progression
 
 ## 🔐 Save System
 - Automatic state persistence
@@ -195,14 +153,9 @@ Click Online 2.0 is a multiplayer incremental/idle game where players work toget
 - [ ] More achievements
 - [ ] Extended skill tree
 - [ ] Improve all game balance
-- [ ] Equipment crafting system
-- [ ] Guild wars feature
-- [ ] Seasonal events
-- [ ] PvP arena system
-- [ ] Trading marketplace
-- [ ] Raid bosses
-- [ ] Daily challenges
-
+- [ ] Character equipment system
+- [ ] Class-specific abilities and skill trees
+ 
 ## 🤝 Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
