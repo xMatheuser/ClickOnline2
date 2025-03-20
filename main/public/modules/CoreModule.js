@@ -232,6 +232,24 @@ export function initSocket() {
     document.dispatchEvent(new CustomEvent('gameStateUpdated', { detail: gameState }));
   });
 
+  // Adicionar listener para atualização específica de inventário
+  socket.on('inventoryUpdate', (data) => {
+    console.log('Recebido evento de atualização de inventário:', data);
+    
+    // Forçar atualização da UI do inventário
+    import('./CharacterModule.js').then(module => {
+      if (module.renderInventorySlots) {
+        // Passar true para forçar a atualização e o ID do jogador que teve o inventário atualizado
+        module.renderInventorySlots(true, data.playerId);
+      }
+      
+      // Dispatch um evento personalizado para notificar outros módulos
+      document.dispatchEvent(new CustomEvent('inventoryUpdated', { 
+        detail: { playerId: data.playerId } 
+      }));
+    });
+  });
+
   // Adicionar manipulador para receber tipos de personagem
   socket.on('characterTypes', (types) => {
     console.log('Received character types from server');

@@ -1188,3 +1188,24 @@
   50% { background-color: rgba(255, 80, 80, 0.4); }
   100% { background-color: rgba(255, 80, 80, 0.2); }
 }
+
+.player-selector {
+  margin-right: 10px;
+  min-width: 150px;
+  font-size: 0.7em;
+  background-color: var(--secondary-bg-color);
+  color: var(--text-color);
+  border: 2px solid var(--border-color);
+  padding: 5px;
+  cursor: pointer;
+}
+
+.player-selector:focus {
+  outline: none;
+  border-color: var(--highlight-color);
+}
+
+.other-player-item {
+  opacity: 0.8;
+  cursor: not-allowed;
+}

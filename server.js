@@ -396,6 +396,9 @@ io.on('connection', (socket) => {
                     dateObtained: Date.now()
                   });
                   
+                  // Emitir evento específico para atualização de inventário
+                  io.emit('inventoryUpdate', { playerId: player.id });
+                  
                   // Preparar informações do drop para enviar ao cliente
                   dropInfo = {
                     id: equipment.id,
@@ -1221,6 +1224,9 @@ io.on('connection', (socket) => {
         player.equipment[equipmentSlot] = newItemId;
       }
 
+      // Emitir evento específico para atualização de inventário
+      io.emit('inventoryUpdate', { playerId: player.id });
+
       // Enviar o resultado de volta para o cliente
       socket.emit('mergingResult', {
         success: true,
@@ -1276,6 +1282,9 @@ io.on('connection', (socket) => {
       
       // Remover o item do inventário
       player.inventory.splice(itemIndex, 1);
+      
+      // Emitir evento específico para atualização de inventário
+      io.emit('inventoryUpdate', { playerId: player.id });
       
       // Enviar resposta ao cliente que solicitou a operação
       socket.emit('discardResult', {

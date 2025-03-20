@@ -9,6 +9,7 @@ export const selectCharacterButton = document.getElementById('character-select-b
 export const inventoryToggle = document.getElementById('inventory-toggle');
 export const inventoryGrid = document.getElementById('inventory-grid');
 export const trashZone = document.getElementById('trash-zone');
+export const playerInventorySelector = document.getElementById('player-inventory-selector');
 
 // Character types now come from the server via gameState
 // We'll provide a function to access them
@@ -43,6 +44,9 @@ let selectedForgeItem = null;
 // Variável para armazenar o hash do inventário
 let lastInventoryHash = '';
 
+// Variável para armazenar o ID do jogador cujo inventário está sendo visualizado
+let currentlyViewingPlayerId = null;
+
 export function initCharacterSelection() {
   // Não carrega mais do localStorage - apenas verifica no gameState
   const player = gameState.players?.find(p => p.id === socket.id);
@@ -64,6 +68,9 @@ export function initCharacterSelection() {
     }
   });
 
+  // Inicializar o seletor de jogadores
+  initPlayerSelector();
+
   // Add "Select Character" button event
   openCharacterSelectionBtn.addEventListener('click', () => {
     characterSelectionOverlay.classList.add('active');
@@ -82,7 +89,11 @@ export function initCharacterSelection() {
     renderCharacterSelection();
     
     // Atualizar o inventário sempre que a tela de personagem for aberta
-    renderInventorySlots();
+    // Primeiro atualizar o seletor de jogadores, depois renderizar o inventário do jogador atual
+    updatePlayerSelector();
+    currentlyViewingPlayerId = socket.id;
+    playerInventorySelector.value = '';
+    renderInventorySlots(true, socket.id);
     
     // Mostrar dica de fusão
     showMergeTip();
@@ -469,14 +480,19 @@ function saveSelectedCharacter(characterType) {
   updateOtherPlayersCharacters();
 } // Limpa todo o grid
 
-function renderInventorySlots() {
-  const player = gameState.players.find(p => p.id === socket.id);
+export function renderInventorySlots(forceUpdate = false, targetPlayerId = null) {
+  // Se não for especificado targetPlayerId, usa o próprio jogador
+  const playerId = targetPlayerId || socket.id;
+  const player = gameState.players.find(p => p.id === playerId);
+  
   if (!player || !player.inventory) return;
 
-  // Verifica se o inventário realmente mudou antes de atualizar
+  // Verifica se o inventário realmente mudou antes de atualizar (apenas para o jogador atual)
   const inventoryHash = JSON.stringify(player.inventory);
-  if (inventoryHash === lastInventoryHash) return;
-  lastInventoryHash = inventoryHash;
+  if (!forceUpdate && playerId === socket.id && inventoryHash === lastInventoryHash) return;
+  if (playerId === socket.id) {
+    lastInventoryHash = inventoryHash;
+  }
 
   inventoryGrid.innerHTML = '';
   
@@ -508,7 +524,13 @@ function renderInventorySlots() {
     slot.setAttribute('data-item-type', item.type);
     slot.setAttribute('data-item-rarity', item.rarity);
     slot.setAttribute('data-item-name', item.name);
-    slot.setAttribute('draggable', 'true');
+    
+    // Apenas torna arrastável se for o próprio jogador
+    if (playerId === socket.id) {
+      slot.setAttribute('draggable', 'true');
+    } else {
+      slot.classList.add('other-player-item');
+    }
     
     // Style based on rarity
     const rarityColors = {
@@ -1970,9 +1992,6 @@ function showForgeNotification(message, type = 'info') {
   }, 3000);
 }
 
-// Export the renderInventorySlots function so it can be called from other modules
-export { renderInventorySlots };
-
 // New function to render equipped items in equipment slots
 function renderEquippedItems(player, container) {
   if (!player.equipment) return;
@@ -2493,3 +2512,78 @@ function setupTooltips() {
 
 // A função hideAllTooltips já está definida anteriormente no arquivo (linha 1143)
 // Não é necessário redefini-la aqui
+
+// Função para inicializar o seletor de jogadores
+function initPlayerSelector() {
+  if (!playerInventorySelector) return;
+  
+  // Limpar seletor
+  playerInventorySelector.innerHTML = '';
+  
+  // Adicionar opção default (seu próprio inventário)
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Seu inventário';
+  playerInventorySelector.appendChild(defaultOption);
+  
+  // Preencher com jogadores atuais
+  updatePlayerSelector();
+  
+  // Adicionar evento de mudança
+  playerInventorySelector.addEventListener('change', function() {
+    const selectedPlayerId = this.value || socket.id;
+    currentlyViewingPlayerId = selectedPlayerId;
+    
+    // Renderizar o inventário do jogador selecionado
+    renderInventorySlots(true, selectedPlayerId);
+    
+    // Atualizar visibilidade da lixeira (só mostra para o próprio inventário)
+    if (trashZone) {
+      trashZone.style.display = selectedPlayerId === socket.id ? 'flex' : 'none';
+    }
+  });
+  
+  // Escutar por atualizações no estado do jogo para atualizar a lista de jogadores
+  document.addEventListener('gameStateUpdated', updatePlayerSelector);
+  
+  // Escutar por evento de atualização de inventário
+  socket.on('inventoryUpdate', (data) => {
+    // Se estiver visualizando o inventário do jogador que teve atualização, force-atualizar
+    if (currentlyViewingPlayerId === data.playerId) {
+      renderInventorySlots(true, data.playerId);
+    }
+  });
+}
+
+// Função para atualizar a lista de jogadores no seletor
+function updatePlayerSelector() {
+  if (!playerInventorySelector) return;
+  
+  // Guardar o valor selecionado atualmente
+  const currentSelection = playerInventorySelector.value;
+  
+  // Limpar opções existentes exceto a primeira (próprio inventário)
+  while (playerInventorySelector.options.length > 1) {
+    playerInventorySelector.remove(1);
+  }
+  
+  // Adicionar todos os jogadores exceto o próprio
+  if (gameState.players) {
+    gameState.players.forEach(player => {
+      if (player.id !== socket.id) {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = `${player.name}`;
+        playerInventorySelector.appendChild(option);
+      }
+    });
+  }
+  
+  // Restaurar a seleção anterior se ainda existir, ou voltar para o próprio inventário
+  if (currentSelection && Array.from(playerInventorySelector.options).some(opt => opt.value === currentSelection)) {
+    playerInventorySelector.value = currentSelection;
+  } else {
+    playerInventorySelector.value = '';
+    currentlyViewingPlayerId = socket.id;
+  }
+}
