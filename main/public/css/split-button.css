@@ -1,0 +1,299 @@
+/* Split Button Styles - RPG Theme */
+.split-button {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10000; /* Garantir que esteja acima de todos os outros elementos */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  pointer-events: auto; /* Garantir que cliques sejam capturados */
+  flex-direction: column; /* Menu aparece acima do botão principal */
+}
+
+.split-button .main-button {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  font-size: 1.6rem !important;
+  background: #8b4513 !important;
+  border: 3px solid #deb887 !important;
+  color: #ffe4b5 !important;
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.3),
+    0 4px 0 #654321,
+    0 8px 15px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease;
+  position: relative;
+  transform-style: preserve-3d;
+  image-rendering: pixelated;
+  cursor: pointer;
+  z-index: 10001; /* Garantir que esteja acima do conteúdo do menu */
+  outline: none;
+}
+
+.split-button .main-button:hover {
+  transform: translateY(-2px) rotate(90deg);
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.5),
+    0 6px 0 #654321,
+    0 10px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.split-button .main-button:active {
+  transform: translateY(2px);
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.3),
+    0 2px 0 #654321,
+    0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.split-button .split-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden; /* Usar visibility em vez de apenas pointer-events */
+  pointer-events: none;
+  transition: 
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    visibility 0s linear 0.3s; /* Atraso para visibility */
+  position: absolute;
+  bottom: 65px; /* Posicionado acima do botão principal */
+  right: 0;
+  padding: 10px;
+  background: rgba(139, 69, 19, 0.9); /* Fundo mais opaco para melhor visibilidade */
+  border-radius: 8px;
+  width: max-content;
+  border: 2px solid #deb887;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.split-button.active .split-content {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible; /* Tornar visível quando ativo */
+  pointer-events: all;
+  transition: 
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    visibility 0s linear 0s; /* Sem atraso para visibility */
+  animation: menuPop 0.3s ease;
+}
+
+@keyframes menuPop {
+  0% { transform: translateY(10px); opacity: 0; }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.split-button .editor-button,
+.split-button .save-button,
+.split-button .restore-button,
+.split-button .wiki-button {
+  padding: 10px 20px !important;
+  font-size: 1rem !important;
+  background: #8b4513 !important;
+  border: 3px solid #deb887 !important;
+  color: #ffe4b5 !important;
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.3),
+    0 4px 0 #654321,
+    0 8px 15px rgba(0, 0, 0, 0.3) !important;
+  min-width: 120px !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  position: relative;
+  display: block;
+  text-align: center;
+  margin-bottom: 5px; /* Espaçamento entre botões */
+}
+
+.split-button .editor-button:last-child,
+.split-button .save-button:last-child,
+.split-button .restore-button:last-child,
+.split-button .wiki-button:last-child {
+  margin-bottom: 0; /* Remover margem do último botão */
+}
+
+.split-button .editor-button:hover,
+.split-button .save-button:hover,
+.split-button .restore-button:hover,
+.split-button .wiki-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.5),
+    0 6px 0 #654321,
+    0 10px 20px rgba(0, 0, 0, 0.4) !important;
+  background: #9b5523 !important; /* Cor um pouco mais clara quando hover */
+}
+
+.split-button .editor-button:active,
+.split-button .save-button:active,
+.split-button .restore-button:active,
+.split-button .wiki-button:active {
+  transform: translateY(2px);
+  box-shadow: 
+    inset 0 0 15px rgba(255, 255, 255, 0.3),
+    0 2px 0 #654321,
+    0 4px 8px rgba(0, 0, 0, 0.3) !important;
+  background: #7b3503 !important; /* Cor um pouco mais escura quando pressionado */
+}
+
+/* Dark mode support */
+body.dark-mode .split-button .main-button,
+body.dark-mode .split-button .editor-button,
+body.dark-mode .split-button .save-button,
+body.dark-mode .split-button .restore-button,
+body.dark-mode .split-button .wiki-button {
+  background: #2c3e50 !important;
+  border-color: #3498db !important;
+  color: #ecf0f1 !important;
+  box-shadow: 
+    inset 0 0 15px rgba(52, 152, 219, 0.3),
+    0 4px 0 #1a2634,
+    0 8px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .split-button .split-content {
+  background: rgba(52, 73, 94, 0.9);
+  border-color: #3498db;
+}
+
+body.dark-mode .split-button .editor-button:hover,
+body.dark-mode .split-button .save-button:hover,
+body.dark-mode .split-button .restore-button:hover,
+body.dark-mode .split-button .wiki-button:hover {
+  background: #3c4e60 !important; /* Cor um pouco mais clara quando hover no modo escuro */
+}
+
+body.dark-mode .split-button .editor-button:active,
+body.dark-mode .split-button .save-button:active,
+body.dark-mode .split-button .restore-button:active,
+body.dark-mode .split-button .wiki-button:active {
+  background: #1c2e40 !important; /* Cor um pouco mais escura quando pressionado no modo escuro */
+}
+
+.split-button .editor-button.active {
+  background: #654321 !important;
+  box-shadow: 
+    inset 0 0 20px rgba(0, 0, 0, 0.4),
+    0 4px 0 #483019,
+    0 8px 15px rgba(0, 0, 0, 0.3) !important;
+  color: #ffd700 !important;
+}
+
+.split-button .save-button:disabled {
+  opacity: 0.6;
+  background: #696969 !important;
+  border-color: #4a4a4a !important;
+  box-shadow: none !important;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.split-button .save-button:not(:disabled) {
+  animation: pulse 2s infinite;
+}
+
+/* Garantir que o botão seja ocultado corretamente quando necessário */
+.split-button[style*="display: none"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Efeito especial de brilho para o botão Wiki */
+.split-button .wiki-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.split-button .wiki-button::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(45deg);
+  animation: shineEffect 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes shineEffect {
+  0% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0;
+  }
+  80% {
+    transform: scale(0) rotate(45deg);
+    opacity: 0.5;
+  }
+  85% {
+    transform: scale(2) rotate(45deg);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(3) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .split-button {
+    right: 10px;
+    bottom: 10px;
+  }
+  
+  .split-button .main-button {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.4rem !important;
+  }
+  
+  .split-button .editor-button,
+  .split-button .save-button,
+  .split-button .restore-button,
+  .split-button .wiki-button {
+    padding: 8px 16px !important;
+    font-size: 0.9rem !important;
+    min-width: 100px !important;
+  }
+}
+
+/* Estilo quando o botão está ativo (menu aberto) */
+.split-button.active .main-button {
+  background: #654321 !important;
+  color: #ffd700 !important;
+  transform: rotate(90deg);
+  box-shadow: 
+    inset 0 0 20px rgba(0, 0, 0, 0.4),
+    0 2px 0 #483019,
+    0 4px 8px rgba(0, 0, 0, 0.3) !important;
+} 

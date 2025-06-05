@@ -81,9 +81,34 @@ function updateBoss({ health, maxHealth, damage, playerName }) {
 
 function handleBossResult(result) {
   if (result.victory) {
-    showNotification(`Boss derrotado por ${result.killedBy}!\nRecompensa: ${result.coins} moedas\nPoder de clique multiplicado por ${result.multiplier}x por ${result.duration / 1000} segundos!`);
+    let message = `Boss derrotado por ${result.killedBy}!\nRecompensa: ${result.coins} moedas\nPoder de clique multiplicado por ${result.multiplier}x por ${result.duration / 1000} segundos!`;
+    
+    // Verificar se o inventário está cheio
+    if (result.inventoryFull) {
+      message += `\n\n⚠️ Seu inventário está cheio!\nVocê perdeu um item!`;
+      showNotification(message, 'warning');
+    }
+    // Adicionar informação sobre o drop de equipamento
+    else if (result.equipmentDrop) {
+      const rarity = result.equipmentDrop.rarity;
+      message += `\n\nEquipamento obtido: ${result.equipmentDrop.icon} ${result.equipmentDrop.name}`;
+      message += `\nRaridade: <span style="color:${rarity.color}">${rarity.name}</span>`;
+      
+      console.log(`[EQUIPMENT DROP] ${result.killedBy} recebeu: ${result.equipmentDrop.name} (${rarity.name})`);
+      
+      // Disparar um evento para notificar que um item foi obtido
+      document.dispatchEvent(new CustomEvent('itemDropped', { 
+        detail: {
+          item: result.equipmentDrop
+        }
+      }));
+      
+      showNotification(message, 'success');
+    } else {
+      showNotification(message, 'success');
+    }
   } else {
-    showNotification(`Boss não foi derrotado a tempo!\nPenalidade: ${result.penalty} moedas perdidas...`);
+    showNotification(`Boss não foi derrotado a tempo!\nPenalidade: ${result.penalty} moedas perdidas...`, 'error');
   }
   hideBossFight();
 }
